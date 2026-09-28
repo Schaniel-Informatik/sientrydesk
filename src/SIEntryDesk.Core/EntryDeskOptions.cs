@@ -27,6 +27,11 @@ public sealed class EntryDeskOptions
     /// <summary>Livebild ohne Klingeln über das Tray-Menü. Pro PC abschaltbar, jeder Abruf wird protokolliert.</summary>
     public bool LiveView { get; set; } = true;
 
+    /// <summary>So lange bleibt das Livebild ohne Klingeln offen, begrenzt auf 15–600 s.</summary>
+    public int LiveViewSeconds { get; set; } = 90;
+
+    public TimeSpan LiveViewLifetime => TimeSpan.FromSeconds(Math.Clamp(LiveViewSeconds, 15, 600));
+
     public bool VideoConfigured => !string.IsNullOrWhiteSpace(ProtectPin);
 
     /// <summary>Problem der Video-Einstellungen, oder null. Nur relevant, wenn ProtectPin gesetzt ist.</summary>

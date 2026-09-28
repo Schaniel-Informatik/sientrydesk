@@ -3,7 +3,7 @@
 **Etappe 1:** Klingeln erkennen, Fenster mit Klingelton über allen Fenstern, Knopf „Öffnen“, Fenster überall
 schliessen, sobald der Ruf endet.
 **Etappe 2:** Livebild mit Ton der Tür (zuerst stumm) beim Klingeln, und ohne Klingeln über das Tray-Menü
-(„Livebild <Tür>“, schliesst sich nach 2 Minuten). Noch ohne Gegensprechen.
+(„Livebild <Tür>“, schliesst sich nach 90 s). Noch ohne Gegensprechen.
 
 ## Voraussetzungen
 - Windows 11, x64, lokaler Administrator für die Installation
@@ -25,7 +25,9 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost <IP der Kons
 
 Das Skript fragt die Tokens verdeckt ab: Access-Token, Token zum Öffnen, Protect-Schlüssel.
 Optional nur bestimmte Türen: `-Doors 'Türname 1','Türname 2'`. `-KeepTokens` behält die gespeicherten Tokens.
-`-NoLiveView` schaltet das Livebild ohne Klingeln auf diesem PC ab. Jeder Abruf steht mit Benutzer im Protokoll.
+`-NoLiveView` schaltet das Livebild ohne Klingeln auf diesem PC ab, `-LiveViewSeconds 120` ändert die Dauer (15–600 s).
+Jeder Abruf steht mit Benutzer im Protokoll. Der Installer sperrt eingehende Verbindungen für die App in der
+Windows-Firewall, sie braucht keine. Eine Firewall-Abfrage zu SIEntryDesk deshalb mit „Abbrechen“ beantworten.
 **Beim Update von 0.1.x auf das Livebild `-KeepTokens` weglassen**, damit der Protect-Schlüssel dazukommt.
 
 Die App startet am Ende der Installation und danach bei jeder Anmeldung, von Hand über das Startmenü („SI EntryDesk“).

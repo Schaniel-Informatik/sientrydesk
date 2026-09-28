@@ -66,7 +66,7 @@ public partial class RingWindow : Window
                 ShowActivated = true;
                 Headline.Text = "Livebild";
                 Headline.Foreground = Neutral;
-                TimeText.Text = $"Ohne Klingeln · schliesst sich um {(until ?? startedAt).ToLocalTime():HH:mm}";
+                TimeText.Text = $"Ohne Klingeln · schliesst sich um {(until ?? startedAt).ToLocalTime():HH:mm:ss}";
                 Title = $"SI EntryDesk – Livebild {DoorText.Text}";
                 OpenButton.Visibility = Visibility.Collapsed;
                 System.Windows.Controls.Grid.SetColumn(HideButton, 0);

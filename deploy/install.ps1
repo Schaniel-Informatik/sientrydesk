@@ -21,6 +21,7 @@ param(
     [string] $ProtectPin = '',
     [string] $StreamPin = '',
     [switch] $NoLiveView,
+    [ValidateRange(15, 600)] [int] $LiveViewSeconds = 90,
     [switch] $KeepTokens
 )
 
@@ -69,7 +70,7 @@ Invoke-Native 'icacls.exe' @($stateDir, '/grant:r', "${serviceAccount}:(OI)(CI)M
 
 Write-Host '5/7 Konfiguration schreiben'
 [ordered]@{ Host = $ConsoleHost; AccessPin = $AccessPin; Doors = @($Doors); ProtectPin = $ProtectPin; StreamPin = $StreamPin
-    LiveView = -not $NoLiveView } |
+    LiveView = -not $NoLiveView; LiveViewSeconds = $LiveViewSeconds } |
     ConvertTo-Json | Set-Content -Encoding UTF8 -Path (Join-Path $dataDir 'config.json')
 
 Write-Host '6/7 Tokens'
@@ -95,6 +96,11 @@ if ($KeepTokens -and (Test-Path (Join-Path $dataDir 'secrets.dat'))) {
 Write-Host '7/7 Autostart und Start'
 New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' `
     -Value "`"$appExe`"" -PropertyType String -Force | Out-Null
+# Die App braucht keinen eingehenden Zugriff, das Bild kommt über 127.0.0.1. Die Sperrregel verhindert die
+# Firewall-Abfrage, die LibVLC sonst auslöst, und hat Vorrang vor einer versehentlich erteilten Freigabe.
+$firewallRule = 'SI EntryDesk: kein eingehender Zugriff'
+Get-NetFirewallRule -DisplayName $firewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+New-NetFirewallRule -DisplayName $firewallRule -Direction Inbound -Program $appExe -Action Block -Profile Any | Out-Null
 # Eintrag im Startmenü für alle Benutzer, falls die App beendet wurde.
 $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk'))
 $shortcut.TargetPath = $appExe

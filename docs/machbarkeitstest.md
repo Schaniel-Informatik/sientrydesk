@@ -11,6 +11,7 @@ Getestet vom Mac über VPN mit `tools/feasibility/sied.py`. Keine Namen, Adresse
 | 2026-09-26 | RTSPS-Stream | an den Türstationen zunächst nicht freigegeben |
 | 2026-09-28 | RTSPS-Stream anlegen (G6 Pro Entry) | ✅ `POST rtsps-stream` mit Qualität `medium`. Bild: **H.265/HEVC Main, 1440 × 1920 (Hochformat), 20 fps**. Ton: AAC-LC 16 kHz mono und Opus 48 kHz stereo. Die Stream-Adresse zeigt auf die Konsole, Port 7441 |
 | 2026-09-28 | RTSPS-Stream anlegen (G6 Entry) | ✅ Qualität `medium` bei der G6 Entry: **H.265, 720 × 960, 30 fps**, Ton wie bei der G6 Pro Entry. Über den Stream-Proxy des Dienstes 15 s flüssig (450 Bilder) |
+| 2026-09-28 | **Livebild unter Windows (Pilot 0.2.2)** | ✅ LibVLC zeigt beide Türstationen über den Stream-Proxy des Dienstes (TLS mit Pin, Einmal-Adresse), das Fenster schliesst sich zur eingestellten Zeit. LibVLC löst beim ersten Abspielen eine Firewall-Abfrage für eingehende Verbindungen aus, die App braucht keine. Ab 0.2.3 sperrt der Installer das per Regel |
 | 2026-09-28 | Livebild mit Verzögerung | ✅ ca. **1 s** hinter der Wirklichkeit (ffplay mit `nobuffer`/`low_delay`, über VPN) |
 | 2026-09-28 | TLS für den Stream | ✅ ffmpeg 9 prüft Zertifikate von sich aus. Mit dem gepinnten Zertifikat als `-ca_file` und `-verifyhost unifi.local` (steht im Zertifikat) läuft es mit voller Prüfung |
 | 2026-09-28 | Ton an der Tür (`talkback --tone`) | ✅ **Ton an der Tür gehört.** Opus 24 kHz mono per RTP vom Mac über VPN direkt zur Türstation |

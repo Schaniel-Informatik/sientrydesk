@@ -18,7 +18,8 @@ Pilot an 1–2 Windows-11-PCs. Grundlage ist der Machbarkeitstest (`machbarkeits
   10 s nach dessen Ende geschlossen.
 - Die App sieht die dauerhafte Stream-Adresse nie, denn der Pfad wirkt wie ein Zugangsschlüssel.
 - **Livebild ohne Klingeln (Entscheid Marcel, 2026-09-28):** über das Tray-Menü, pro PC abschaltbar (`LiveView`,
-  Standard ein). Jeder Abruf steht mit Windows-Benutzer im Protokoll des Dienstes, die Adresse endet nach 2 Minuten.
+  Standard ein). Jeder Abruf steht mit Windows-Benutzer im Protokoll des Dienstes, die Adresse endet nach 90 s
+  (`LiveViewSeconds`, 15–600).
   Die Kamera einer Tür lernt der Dienst beim ersten Klingeln. Access nennt die Türstationen nicht in der Türstruktur,
   Protect kennzeichnet sie nicht.
 - Einmal-Adressen enden genau zum Ablauf, auch laufende Verbindungen: beim Klingeln 10 s nach Rufende, spätestens nach

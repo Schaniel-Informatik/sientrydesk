@@ -29,8 +29,6 @@ internal sealed class CallCoordinator(
     private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan VideoMaxLifetime = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StreamCacheLifetime = TimeSpan.FromMinutes(5);
-    /// <summary>Livebild ohne Klingeln schliesst sich nach dieser Zeit.</summary>
-    private static readonly TimeSpan LiveViewLifetime = TimeSpan.FromMinutes(2);
 
     private readonly ConcurrentDictionary<string, (DateTimeOffset Fetched, IReadOnlyDictionary<string, StreamSource> Streams)> _streamCache =
         new(StringComparer.Ordinal);
@@ -267,9 +265,9 @@ internal sealed class CallCoordinator(
         if (door is null || !opt.AcceptsDoor(door.DoorId, door.DoorName))
             return new LiveViewUnavailableMessage(doorId, "Tür unbekannt");
 
-        var until = time.GetUtcNow() + LiveViewLifetime;
+        var until = time.GetUtcNow() + opt.LiveViewLifetime;
         var (url, problem) = await OpenStreamAsync(
-            door.CameraId, door.DoorName, $"live:{doorId}:{Guid.NewGuid():N}", LiveViewLifetime, ct).ConfigureAwait(false);
+            door.CameraId, door.DoorName, $"live:{doorId}:{Guid.NewGuid():N}", opt.LiveViewLifetime, ct).ConfigureAwait(false);
         if (url is null)
             return new LiveViewUnavailableMessage(doorId, problem!);
         log.LogInformation("Livebild ohne Klingeln: {Door} von {User} bis {Until:HH:mm:ss}", door.DoorName, user, until.ToLocalTime());
