@@ -1,0 +1,158 @@
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Threading;
+using SIEntryDesk.Core.Calls;
+
+namespace SIEntryDesk.App;
+
+/// <summary>
+/// Fenster zu einem Klingelruf. Liegt über allen Fenstern, übernimmt aber nicht die Tastatur,
+/// damit niemand mitten im Tippen etwas auslöst.
+/// </summary>
+public partial class RingWindow : Window
+{
+    /// <summary>Sicherheitsnetz, falls das Ende des Rufs nie ankommt (Access beendet nach 60 s).</summary>
+    private static readonly TimeSpan MaxLifetime = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan LingerAfterEnd = TimeSpan.FromSeconds(4);
+
+    private static readonly Brush Neutral = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
+    private static readonly Brush Good = new SolidColorBrush(Color.FromRgb(0x5F, 0xD0, 0x7A));
+    private static readonly Brush Bad = new SolidColorBrush(Color.FromRgb(0xFF, 0x7B, 0x72));
+
+    private readonly DispatcherTimer _closeTimer = new();
+    private readonly bool _unlockAllowed;
+    private bool _ended;
+
+    public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool isTest)
+    {
+        InitializeComponent();
+        CallId = callId;
+        _unlockAllowed = unlockAllowed && !isTest;
+
+        DoorText.Text = string.IsNullOrWhiteSpace(doorName) ? "Tür" : doorName;
+        TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss}{(isTest ? " · Testklingeln" : "")}";
+        Title = $"SI EntryDesk – {DoorText.Text}";
+        OpenButton.IsEnabled = _unlockAllowed;
+        if (isTest)
+            SetStatus("Test: nur auf diesem PC, Öffnen nicht möglich", Neutral);
+        else if (!unlockAllowed)
+            SetStatus("Access erlaubt hier kein Öffnen", Neutral);
+
+        _closeTimer.Tick += (_, _) => Close();
+        CloseAfter(MaxLifetime);
+    }
+
+    public string CallId { get; }
+
+    /// <summary>Solange geklingelt wird, läuft der Klingelton.</summary>
+    public bool IsRinging { get; private set; } = true;
+
+    public event Action? UnlockRequested;
+    public event Action? RingingChanged;
+
+    public void EndCall(CallEndReason reason)
+    {
+        if (_ended)
+            return;
+        _ended = true;
+        StopRinging();
+        OpenButton.IsEnabled = false;
+        Headline.Text = "Ruf beendet";
+        Headline.Foreground = Neutral;
+        SetStatus(CallEndReasons.ToGerman(reason), reason == CallEndReason.Opened ? Good : Neutral);
+        CloseAfter(LingerAfterEnd);
+    }
+
+    public void ShowOpened(string? openedBy)
+    {
+        StopRinging();
+        OpenButton.IsEnabled = false;
+        SetStatus(openedBy is null ? "Tür geöffnet" : $"Tür geöffnet von {openedBy}", Good);
+        CloseAfter(LingerAfterEnd);
+    }
+
+    public void ShowUnlockResult(bool success, string message)
+    {
+        if (success)
+        {
+            StopRinging();
+            SetStatus(message, Good);
+            CloseAfter(LingerAfterEnd + LingerAfterEnd);
+            return;
+        }
+        SetStatus(message, Bad);
+        OpenButton.IsEnabled = _unlockAllowed && !_ended;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        FlashTaskbar();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _closeTimer.Stop();
+        StopRinging();
+        base.OnClosed(e);
+    }
+
+    private void OnOpenClick(object sender, RoutedEventArgs e)
+    {
+        OpenButton.IsEnabled = false;
+        SetStatus("Öffne …", Neutral);
+        UnlockRequested?.Invoke();
+    }
+
+    private void OnHideClick(object sender, RoutedEventArgs e) => Close();
+
+    private void SetStatus(string text, Brush color)
+    {
+        StatusText.Text = text;
+        StatusText.Foreground = color;
+    }
+
+    private void StopRinging()
+    {
+        if (!IsRinging)
+            return;
+        IsRinging = false;
+        RingingChanged?.Invoke();
+    }
+
+    private void CloseAfter(TimeSpan delay)
+    {
+        _closeTimer.Stop();
+        _closeTimer.Interval = delay;
+        _closeTimer.Start();
+    }
+
+    private void FlashTaskbar()
+    {
+        var info = new FlashInfo
+        {
+            Size = (uint)Marshal.SizeOf<FlashInfo>(),
+            Window = new WindowInteropHelper(this).Handle,
+            Flags = 3 | 12, // FLASHW_ALL | FLASHW_TIMERNOFG: blinken, bis das Fenster in den Vordergrund kommt
+            Count = uint.MaxValue,
+            Timeout = 0,
+        };
+        FlashWindowEx(ref info);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FlashInfo
+    {
+        public uint Size;
+        public IntPtr Window;
+        public uint Flags;
+        public uint Count;
+        public uint Timeout;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FlashWindowEx(ref FlashInfo info);
+}

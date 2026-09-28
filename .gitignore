@@ -8,3 +8,12 @@ __pycache__/
 !*.env.example
 tools/feasibility/out/
 *.pem
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Build-Pakete
+artifacts/

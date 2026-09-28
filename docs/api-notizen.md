@@ -25,7 +25,16 @@ Aus der offiziellen Dokumentation, Stand 2026-09. Quellen:
   der Text `"Hello"`. WebSocket-Pings des Clients beantwortet der Server nicht. Der Client darf also keine Pings
   erwarten und muss die Verbindung anhand der `"Hello"`-Nachrichten überwachen.
 
-**Öffnen:** Im Body lassen sich `actor_id` und `actor_name` mitgeben, sie erscheinen im Access-Protokoll. Ohne diese Angaben
+**IDs im Klingel-Ereignis (im Test ermittelt):**
+- `door_id` ist die Tür-ID für `PUT /doors/{id}/unlock`. `access.data.device.remote_unlock` liefert sie als `data.unique_id`.
+- `connected_uah_id` ist die ID des UA Hub. `remote_unlock` liefert sie als `event_object_id`, `access.logs.add`
+  als Ziel vom Typ `door`.
+- `device_id` ist bei Türstationen aus Protect (`is_camera` = true) die **Protect-Kamera-ID**. Damit ist die Kamera für
+  das Livebild direkt bekannt.
+- `unlocking_not_allowed`: Wenn gesetzt, erlaubt Access für diesen Ruf kein Öffnen.
+- `access.logs.add` mit `event.type` = `access.door.unlock` nennt in `actor.display_name`, wer geöffnet hat.
+
+**Öffnen:** `actor_id` wird im Beispiel der Doku als UUID gezeigt. Im Body lassen sich `actor_id` und `actor_name` mitgeben, sie erscheinen im Access-Protokoll. Ohne diese Angaben
 steht dort der Name des Tokens. Für die App bietet sich an, PC und Benutzer zu übergeben.
 
 ## UniFi Protect Integration API

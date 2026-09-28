@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Tray-App pro Benutzersitzung. Kennt keine Tokens, spricht nur mit dem lokalen Dienst. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>SIEntryDesk.App</RootNamespace>
+    <AssemblyName>SIEntryDesk</AssemblyName>
+  </PropertyGroup>
+
+  <!-- WinForms nur für das Tray-Symbol, sonst gibt es Namenskonflikte mit WPF. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SIEntryDesk.Core\SIEntryDesk.Core.csproj" />
+  </ItemGroup>
+
+</Project>

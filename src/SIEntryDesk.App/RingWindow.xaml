@@ -1,0 +1,46 @@
+<Window x:Class="SIEntryDesk.App.RingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SI EntryDesk – Es klingelt"
+        Width="420" Height="640"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowActivated="False"
+        WindowStartupLocation="Manual"
+        Background="#1E1F22"
+        Foreground="White"
+        FontFamily="Segoe UI">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="Headline" Text="Es klingelt" FontSize="16" Foreground="#FFB74D" />
+            <TextBlock x:Name="DoorText" FontSize="28" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+            <TextBlock x:Name="TimeText" FontSize="13" Foreground="#A0A0A0" Margin="0,2,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="1" Margin="0,16" CornerRadius="8" Background="#2B2D31">
+            <TextBlock Text="Livebild folgt in Etappe 2" Foreground="#707070" FontSize="14"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+
+        <TextBlock x:Name="StatusText" Grid.Row="2" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,12" MinHeight="20" />
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="OpenButton" Content="Öffnen" Height="64" Background="#2EA043"
+                    Style="{StaticResource ActionButton}" Click="OnOpenClick" />
+            <Button x:Name="HideButton" Grid.Column="2" Content="Ausblenden" Height="64" FontSize="15"
+                    Background="#4A4D55" Style="{StaticResource ActionButton}" Click="OnHideClick" />
+        </Grid>
+    </Grid>
+</Window>
