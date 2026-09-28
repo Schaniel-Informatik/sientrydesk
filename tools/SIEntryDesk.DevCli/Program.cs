@@ -123,8 +123,10 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
     log.LogInformation("Einmal-Adresse: {Url}", url);
 
     var watch = Stopwatch.StartNew();
+    // Mit --udp ohne erzwungenes TCP, wie ein Player, der zuerst UDP versucht.
+    string[] transport = Environment.GetCommandLineArgs().Contains("--udp") ? ["-v", "debug"] : ["-v", "error", "-rtsp_transport", "tcp"];
     var probe = Process.Start(new ProcessStartInfo("ffprobe",
-        ["-v", "error", "-rtsp_transport", "tcp", "-show_entries", "stream=codec_type,codec_name,width,height,sample_rate", "-of", "compact", url])
+        [.. transport, "-show_entries", "stream=codec_type,codec_name,width,height,sample_rate", "-of", "compact", url])
     { RedirectStandardOutput = true, RedirectStandardError = true })!;
     var output = await probe.StandardOutput.ReadToEndAsync();
     var errors = await probe.StandardError.ReadToEndAsync();

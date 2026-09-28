@@ -251,14 +251,16 @@ public sealed class StreamProxy : IAsyncDisposable
                     await upstream.WriteAsync(frame.Raw, ct).ConfigureAwait(false);
                     break;
                 case RtspText request:
-                    if (rewriter.ToUpstream(request) is { } allowed)
+                    switch (rewriter.ToUpstream(request))
                     {
-                        await upstream.WriteAsync(allowed.ToBytes(), ct).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        await RejectAsync(client, request, "405 Method Not Allowed", ct).ConfigureAwait(false);
-                        return;
+                        case Forward forward:
+                            await upstream.WriteAsync(forward.Request.ToBytes(), ct).ConfigureAwait(false);
+                            break;
+                        case Refuse refuse:
+                            await RejectAsync(client, request, refuse.Status, ct).ConfigureAwait(false);
+                            if (refuse.Close)
+                                return;
+                            break;
                     }
                     break;
             }

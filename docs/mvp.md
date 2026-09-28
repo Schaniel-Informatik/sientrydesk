@@ -24,6 +24,9 @@ Pilot an 1–2 Windows-11-PCs. Grundlage ist der Machbarkeitstest (`machbarkeits
   Protect kennzeichnet sie nicht.
 - Einmal-Adressen enden genau zum Ablauf, auch laufende Verbindungen: beim Klingeln 10 s nach Rufende, spätestens nach
   3 Minuten.
+- **Nur RTP über die RTSP-Verbindung (TCP interleaved).** Bei UDP schickt Protect Bild und Ton unverschlüsselt direkt an
+  den PC, am Proxy und am Pin vorbei. Der Dienst lehnt solche `SETUP` mit „461 Unsupported Transport“ ab, Player
+  wechseln dann auf TCP. Gefunden im Pilot: LibVLC versuchte trotz `:rtsp-tcp` zuerst UDP.
 - Der Dienst leitet nur Befehle zum Abspielen weiter. `ANNOUNCE`/`RECORD` würde der Protect-Server annehmen,
   damit liesse sich ein fremdes Bild einspeisen.
 

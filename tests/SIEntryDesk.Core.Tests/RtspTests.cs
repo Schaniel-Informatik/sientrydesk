@@ -49,6 +49,8 @@ public class RtspTests
         await Assert.ThrowsAsync<InvalidDataException>(() => reader.ReadAsync(CancellationToken.None));
     }
 
+    private const string TcpTransport = "Transport: RTP/AVP/TCP;unicast;interleaved=4-5";
+
     [Theory]
     [InlineData("OPTIONS " + Local + " RTSP/1.0")]
     [InlineData("DESCRIBE " + Local + " RTSP/1.0")]
@@ -59,10 +61,23 @@ public class RtspTests
     public void Playback_requests_are_rewritten(string line)
     {
         var rewriter = new RtspRewriter(Local, Upstream);
-        var result = rewriter.ToUpstream(Request(line, "CSeq: 1"));
-        Assert.NotNull(result);
+        var result = Assert.IsType<Forward>(rewriter.ToUpstream(Request(line, "CSeq: 1", TcpTransport))).Request;
         Assert.Contains(Upstream, result.StartLine);
         Assert.DoesNotContain(Local, result.Head);
+    }
+
+    [Theory]
+    [InlineData("Transport: RTP/AVP;unicast;client_port=50000-50001")]
+    [InlineData("Transport: RTP/AVP/UDP;unicast;client_port=50000-50001")]
+    [InlineData("Transport: RTP/AVP;multicast")]
+    [InlineData("Transport: RTP/AVP;unicast;client_port=50000-50001,RTP/AVP/TCP;unicast;interleaved=0-1")]
+    [InlineData("CSeq: 3")]
+    public void Media_outside_the_tls_connection_is_refused(string transportHeader)
+    {
+        var result = new RtspRewriter(Local, Upstream).ToUpstream(Request("SETUP " + Local + "/trackID=0 RTSP/1.0", transportHeader));
+        var refuse = Assert.IsType<Refuse>(result);
+        Assert.Equal("461 Unsupported Transport", refuse.Status);
+        Assert.False(refuse.Close);
     }
 
     [Theory]
@@ -75,7 +90,8 @@ public class RtspTests
     [InlineData("DESCRIBE " + Local)]
     public void Everything_else_is_refused(string line)
     {
-        Assert.Null(new RtspRewriter(Local, Upstream).ToUpstream(Request(line, "CSeq: 1")));
+        var refuse = Assert.IsType<Refuse>(new RtspRewriter(Local, Upstream).ToUpstream(Request(line, "CSeq: 1")));
+        Assert.True(refuse.Close);
     }
 
     [Fact]

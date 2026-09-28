@@ -4,6 +4,15 @@ using System.Text.RegularExpressions;
 
 namespace SIEntryDesk.Core.Video;
 
+/// <summary>Was mit einer Anfrage der App geschieht.</summary>
+internal abstract record RewriteResult;
+
+/// <summary>Umgeschrieben an die Konsole weitergeben.</summary>
+internal sealed record Forward(RtspText Request) : RewriteResult;
+
+/// <summary>Mit diesem Status ablehnen. Close: Verbindung danach beenden.</summary>
+internal sealed record Refuse(string Status, bool Close) : RewriteResult;
+
 /// <summary>
 /// Übersetzt zwischen der lokalen Einmal-Adresse (rtsp://127.0.0.1:port/token) und der echten Stream-Adresse
 /// (rtsps://konsole:7441/pfad). Die App sieht die echte Adresse nie. Anfragen sind auf Abspielen beschränkt
@@ -17,16 +26,29 @@ internal sealed partial class RtspRewriter(string localPrefix, string upstreamPr
 
     public string LocalPrefix => localPrefix;
 
-    /// <summary>Anfrage der App an die Konsole. Null, wenn sie nicht erlaubt ist.</summary>
-    public RtspText? ToUpstream(RtspText request)
+    /// <summary>Anfrage der App an die Konsole: weitergeben oder ablehnen.</summary>
+    public RewriteResult ToUpstream(RtspText request)
     {
         var parts = request.StartLine.Split(' ');
-        if (parts.Length != 3 || !AllowedMethods.Contains(parts[0]) || parts[2] != "RTSP/1.0")
-            return null;
-        if (!IsOwnStream(parts[1]))
-            return null;
-        return request with { Head = request.Head.Replace(localPrefix, upstreamPrefix, StringComparison.Ordinal) };
+        if (parts.Length != 3 || !AllowedMethods.Contains(parts[0]) || parts[2] != "RTSP/1.0" || !IsOwnStream(parts[1]))
+            return new Refuse("405 Method Not Allowed", Close: true);
+
+        // Bild und Ton müssen durch die gepinnte TLS-Verbindung laufen. Bei UDP schickte die Konsole sie
+        // unverschlüsselt direkt an den PC, am Proxy und an der Zertifikatsprüfung vorbei.
+        if (parts[0] == "SETUP" && !IsInterleavedOnly(request.Header("Transport")))
+            return new Refuse("461 Unsupported Transport", Close: false);
+
+        return new Forward(request with { Head = request.Head.Replace(localPrefix, upstreamPrefix, StringComparison.Ordinal) });
     }
+
+    /// <summary>Jede angebotene Variante muss RTP über TCP in der RTSP-Verbindung sein.</summary>
+    private static bool IsInterleavedOnly(string? transport) =>
+        !string.IsNullOrWhiteSpace(transport) &&
+        transport.Split(',').All(option =>
+            option.Contains("RTP/AVP/TCP", StringComparison.OrdinalIgnoreCase) &&
+            option.Contains("interleaved=", StringComparison.OrdinalIgnoreCase) &&
+            !option.Contains("client_port", StringComparison.OrdinalIgnoreCase) &&
+            !option.Contains("multicast", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Antwort der Konsole an die App, echte Adresse durch die lokale ersetzt.</summary>
     public RtspText ToClient(RtspText response)
