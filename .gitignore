@@ -1,0 +1,10 @@
+# Lokale Umgebung
+.venv/
+__pycache__/
+.DS_Store
+
+# Lokale Konfiguration und Testausgaben, können Kundendaten enthalten
+*.env
+!*.env.example
+tools/feasibility/out/
+*.pem
