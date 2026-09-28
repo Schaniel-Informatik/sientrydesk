@@ -18,8 +18,8 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     private readonly ConcurrentDictionary<int, ClientConnection> _clients = new();
     private int _nextId;
 
-    /// <summary>(Ruf-Kennung, Windows-Benutzer) → Ergebnis. Wird vom Koordinator gesetzt.</summary>
-    public Func<string, string, CancellationToken, Task<UnlockResultMessage>>? UnlockHandler { get; set; }
+    /// <summary>(Anfrage der App, Windows-Benutzer) → Antwort an diese App. Wird vom Koordinator gesetzt.</summary>
+    public Func<IpcMessage, string, CancellationToken, Task<IpcMessage?>>? RequestHandler { get; set; }
 
     public void Broadcast(IpcMessage message)
     {
@@ -82,8 +82,9 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             var reader = new IpcReader(client.Pipe);
             while (await reader.ReadAsync(ct).ConfigureAwait(false) is { } message)
             {
-                if (message is UnlockRequest request && UnlockHandler is { } handler)
-                    client.Send(await handler(request.CallId, client.User, ct).ConfigureAwait(false));
+                if (RequestHandler is { } handler &&
+                    await handler(message, client.User, ct).ConfigureAwait(false) is { } reply)
+                    client.Send(reply);
             }
             client.Dispose();
             await writer.ConfigureAwait(false);

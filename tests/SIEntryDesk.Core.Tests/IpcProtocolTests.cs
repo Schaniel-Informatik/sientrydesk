@@ -14,6 +14,10 @@ public class IpcProtocolTests
         new DoorOpenedMessage("req-1", "A. Muster"),
         new UnlockRequest("req-1"),
         new UnlockResultMessage("req-1", false, "Ruf bereits beendet"),
+        new CallStartedMessage("req-2", "Tür 2", new DateTimeOffset(2026, 9, 28, 15, 0, 0, TimeSpan.Zero), true, VideoAvailable: true),
+        new VideoRequest("req-2"),
+        new VideoReadyMessage("req-2", "rtsp://127.0.0.1:5000/abcdefghijklmnopqrstuvwxyz012345"),
+        new VideoUnavailableMessage("req-2", "Livebild in Protect nicht freigegeben"),
     ];
 
     [Theory]

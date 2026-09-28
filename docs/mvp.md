@@ -10,6 +10,17 @@ Pilot an 1–2 Windows-11-PCs. Grundlage ist der Machbarkeitstest (`machbarkeits
   offen halten und Lockdown oder Evakuierung auslösen. Deshalb bekommt die Benutzer-App den Token nicht.
 - Später ausbaubar zu einem zentralen Dienst auf einem Server.
 
+## Livebild über den Dienst (Entscheid 2026-09-28)
+- LibVLC nutzt für RTSP die Bibliothek live555. Deren TLS-Client **prüft das Serverzertifikat nicht**. Wer sich im Netz
+  als Konsole ausgibt, könnte ein falsches Bild zeigen, etwa eine harmlose Person, während jemand anderes vor der Tür steht.
+- Deshalb baut der **Dienst** die RTSPS-Verbindung mit gepinntem Zertifikat selbst auf. An LibVLC reicht er den Stream
+  unter einer **Einmal-Adresse** `rtsp://127.0.0.1:<port>/<token>` weiter. Sie gilt nur für einen laufenden Ruf und wird
+  10 s nach dessen Ende geschlossen.
+- Die App sieht die dauerhafte Stream-Adresse nie, denn der Pfad wirkt wie ein Zugangsschlüssel. Ohne Klingeln gibt es
+  kein Bild, eine Überwachung der Tür über die App ist nicht möglich.
+- Der Dienst leitet nur Befehle zum Abspielen weiter. `ANNOUNCE`/`RECORD` würde der Protect-Server annehmen,
+  damit liesse sich ein fremdes Bild einspeisen.
+
 ## Umfang
 1. Tray-App mit Autostart. Der Dienst baut Verbindungen selbst neu auf und überwacht Access über das `"Hello"` alle 5 s.
 2. Klingeln: Fenster hochkant über allen anderen Fenstern, ohne die Tastatur zu übernehmen. Klingelton in Schleife,

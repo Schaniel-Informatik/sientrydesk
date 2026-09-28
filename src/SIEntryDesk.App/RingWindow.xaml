@@ -1,8 +1,9 @@
 <Window x:Class="SIEntryDesk.App.RingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         Title="SI EntryDesk – Es klingelt"
-        Width="420" Height="640"
+        Width="420" Height="780"
         ResizeMode="NoResize"
         Topmost="True"
         ShowActivated="False"
@@ -16,6 +17,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <StackPanel>
@@ -24,14 +26,25 @@
             <TextBlock x:Name="TimeText" FontSize="13" Foreground="#A0A0A0" Margin="0,2,0,0" />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,16" CornerRadius="8" Background="#2B2D31">
-            <TextBlock Text="Livebild folgt in Etappe 2" Foreground="#707070" FontSize="14"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <!-- Die Videoanzeige ist ein eigenes Fenster (HwndHost), WPF kann nicht darüber zeichnen. -->
+        <Border Grid.Row="1" Margin="0,14,0,6" Background="Black">
+            <vlc:VideoView x:Name="Video" />
         </Border>
 
-        <TextBlock x:Name="StatusText" Grid.Row="2" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,12" MinHeight="20" />
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="VideoText" Text="Kein Livebild" FontSize="13" Foreground="#A0A0A0"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <Button x:Name="SoundButton" Grid.Column="1" Content="Ton an" Width="90" Height="30" FontSize="13"
+                    Background="#4A4D55" Style="{StaticResource ActionButton}" IsEnabled="False" Click="OnSoundClick" />
+        </Grid>
 
-        <Grid Grid.Row="3">
+        <TextBlock x:Name="StatusText" Grid.Row="3" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,12" MinHeight="20" />
+
+        <Grid Grid.Row="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="12" />

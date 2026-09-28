@@ -9,7 +9,14 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>SIEntryDesk.App</RootNamespace>
     <AssemblyName>SIEntryDesk</AssemblyName>
+    <!-- LibVLC nur für x64, ohne Lua-Skripte (nicht benötigt). -->
+    <VlcWindowsX86Enabled>false</VlcWindowsX86Enabled>
+    <VlcWindowsArm64Enabled>false</VlcWindowsArm64Enabled>
   </PropertyGroup>
+
+  <ItemGroup>
+    <VlcWindowsX64ExcludeFiles Include="lua\%2A%2A" />
+  </ItemGroup>
 
   <!-- WinForms nur für das Tray-Symbol, sonst gibt es Namenskonflikte mit WPF. -->
   <ItemGroup>
@@ -19,6 +26,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SIEntryDesk.Core\SIEntryDesk.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
   </ItemGroup>
 
 </Project>

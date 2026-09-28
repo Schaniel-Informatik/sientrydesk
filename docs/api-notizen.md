@@ -53,6 +53,10 @@ steht dort der Name des Tokens. Für die App bietet sich an, PC und Benutzer zu 
   Ein späteres `update` liefert das Ende. Ein Ereignis „anderswo angenommen“ gibt es in Protect **nicht**.
 - **Stream:** `rtsps://<konsole>:7441/<pfad>?enableSrtp` in den Qualitäten high, medium und low. Der Pfad wirkt wie ein
   Zugangsschlüssel und gehört nicht in Logs.
+- **RTSP-Ablauf (im Test mitgeschnitten):** OPTIONS, DESCRIBE, SETUP je Spur (`trackID=0` AAC, `1` Opus, `2` H.265),
+  PLAY, alles über dieselbe TLS-Verbindung (`RTP/AVP/TCP`, interleaved). Anfragen tragen die volle Adresse, Antworten
+  nur `Content-Base`. Das SDP verweist relativ auf die Spuren. Laut `Public` nimmt der Server auch `ANNOUNCE` und
+  `RECORD` an.
 - **Talkback:** Antwort z. B. `{"url": "rtp://<ip>:7004", "codec": "opus", "samplingRate": 24000, "bitsPerSample": 16}`.
   Die Adresse im Beispiel ist die des Geräts. Die Client-PCs brauchen dann UDP direkt zur Türstation.
 

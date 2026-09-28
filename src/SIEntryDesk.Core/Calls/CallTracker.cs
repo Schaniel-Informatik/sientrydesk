@@ -104,6 +104,13 @@ public sealed class CallTracker
             return _active.Values.Select(e => e.Info).ToList();
     }
 
+    /// <summary>Der laufende Ruf mit dieser Kennung, oder null.</summary>
+    public CallInfo? FindActive(string callId)
+    {
+        lock (_gate)
+            return _active.GetValueOrDefault(callId)?.Info;
+    }
+
     public UnlockDecision TryBeginUnlock(string callId, out CallInfo? call)
     {
         lock (_gate)

@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using LibVLCSharp.Shared;
+using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 using SIEntryDesk.Core.Calls;
 
 namespace SIEntryDesk.App;
@@ -25,6 +27,9 @@ public partial class RingWindow : Window
     private readonly bool _unlockAllowed;
     private bool _ended;
     private bool _opened;
+    private bool _closed;
+    private bool _muted = true;
+    private MediaPlayer? _player;
 
     public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool isTest)
     {
@@ -98,11 +103,59 @@ public partial class RingWindow : Window
         FlashTaskbar();
     }
 
+    /// <summary>Spielt das Livebild über die Einmal-Adresse des Dienstes. Der Ton der Tür ist zuerst stumm.</summary>
+    public void PlayVideo(LibVLC libVlc, string url)
+    {
+        if (_player is not null || _closed)
+            return;
+        using var media = new Media(libVlc, new Uri(url), ":network-caching=300", ":rtsp-tcp");
+        _player = new MediaPlayer(media);
+        _player.Playing += (_, _) => Dispatcher.InvokeAsync(() =>
+        {
+            if (_player is null)
+                return;
+            _player.Mute = _muted;
+            VideoText.Text = "Livebild";
+            SoundButton.IsEnabled = true;
+        });
+        _player.EncounteredError += (_, _) => Dispatcher.InvokeAsync(() => ShowVideoProblem("Livebild unterbrochen"));
+        Video.MediaPlayer = _player;
+        VideoText.Text = "Livebild wird geladen …";
+        _player.Play();
+    }
+
+    public void ShowVideoProblem(string reason)
+    {
+        VideoText.Text = $"Kein Livebild: {reason}";
+        SoundButton.IsEnabled = false;
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        _closed = true;
         _closeTimer.Stop();
         StopRinging();
+        var player = _player;
+        _player = null;
+        Video.MediaPlayer = null;
+        Video.Dispose();
+        // Stop kann bei Netzproblemen blockieren, deshalb nicht auf dem UI-Thread.
+        if (player is not null)
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                player.Stop();
+                player.Dispose();
+            });
         base.OnClosed(e);
+    }
+
+    private void OnSoundClick(object sender, RoutedEventArgs e)
+    {
+        if (_player is null)
+            return;
+        _muted = !_muted;
+        _player.Mute = _muted;
+        SoundButton.Content = _muted ? "Ton an" : "Ton aus";
     }
 
     private void OnOpenClick(object sender, RoutedEventArgs e)

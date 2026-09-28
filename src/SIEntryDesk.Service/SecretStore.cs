@@ -5,7 +5,8 @@ namespace SIEntryDesk.Service;
 
 /// <param name="AccessToken">Access-Token für die Ereignisse (view:device).</param>
 /// <param name="AccessUnlockToken">Optional eigener Token zum Öffnen (edit:space), sonst wird AccessToken verwendet.</param>
-internal sealed record Secrets(string AccessToken, string? AccessUnlockToken);
+/// <param name="ProtectKey">Optional API-Schlüssel aus UniFi OS → Integrations für das Livebild.</param>
+internal sealed record Secrets(string AccessToken, string? AccessUnlockToken, string? ProtectKey = null);
 
 /// <summary>
 /// Tokens verschlüsselt mit DPAPI (Maschinenschlüssel) in secrets.dat. Schutz vor Standardbenutzern
@@ -23,7 +24,11 @@ internal static class SecretStore
             var secrets = JsonSerializer.Deserialize<Secrets>(plain);
             if (secrets is null || string.IsNullOrWhiteSpace(secrets.AccessToken))
                 throw new InvalidDataException("secrets.dat enthält keinen Access-Token");
-            return secrets with { AccessUnlockToken = string.IsNullOrWhiteSpace(secrets.AccessUnlockToken) ? null : secrets.AccessUnlockToken };
+            return secrets with
+            {
+                AccessUnlockToken = string.IsNullOrWhiteSpace(secrets.AccessUnlockToken) ? null : secrets.AccessUnlockToken,
+                ProtectKey = string.IsNullOrWhiteSpace(secrets.ProtectKey) ? null : secrets.ProtectKey,
+            };
         }
         finally
         {

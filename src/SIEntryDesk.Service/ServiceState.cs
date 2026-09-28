@@ -17,6 +17,9 @@ internal sealed class ServiceState
 
     public CallTracker? Tracker { get; set; }
 
+    /// <summary>Livebild eingerichtet (Protect-Schlüssel und Pin vorhanden).</summary>
+    public bool VideoEnabled { get; set; }
+
     public void Set(bool accessConnected, string problem)
     {
         lock (_gate)
@@ -36,6 +39,9 @@ internal sealed class ServiceState
     {
         yield return Status();
         foreach (var call in Tracker?.ActiveCalls() ?? [])
-            yield return new CallStartedMessage(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed);
+            yield return ToMessage(call);
     }
+
+    public CallStartedMessage ToMessage(CallInfo call) =>
+        new(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, VideoEnabled && call.CameraId.Length > 0);
 }

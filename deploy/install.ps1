@@ -8,14 +8,17 @@
     - Daten unter %ProgramData%\SIEntryDesk, lesbar nur für SYSTEM, Administratoren und den Dienst
     - Tokens werden verdeckt abgefragt und mit DPAPI (Maschinenschlüssel) verschlüsselt abgelegt
     - Tray-App startet bei jeder Anmeldung
+    - Livebild nur mit -ProtectPin und Protect-API-Schlüssel, nur während eines Rufs
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost 192.0.2.10 -AccessPin 'AA:BB:…' -Doors 'Eingang'
+    powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost 192.0.2.10 -AccessPin 'AA:BB:…' -ProtectPin 'CC:DD:…' -Doors 'Eingang'
 #>
 param(
     [Parameter(Mandatory)] [string] $ConsoleHost,
     [Parameter(Mandatory)] [string] $AccessPin,
     [string[]] $Doors = @(),
+    [string] $ProtectPin = '',
+    [string] $StreamPin = '',
     [switch] $KeepTokens
 )
 
@@ -61,7 +64,7 @@ Invoke-Native 'icacls.exe' @($dataDir, '/inheritance:r', '/grant:r', '*S-1-5-18:
 Invoke-Native 'icacls.exe' @($logDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 
 Write-Host '5/7 Konfiguration schreiben'
-[ordered]@{ Host = $ConsoleHost; AccessPin = $AccessPin; Doors = @($Doors) } |
+[ordered]@{ Host = $ConsoleHost; AccessPin = $AccessPin; Doors = @($Doors); ProtectPin = $ProtectPin; StreamPin = $StreamPin } |
     ConvertTo-Json | Set-Content -Encoding UTF8 -Path (Join-Path $dataDir 'config.json')
 
 Write-Host '6/7 Tokens'
@@ -77,9 +80,10 @@ if ($KeepTokens -and (Test-Path (Join-Path $dataDir 'secrets.dat'))) {
     $access = Read-Secret 'Access-Token (Gerät: Anzeigen)'
     if (-not $access) { throw 'Ohne Access-Token geht es nicht.' }
     $unlock = Read-Secret 'Token zum Öffnen (Standorte: Bearbeiten), leer lassen = derselbe Token'
-    "$access`n$unlock" | & $serviceExe set-secrets | Out-Null
+    $protect = if ($ProtectPin) { Read-Secret 'Protect-API-Schlüssel (UniFi OS → Integrations) für das Livebild' } else { '' }
+    "$access`n$unlock`n$protect" | & $serviceExe set-secrets | Out-Null
     $code = $LASTEXITCODE
-    Remove-Variable access, unlock
+    Remove-Variable access, unlock, protect
     if ($code -ne 0) { throw "Tokens konnten nicht gespeichert werden (Code $code)" }
 }
 

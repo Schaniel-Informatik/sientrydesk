@@ -1,41 +1,44 @@
-# SI EntryDesk – Pilot, Etappe 1
+# SI EntryDesk – Pilot
 
-Diese Etappe kann: Klingeln erkennen, Fenster mit Klingelton über allen Fenstern, Knopf „Öffnen“, Fenster
-überall schliessen, sobald der Ruf endet. Noch **ohne Livebild** und ohne Gegensprechen.
+**Etappe 1:** Klingeln erkennen, Fenster mit Klingelton über allen Fenstern, Knopf „Öffnen“, Fenster überall
+schliessen, sobald der Ruf endet.
+**Etappe 2:** Livebild mit Ton der Tür (zuerst stumm), nur während eines Rufs. Noch ohne Gegensprechen.
 
 ## Voraussetzungen
 - Windows 11, x64, lokaler Administrator für die Installation
-- Der PC erreicht die Konsole auf **TCP 12445** (Access-API)
+- Der PC erreicht die Konsole auf **TCP 12445** (Access), für das Livebild zusätzlich **TCP 443** und **TCP 7441**
 - Zwei Access-Tokens (Access → Einstellungen → Allgemein → API Token):
   - zum Mithören: **Gerät = Anzeigen**, alles andere Keinen
   - zum Öffnen: **Standorte = Bearbeiten**, alles andere Keinen
-- SHA-256-Fingerprint des Zertifikats auf Port 12445
+- Für das Livebild: Protect-API-Schlüssel (UniFi OS → Einstellungen → Control Plane → Integrations) und in Protect
+  pro Türstation ein freigegebener RTSPS-Stream
+- SHA-256-Fingerprints der Konsole: Port 12445 (`-AccessPin`) und Port 443 (`-ProtectPin`). Port 7441 verwendet in
+  der Regel dasselbe Zertifikat wie 443, sonst zusätzlich `-StreamPin`.
 
-## Installieren
+## Installieren oder aktualisieren
 Ordner entpacken, PowerShell **als Administrator** öffnen, in den Ordner wechseln:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost <IP der Konsole> -AccessPin '<Fingerprint>'
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost <IP der Konsole> -AccessPin '<Fingerprint 12445>' -ProtectPin '<Fingerprint 443>'
 ```
 
-Optional nur bestimmte Türen: `-Doors 'Türname 1','Türname 2'`. Ohne Angabe zeigt der PC alle Türen.
-Das Skript fragt die beiden Tokens verdeckt ab. Für ein Update mit denselben Tokens `-KeepTokens` anhängen.
+Das Skript fragt die Tokens verdeckt ab: Access-Token, Token zum Öffnen, Protect-Schlüssel.
+Optional nur bestimmte Türen: `-Doors 'Türname 1','Türname 2'`. `-KeepTokens` behält die gespeicherten Tokens.
+**Beim Update von 0.1.x auf das Livebild `-KeepTokens` weglassen**, damit der Protect-Schlüssel dazukommt.
 
-Danach erscheint unten rechts ein Klingel-Symbol: **grün** = bereit, **orange** = Problem (Text im Menü),
+Unten rechts erscheint ein Klingel-Symbol: **grün** = bereit, **orange** = Problem (Text im Menü),
 **grau** = Dienst nicht erreichbar.
 
 ## Testen
-1. **Testklingeln:** Rechtsklick auf das Symbol → „Testklingeln“. Fenster und Klingelton erscheinen nur auf diesem
-   PC, Öffnen ist dabei gesperrt. Nach 10 s schliesst es sich.
-2. **Echtes Klingeln, nicht abnehmen:** Fenster erscheint, nach 60 s „Niemand hat abgenommen“.
-3. **Am Handy abnehmen:** Das Fenster auf dem PC schliesst sich mit „Anderswo angenommen“.
-4. **Öffnen am PC**, nur mit jemandem an der Tür: Die Tür geht auf, im Access-Protokoll steht
-   „<Benutzer> via SI EntryDesk (<PC>)“.
-5. Während das Fenster offen ist, in einem anderen Programm weitertippen: Das Fenster darf die Eingabe nicht übernehmen.
+1. **Testklingeln:** Rechtsklick auf das Symbol → „Testklingeln“. Nur auf diesem PC, ohne Livebild, Öffnen gesperrt.
+2. **Echtes Klingeln:** Nach 1–2 s erscheint das Livebild. Unter dem Bild „Livebild“ und der Knopf „Ton an“.
+3. **Am Handy abnehmen:** Das Fenster schliesst sich mit „Anderswo angenommen“.
+4. **Öffnen am PC**, nur mit jemandem an der Tür. Im Access-Protokoll steht „<Benutzer> via SI EntryDesk (<PC>)“.
+5. Während das Fenster offen ist, in einem anderen Programm weitertippen: Die Eingabe muss dort bleiben.
 
 ## Wenn etwas nicht geht
 Protokoll des Dienstes (nur für Administratoren lesbar): `C:\ProgramData\SIEntryDesk\logs\service-JJJJMMTT.log`.
-Es enthält Türnamen, aber keine Tokens.
+Es enthält Türnamen, aber keine Tokens und keine Stream-Adressen.
 
 ## Entfernen
 ```powershell

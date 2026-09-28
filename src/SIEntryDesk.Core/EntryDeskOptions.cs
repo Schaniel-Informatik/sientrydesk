@@ -15,6 +15,35 @@ public sealed class EntryDeskOptions
     /// <summary>Türen, die dieser PC anzeigt und öffnen darf, als Tür-ID oder Türname. Leer = alle.</summary>
     public List<string> Doors { get; set; } = [];
 
+    /// <summary>SHA-256-Fingerprint des UniFi-OS-Zertifikats auf Port 443 (Protect-API). Leer = kein Livebild.</summary>
+    public string ProtectPin { get; set; } = string.Empty;
+
+    /// <summary>Fingerprint auf Port 7441 (Videostream). Leer = derselbe wie ProtectPin.</summary>
+    public string StreamPin { get; set; } = string.Empty;
+
+    /// <summary>Bevorzugte Stream-Qualitäten in dieser Reihenfolge. Das Fenster ist klein, deshalb zuerst niedrig.</summary>
+    public List<string> StreamQualities { get; set; } = ["low", "medium", "high"];
+
+    public bool VideoConfigured => !string.IsNullOrWhiteSpace(ProtectPin);
+
+    /// <summary>Problem der Video-Einstellungen, oder null. Nur relevant, wenn ProtectPin gesetzt ist.</summary>
+    public string? ValidateVideo()
+    {
+        try
+        {
+            CertificatePin.Parse(ProtectPin);
+            if (!string.IsNullOrWhiteSpace(StreamPin))
+                CertificatePin.Parse(StreamPin);
+        }
+        catch (FormatException)
+        {
+            return "ProtectPin oder StreamPin ist kein SHA-256-Fingerprint";
+        }
+        return null;
+    }
+
+    public string EffectiveStreamPin => string.IsNullOrWhiteSpace(StreamPin) ? ProtectPin : StreamPin;
+
     /// <summary>Beschreibung des ersten Problems, oder null wenn die Einstellungen brauchbar sind.</summary>
     public string? Validate()
     {
