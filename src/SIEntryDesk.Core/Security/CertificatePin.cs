@@ -44,6 +44,9 @@ public sealed class CertificatePin
 
     public override string ToString() => Format(_sha256);
 
+    /// <summary>Fingerprint eines vorgelegten Zertifikats, für verständliche Fehlermeldungen.</summary>
+    public static string FingerprintOf(X509Certificate certificate) => Format(SHA256.HashData(certificate.GetRawCertData()));
+
     public static string Format(ReadOnlySpan<byte> sha256) =>
         string.Join(':', Convert.ToHexString(sha256).Chunk(2).Select(pair => new string(pair)));
 }

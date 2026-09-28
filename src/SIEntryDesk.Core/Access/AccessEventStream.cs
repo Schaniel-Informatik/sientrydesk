@@ -40,11 +40,18 @@ public sealed class AccessEventStream
         while (!ct.IsCancellationRequested)
         {
             var connected = false;
+            string? rejectedFingerprint = null;
             using var ws = new ClientWebSocket();
             try
             {
                 ws.Options.SetRequestHeader("Authorization", "Bearer " + _token);
-                ws.Options.RemoteCertificateValidationCallback = _pin.Validate;
+                ws.Options.RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+                {
+                    if (_pin.Matches(certificate))
+                        return true;
+                    rejectedFingerprint = certificate is null ? "kein Zertifikat" : CertificatePin.FingerprintOf(certificate);
+                    return false;
+                };
                 ws.Options.Proxy = null;
                 ws.Options.KeepAliveInterval = TimeSpan.Zero;
                 ws.Options.CollectHttpResponseDetails = true;
@@ -69,7 +76,14 @@ public sealed class AccessEventStream
             catch (Exception ex)
             {
                 var status = (int)ws.HttpStatusCode;
-                if (status is 401 or 403)
+                if (rejectedFingerprint is not null)
+                {
+                    _log.LogError(
+                        "Zertifikat der Konsole passt nicht zum Pin, Verbindung abgelehnt. Erhalten: {Fingerprint}. " +
+                        "Nur wenn die Konsole ihr Zertifikat nachweislich erneuert hat, den Pin anpassen", rejectedFingerprint);
+                    backoff = MaxBackoff;
+                }
+                else if (status is 401 or 403)
                 {
                     _log.LogError("Access lehnt den Token ab (HTTP {Status}). Token und Recht view:device prüfen", status);
                     backoff = AuthFailureBackoff;
