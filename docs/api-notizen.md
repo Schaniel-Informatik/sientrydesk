@@ -34,7 +34,8 @@ Aus der offiziellen Dokumentation, Stand 2026-09. Quellen:
 - `unlocking_not_allowed`: Wenn gesetzt, erlaubt Access für diesen Ruf kein Öffnen.
 - `access.logs.add` mit `event.type` = `access.door.unlock` nennt in `actor.display_name`, wer geöffnet hat.
 
-**Öffnen:** `actor_id` wird im Beispiel der Doku als UUID gezeigt. Im Body lassen sich `actor_id` und `actor_name` mitgeben, sie erscheinen im Access-Protokoll. Ohne diese Angaben
+**Öffnen:** Im Test mit einer aus PC und Benutzer abgeleiteten UUID als `actor_id` erfolgreich. Nach dem Öffnen per
+API endet der Ruf mit `reason_code` 108, nicht 107. Im Body lassen sich `actor_id` und `actor_name` mitgeben, sie erscheinen im Access-Protokoll. Ohne diese Angaben
 steht dort der Name des Tokens. Für die App bietet sich an, PC und Benutzer zu übergeben.
 
 ## UniFi Protect Integration API

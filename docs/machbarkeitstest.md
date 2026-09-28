@@ -25,12 +25,14 @@ Getestet vom Mac über VPN mit `tools/feasibility/sied.py`. Keine Namen, Adresse
 | 2026-09-28 | Ruf abgelehnt (`reason_code` 106) | ✅ kommt, wenn im Ruf das Öffnen abgelehnt wird |
 | 2026-09-28 | Ruf ohne Antwort (`reason_code` 105) | ✅ Zeitüberschreitung **nach genau 60 s** mit `remote_call_request_id` des Rufs |
 | 2026-09-28 | Rechte der Access-Tokens | ⚠️→✅ Der Dialog „Neues API-Token“ gibt für mehrere Bereiche „Bearbeiten“ vor. Beide Tokens hatten zuerst mehr Rechte als vorgesehen und wurden neu angelegt. `sied.py scopes` bestätigt: Lese-Token nur Gerät + Standorte, Öffnen-Token nur Standorte (Bearbeiten schliesst Anzeigen ein) |
+| 2026-09-28 | **Tür öffnen per API** (Pilot Etappe 1, Windows 11) | ✅ `PUT /doors/{id}/unlock` mit eigenem Token (nur Standorte = Bearbeiten). Bestätigung nach **0,6 s**. Im Access-Protokoll steht `actor_name` („Benutzer via SI EntryDesk (PC)“) |
+| 2026-09-28 | Rufende nach Öffnen per API | ⚠️ Access meldet danach `reason_code` **108** („Besucher hat abgebrochen“), nicht 107. Reihenfolge: `remote_unlock`, dann 108, dann `logs.add` mit dem Namen. Die App gibt der Öffnung in der Anzeige Vorrang (ab 0.1.1) |
+| 2026-09-28 | Öffnen am Handy, Anzeige in der App | ✅ „Anderswo angenommen“, danach „Tür geöffnet von <Name>“ aus `access.logs.add` |
 | 2026-09-28 | Dauerbetrieb der WebSockets | ✅ 30 min ohne Abbruch, Access über `"Hello"` überwacht (Neuaufbau nach 15 s Stille), Protect mit Pings |
 | | Tür öffnen | offen, nur mit Freigabe und jemandem vor Ort |
 
 ## Noch offen
-1. Tür per API öffnen: braucht einen Token mit `edit:space`, Freigabe und jemanden vor Ort.
-2. Zweite Türstation (G6 Entry) gegenprüfen: Klingeln, Stream, Talkback.
+1. Zweite Türstation (G6 Entry) gegenprüfen: Klingeln, Stream, Talkback.
 
 ## Erkenntnisse für das Design
 - **Access als Hauptquelle für den Rufstatus:** Klingeln und Ende kommen beide über Access, mit derselben Request-ID.

@@ -10,9 +10,9 @@ internal sealed class TrayIcon : IDisposable
 {
     private readonly Forms.NotifyIcon _icon;
     private readonly Forms.ToolStripMenuItem _statusItem;
-    private readonly Icon _ready = CreateIcon(Color.FromArgb(46, 160, 67));
-    private readonly Icon _problem = CreateIcon(Color.FromArgb(230, 145, 30));
-    private readonly Icon _offline = CreateIcon(Color.FromArgb(128, 128, 128));
+    private readonly Icon _ready = CreateIcon(Color.FromArgb(40, 200, 90));
+    private readonly Icon _problem = CreateIcon(Color.FromArgb(255, 150, 20));
+    private readonly Icon _offline = CreateIcon(Color.FromArgb(140, 140, 140));
 
     public TrayIcon(Action onTestRing, Action onExit)
     {
@@ -63,21 +63,24 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
+    /// <summary>In der Grösse, die Windows für Tray-Symbole verwendet, damit nichts unscharf herunterskaliert wird.</summary>
     private static Icon CreateIcon(Color color)
     {
-        using var bitmap = new Bitmap(32, 32);
+        var size = Math.Max(16, Forms.SystemInformation.SmallIconSize.Width);
+        float u = size / 16f;
+        using var bitmap = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bitmap))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.Transparent);
             using var fill = new SolidBrush(color);
-            g.FillEllipse(fill, 1, 1, 30, 30);
-            // Stilisierte Klingel: Glockenkörper und Klöppel.
+            g.FillEllipse(fill, 0, 0, size - 1, size - 1);
+            // Stilisierte Klingel: Glockenkörper, Rand und Klöppel, bewusst kräftig.
             using var white = new SolidBrush(Color.White);
-            g.FillPie(white, 8, 7, 16, 18, 180, 180);
-            g.FillRectangle(white, 8, 15, 16, 6);
-            g.FillRectangle(white, 6, 20, 20, 3);
-            g.FillEllipse(white, 14, 23, 4, 4);
+            g.FillPie(white, 3.5f * u, 2.5f * u, 9f * u, 10f * u, 180, 180);
+            g.FillRectangle(white, 3.5f * u, 7.4f * u, 9f * u, 3f * u);
+            g.FillRectangle(white, 2.5f * u, 10.2f * u, 11f * u, 1.8f * u);
+            g.FillEllipse(white, 6.6f * u, 11.6f * u, 2.8f * u, 2.8f * u);
         }
         return Icon.FromHandle(bitmap.GetHicon());
     }

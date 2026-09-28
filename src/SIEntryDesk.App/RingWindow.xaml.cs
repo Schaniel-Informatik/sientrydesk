@@ -24,6 +24,7 @@ public partial class RingWindow : Window
     private readonly DispatcherTimer _closeTimer = new();
     private readonly bool _unlockAllowed;
     private bool _ended;
+    private bool _opened;
 
     public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool isTest)
     {
@@ -61,12 +62,16 @@ public partial class RingWindow : Window
         OpenButton.IsEnabled = false;
         Headline.Text = "Ruf beendet";
         Headline.Foreground = Neutral;
-        SetStatus(CallEndReasons.ToGerman(reason), reason == CallEndReason.Opened ? Good : Neutral);
+        // Nach dem Öffnen über die API meldet Access das Ende als "Besucher hat abgebrochen" (108).
+        // Die Öffnung hat in der Anzeige Vorrang.
+        if (!_opened)
+            SetStatus(CallEndReasons.ToGerman(reason), reason == CallEndReason.Opened ? Good : Neutral);
         CloseAfter(LingerAfterEnd);
     }
 
     public void ShowOpened(string? openedBy)
     {
+        _opened = true;
         StopRinging();
         OpenButton.IsEnabled = false;
         SetStatus(openedBy is null ? "Tür geöffnet" : $"Tür geöffnet von {openedBy}", Good);
@@ -77,6 +82,7 @@ public partial class RingWindow : Window
     {
         if (success)
         {
+            _opened = true;
             StopRinging();
             SetStatus(message, Good);
             CloseAfter(LingerAfterEnd + LingerAfterEnd);
