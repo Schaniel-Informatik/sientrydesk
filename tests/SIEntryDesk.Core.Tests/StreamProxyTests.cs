@@ -17,6 +17,7 @@ public sealed class StreamProxyTests : IAsyncLifetime
     private readonly X509Certificate2 _certificate = CreateCertificate();
     private readonly TcpListener _server = new(IPAddress.Loopback, 0);
     private readonly List<string> _requestsSeen = [];
+    private TimeSpan _hold = TimeSpan.FromMilliseconds(500);
     private Task? _serverLoop;
 
     private int ServerPort => ((IPEndPoint)_server.LocalEndpoint).Port;
@@ -93,6 +94,32 @@ public sealed class StreamProxyTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task Running_connections_end_when_the_address_expires()
+    {
+        _hold = TimeSpan.FromSeconds(10);
+        await using var proxy = NewProxy(CertificatePin.Parse(Convert.ToHexString(SHA256.HashData(_certificate.RawData))));
+        var url = proxy.Open("live-1", new StreamSource("127.0.0.1", ServerPort, StreamPath), TimeSpan.FromSeconds(1));
+
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxy.Port);
+        await Send(client.GetStream(), $"DESCRIBE {url} RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+        var reader = new RtspReader(client.GetStream());
+        Assert.IsType<RtspText>(await reader.ReadAsync(Timeout()));
+        Assert.IsType<RtspInterleaved>(await reader.ReadAsync(Timeout()));
+
+        // Der nachgebaute Server hielte die Verbindung 10 s offen. Der Proxy muss sie nach 1 s beenden.
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        Assert.Null(await reader.ReadAsync(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token));
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(3), $"Verbindung erst nach {watch.Elapsed} beendet");
+
+        using var again = new TcpClient();
+        await again.ConnectAsync(IPAddress.Loopback, proxy.Port);
+        await Send(again.GetStream(), $"OPTIONS {url} RTSP/1.0\r\nCSeq: 3\r\n\r\n");
+        var response = Assert.IsType<RtspText>(await new RtspReader(again.GetStream()).ReadAsync(Timeout()));
+        Assert.Equal("RTSP/1.0 404 Not Found", response.StartLine);
+    }
+
     private static StreamProxy NewProxy(CertificatePin pin)
     {
         var proxy = new StreamProxy(pin, NullLogger.Instance, TimeProvider.System);
@@ -137,7 +164,7 @@ public sealed class StreamProxyTests : IAsyncLifetime
                         await tls.WriteAsync(sdp);
                         await tls.WriteAsync(new byte[] { (byte)'$', 0, 0, 2, 7, 7 });
                         await tls.FlushAsync();
-                        await Task.Delay(500);
+                        await Task.Delay(_hold);
                     }
                     catch (Exception)
                     {

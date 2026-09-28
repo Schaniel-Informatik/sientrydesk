@@ -24,6 +24,9 @@ public sealed class EntryDeskOptions
     /// <summary>Bevorzugte Stream-Qualitäten in dieser Reihenfolge. Das Fenster ist klein, deshalb zuerst niedrig.</summary>
     public List<string> StreamQualities { get; set; } = ["low", "medium", "high"];
 
+    /// <summary>Livebild ohne Klingeln über das Tray-Menü. Pro PC abschaltbar, jeder Abruf wird protokolliert.</summary>
+    public bool LiveView { get; set; } = true;
+
     public bool VideoConfigured => !string.IsNullOrWhiteSpace(ProtectPin);
 
     /// <summary>Problem der Video-Einstellungen, oder null. Nur relevant, wenn ProtectPin gesetzt ist.</summary>
@@ -60,8 +63,10 @@ public sealed class EntryDeskOptions
         return null;
     }
 
-    public bool AcceptsDoor(AccessRingStarted ring) =>
+    public bool AcceptsDoor(AccessRingStarted ring) => AcceptsDoor(ring.DoorId, ring.DoorName);
+
+    public bool AcceptsDoor(string doorId, string doorName) =>
         Doors.Count == 0 ||
-        Doors.Any(d => string.Equals(d.Trim(), ring.DoorId, StringComparison.OrdinalIgnoreCase) ||
-                       string.Equals(d.Trim(), ring.DoorName, StringComparison.OrdinalIgnoreCase));
+        Doors.Any(d => string.Equals(d.Trim(), doorId, StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(d.Trim(), doorName, StringComparison.OrdinalIgnoreCase));
 }

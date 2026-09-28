@@ -20,6 +20,9 @@ internal sealed class ServiceState
     /// <summary>Livebild eingerichtet (Protect-Schlüssel und Pin vorhanden).</summary>
     public bool VideoEnabled { get; set; }
 
+    /// <summary>Aktuelle Türliste für das Livebild ohne Klingeln.</summary>
+    public DoorsMessage Doors { get; set; } = new(false, []);
+
     public void Set(bool accessConnected, string problem)
     {
         lock (_gate)
@@ -38,6 +41,7 @@ internal sealed class ServiceState
     public IEnumerable<IpcMessage> Snapshot()
     {
         yield return Status();
+        yield return Doors;
         foreach (var call in Tracker?.ActiveCalls() ?? [])
             yield return ToMessage(call);
     }

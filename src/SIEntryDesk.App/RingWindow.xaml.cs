@@ -9,6 +9,16 @@ using SIEntryDesk.Core.Calls;
 
 namespace SIEntryDesk.App;
 
+public enum WindowMode
+{
+    /// <summary>Echter Klingelruf.</summary>
+    Ring,
+    /// <summary>Testklingeln nur auf diesem PC, ohne Tür und Bild.</summary>
+    Test,
+    /// <summary>Livebild ohne Klingeln, vom Benutzer geöffnet.</summary>
+    LiveView,
+}
+
 /// <summary>
 /// Fenster zu einem Klingelruf. Liegt über allen Fenstern, übernimmt aber nicht die Tastatur,
 /// damit niemand mitten im Tippen etwas auslöst.
@@ -31,24 +41,50 @@ public partial class RingWindow : Window
     private bool _muted = true;
     private MediaPlayer? _player;
 
-    public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool isTest)
+    public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, WindowMode mode,
+        DateTimeOffset? until = null)
     {
         InitializeComponent();
         CallId = callId;
-        _unlockAllowed = unlockAllowed && !isTest;
+        Mode = mode;
+        _unlockAllowed = unlockAllowed && mode == WindowMode.Ring;
+        _closeTimer.Tick += (_, _) => Close();
 
         DoorText.Text = string.IsNullOrWhiteSpace(doorName) ? "Tür" : doorName;
-        TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss}{(isTest ? " · Testklingeln" : "")}";
         Title = $"SI EntryDesk – {DoorText.Text}";
         OpenButton.IsEnabled = _unlockAllowed;
-        if (isTest)
-            SetStatus("Test: nur auf diesem PC, Öffnen nicht möglich", Neutral);
-        else if (!unlockAllowed)
-            SetStatus("Access erlaubt hier kein Öffnen", Neutral);
-
-        _closeTimer.Tick += (_, _) => Close();
-        CloseAfter(MaxLifetime);
+        switch (mode)
+        {
+            case WindowMode.Test:
+                TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss} · Testklingeln";
+                SetStatus("Test: nur auf diesem PC, Öffnen nicht möglich", Neutral);
+                VideoText.Text = "Beim Testklingeln kein Livebild";
+                CloseAfter(MaxLifetime);
+                break;
+            case WindowMode.LiveView:
+                IsRinging = false;
+                ShowActivated = true;
+                Headline.Text = "Livebild";
+                Headline.Foreground = Neutral;
+                TimeText.Text = $"Ohne Klingeln · schliesst sich um {(until ?? startedAt).ToLocalTime():HH:mm}";
+                Title = $"SI EntryDesk – Livebild {DoorText.Text}";
+                OpenButton.Visibility = Visibility.Collapsed;
+                System.Windows.Controls.Grid.SetColumn(HideButton, 0);
+                System.Windows.Controls.Grid.SetColumnSpan(HideButton, 3);
+                HideButton.Content = "Schliessen";
+                var remaining = (until ?? startedAt) - DateTimeOffset.Now;
+                CloseAfter(remaining > TimeSpan.Zero ? remaining : TimeSpan.FromSeconds(1));
+                break;
+            default:
+                TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss}";
+                if (!unlockAllowed)
+                    SetStatus("Access erlaubt hier kein Öffnen", Neutral);
+                CloseAfter(MaxLifetime);
+                break;
+        }
     }
+
+    public WindowMode Mode { get; }
 
     public string CallId { get; }
 

@@ -2,7 +2,8 @@
 
 **Etappe 1:** Klingeln erkennen, Fenster mit Klingelton über allen Fenstern, Knopf „Öffnen“, Fenster überall
 schliessen, sobald der Ruf endet.
-**Etappe 2:** Livebild mit Ton der Tür (zuerst stumm), nur während eines Rufs. Noch ohne Gegensprechen.
+**Etappe 2:** Livebild mit Ton der Tür (zuerst stumm) beim Klingeln, und ohne Klingeln über das Tray-Menü
+(„Livebild <Tür>“, schliesst sich nach 2 Minuten). Noch ohne Gegensprechen.
 
 ## Voraussetzungen
 - Windows 11, x64, lokaler Administrator für die Installation
@@ -24,6 +25,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost <IP der Kons
 
 Das Skript fragt die Tokens verdeckt ab: Access-Token, Token zum Öffnen, Protect-Schlüssel.
 Optional nur bestimmte Türen: `-Doors 'Türname 1','Türname 2'`. `-KeepTokens` behält die gespeicherten Tokens.
+`-NoLiveView` schaltet das Livebild ohne Klingeln auf diesem PC ab. Jeder Abruf steht mit Benutzer im Protokoll.
 **Beim Update von 0.1.x auf das Livebild `-KeepTokens` weglassen**, damit der Protect-Schlüssel dazukommt.
 
 Die App startet am Ende der Installation und danach bei jeder Anmeldung, von Hand über das Startmenü („SI EntryDesk“).
@@ -31,11 +33,13 @@ Unten rechts erscheint ein Klingel-Symbol, eventuell erst unter dem Pfeil ^ in d
 **grau** = Dienst nicht erreichbar. Die erste Zeile im Menü zeigt die Version.
 
 ## Testen
-1. **Testklingeln:** Rechtsklick auf das Symbol → „Testklingeln“. Nur auf diesem PC, ohne Livebild, Öffnen gesperrt.
-2. **Echtes Klingeln:** Nach 1–2 s erscheint das Livebild. Unter dem Bild „Livebild“ und der Knopf „Ton an“.
-3. **Am Handy abnehmen:** Das Fenster schliesst sich mit „Anderswo angenommen“.
-4. **Öffnen am PC**, nur mit jemandem an der Tür. Im Access-Protokoll steht „<Benutzer> via SI EntryDesk (<PC>)“.
-5. Während das Fenster offen ist, in einem anderen Programm weitertippen: Die Eingabe muss dort bleiben.
+1. **Testklingeln:** Rechtsklick auf das Symbol → „Testklingeln“. Nur auf diesem PC, **ohne Livebild**, Öffnen gesperrt.
+2. **Livebild ohne Klingeln:** Menü → „Livebild <Tür>“. Eine Tür erscheint dort **nach ihrem ersten Klingeln**, weil
+   der Dienst erst dann weiss, welche Kamera zu ihr gehört.
+3. **Echtes Klingeln:** Nach 1–2 s erscheint das Livebild. Unter dem Bild „Livebild“ und der Knopf „Ton an“.
+4. **Am Handy abnehmen:** Das Fenster schliesst sich mit „Anderswo angenommen“.
+5. **Öffnen am PC**, nur mit jemandem an der Tür. Im Access-Protokoll steht „<Benutzer> via SI EntryDesk (<PC>)“.
+6. Während das Fenster offen ist, in einem anderen Programm weitertippen: Die Eingabe muss dort bleiben.
 
 ## Wenn etwas nicht geht
 Protokoll des Dienstes (nur für Administratoren lesbar): `C:\ProgramData\SIEntryDesk\logs\service-JJJJMMTT.log`.

@@ -16,8 +16,13 @@ Pilot an 1–2 Windows-11-PCs. Grundlage ist der Machbarkeitstest (`machbarkeits
 - Deshalb baut der **Dienst** die RTSPS-Verbindung mit gepinntem Zertifikat selbst auf. An LibVLC reicht er den Stream
   unter einer **Einmal-Adresse** `rtsp://127.0.0.1:<port>/<token>` weiter. Sie gilt nur für einen laufenden Ruf und wird
   10 s nach dessen Ende geschlossen.
-- Die App sieht die dauerhafte Stream-Adresse nie, denn der Pfad wirkt wie ein Zugangsschlüssel. Ohne Klingeln gibt es
-  kein Bild, eine Überwachung der Tür über die App ist nicht möglich.
+- Die App sieht die dauerhafte Stream-Adresse nie, denn der Pfad wirkt wie ein Zugangsschlüssel.
+- **Livebild ohne Klingeln (Entscheid Marcel, 2026-09-28):** über das Tray-Menü, pro PC abschaltbar (`LiveView`,
+  Standard ein). Jeder Abruf steht mit Windows-Benutzer im Protokoll des Dienstes, die Adresse endet nach 2 Minuten.
+  Die Kamera einer Tür lernt der Dienst beim ersten Klingeln. Access nennt die Türstationen nicht in der Türstruktur,
+  Protect kennzeichnet sie nicht.
+- Einmal-Adressen enden genau zum Ablauf, auch laufende Verbindungen: beim Klingeln 10 s nach Rufende, spätestens nach
+  3 Minuten.
 - Der Dienst leitet nur Befehle zum Abspielen weiter. `ANNOUNCE`/`RECORD` würde der Protect-Server annehmen,
   damit liesse sich ein fremdes Bild einspeisen.
 

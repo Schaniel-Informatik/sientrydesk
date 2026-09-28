@@ -9,6 +9,7 @@ namespace SIEntryDesk.App;
 public partial class App : Application
 {
     private readonly Dictionary<string, RingWindow> _windows = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RingWindow> _liveWindows = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _cts = new();
     private Mutex? _singleInstance;
     private ServiceClient? _client;
@@ -29,7 +30,7 @@ public partial class App : Application
         // LibVLC im Hintergrund laden, damit das erste Klingeln nicht darauf wartet.
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
-        _tray = new TrayIcon(ShowTestRing, Shutdown);
+        _tray = new TrayIcon(ShowTestRing, RequestLiveView, Shutdown);
         _client = new ServiceClient(Dispatcher);
         _client.StatusChanged += status => _tray.SetStatus(status);
         _client.MessageReceived += OnMessage;
@@ -39,7 +40,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _cts.Cancel();
-        foreach (var window in _windows.Values.ToList())
+        foreach (var window in _windows.Values.Concat(_liveWindows.Values).ToList())
             window.Close();
         _ringtone?.Dispose();
         _tray?.Dispose();
@@ -68,7 +69,19 @@ public partial class App : Application
         switch (message)
         {
             case CallStartedMessage call:
-                ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, isTest: false);
+                // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
+                foreach (var live in _liveWindows.Values.ToList())
+                    live.Close();
+                ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring);
+                break;
+            case DoorsMessage doors:
+                _tray?.SetDoors(doors.Enabled, doors.Doors);
+                break;
+            case LiveViewReadyMessage live:
+                ShowLiveView(live);
+                break;
+            case LiveViewUnavailableMessage live:
+                _tray?.Notify("Kein Livebild", live.Reason);
                 break;
             case CallEndedMessage end when _windows.TryGetValue(end.CallId, out var window):
                 window.EndCall(end.Reason);
@@ -88,12 +101,12 @@ public partial class App : Application
         }
     }
 
-    private void ShowRing(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool videoAvailable, bool isTest)
+    private void ShowRing(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool videoAvailable, WindowMode mode)
     {
         if (_windows.ContainsKey(callId))
             return;
 
-        var window = new RingWindow(callId, doorName, startedAt, unlockAllowed, isTest);
+        var window = new RingWindow(callId, doorName, startedAt, unlockAllowed, mode);
         window.UnlockRequested += async () =>
         {
             if (_client is null || !await _client.SendAsync(new UnlockRequest(callId)))
@@ -106,13 +119,7 @@ public partial class App : Application
             UpdateRingtone();
         };
 
-        // Mittig auf dem Hauptbildschirm, weitere Rufe leicht versetzt.
-        var area = SystemParameters.WorkArea;
-        var offset = _windows.Count * 30;
-        window.Height = Math.Min(window.Height, area.Height - 20);
-        window.Left = area.Left + (area.Width - window.Width) / 2 + offset;
-        window.Top = area.Top + (area.Height - window.Height) / 2 + offset;
-
+        Place(window, _windows.Count);
         _windows[callId] = window;
         window.Show();
         UpdateRingtone();
@@ -120,6 +127,40 @@ public partial class App : Application
 
         if (videoAvailable)
             _ = RequestVideoAsync(window, callId);
+    }
+
+    /// <summary>Mittig auf dem Hauptbildschirm, weitere Fenster leicht versetzt.</summary>
+    private static void Place(Window window, int index)
+    {
+        var area = SystemParameters.WorkArea;
+        var offset = index * 30;
+        window.Height = Math.Min(window.Height, area.Height - 20);
+        window.Left = area.Left + (area.Width - window.Width) / 2 + offset;
+        window.Top = area.Top + (area.Height - window.Height) / 2 + offset;
+    }
+
+    private async void RequestLiveView(string doorId)
+    {
+        if (_liveWindows.TryGetValue(doorId, out var open))
+        {
+            open.Activate();
+            return;
+        }
+        if (_client is null || !await _client.SendAsync(new LiveViewRequest(doorId)))
+            _tray?.Notify("Kein Livebild", "Dienst nicht erreichbar");
+    }
+
+    private void ShowLiveView(LiveViewReadyMessage live)
+    {
+        if (_liveWindows.ContainsKey(live.DoorId) || _windows.Count > 0)
+            return;
+        var window = new RingWindow("live-" + live.DoorId, live.DoorName, DateTimeOffset.Now, unlockAllowed: false,
+            WindowMode.LiveView, live.Until);
+        window.Closed += (_, _) => _liveWindows.Remove(live.DoorId);
+        Place(window, _liveWindows.Count);
+        _liveWindows[live.DoorId] = window;
+        window.Show();
+        _ = PlayVideoAsync(window, live.Url);
     }
 
     private async Task RequestVideoAsync(RingWindow window, string callId)
@@ -140,7 +181,7 @@ public partial class App : Application
     private void ShowTestRing()
     {
         var callId = "test-" + Guid.NewGuid().ToString("N");
-        ShowRing(callId, "Testklingeln", DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, isTest: true);
+        ShowRing(callId, "Testklingeln", DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, WindowMode.Test);
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
         timer.Tick += (_, _) =>
         {

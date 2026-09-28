@@ -18,6 +18,12 @@ public class IpcProtocolTests
         new VideoRequest("req-2"),
         new VideoReadyMessage("req-2", "rtsp://127.0.0.1:5000/abcdefghijklmnopqrstuvwxyz012345"),
         new VideoUnavailableMessage("req-2", "Livebild in Protect nicht freigegeben"),
+        new DoorsMessage(true, [new DoorEntry("door-1", "Tür 1"), new DoorEntry("door-2", "Tür 2")]),
+        new DoorsMessage(false, []),
+        new LiveViewRequest("door-1"),
+        new LiveViewReadyMessage("door-1", "Tür 1", "rtsp://127.0.0.1:5000/abcdefghijklmnopqrstuvwxyz012345",
+            new DateTimeOffset(2026, 9, 28, 18, 2, 0, TimeSpan.Zero)),
+        new LiveViewUnavailableMessage("door-1", "Livebild ist auf diesem PC abgeschaltet"),
     ];
 
     [Theory]

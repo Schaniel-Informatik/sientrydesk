@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using SIEntryDesk.Core.Ipc;
 using Forms = System.Windows.Forms;
 
 namespace SIEntryDesk.App;
@@ -16,19 +17,25 @@ internal sealed class TrayIcon : IDisposable
 
     private readonly Forms.ToolStripMenuItem _statusItem;
     private readonly Forms.ToolStripMenuItem _versionItem;
+    private readonly Forms.ToolStripMenuItem _testItem;
+    private readonly Forms.ContextMenuStrip _menu;
+    private readonly List<Forms.ToolStripItem> _doorItems = [];
+    private readonly Action<string> _onLiveView;
     private readonly Icon _ready = CreateIcon(Color.FromArgb(40, 200, 90));
     private readonly Icon _problem = CreateIcon(Color.FromArgb(255, 150, 20));
     private readonly Icon _offline = CreateIcon(Color.FromArgb(140, 140, 140));
 
-    public TrayIcon(Action onTestRing, Action onExit)
+    public TrayIcon(Action onTestRing, Action<string> onLiveView, Action onExit)
     {
+        _onLiveView = onLiveView;
         _statusItem = new Forms.ToolStripMenuItem("Verbinde …") { Enabled = false };
         _versionItem = new Forms.ToolStripMenuItem($"SI EntryDesk {AppVersion}") { Enabled = false };
-        var menu = new Forms.ContextMenuStrip();
+        _testItem = new Forms.ToolStripMenuItem("Testklingeln (nur dieser PC)", null, (_, _) => onTestRing());
+        var menu = _menu = new Forms.ContextMenuStrip();
         menu.Items.Add(_versionItem);
         menu.Items.Add(_statusItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Testklingeln (nur dieser PC)", null, (_, _) => onTestRing());
+        menu.Items.Add(_testItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => onExit());
 
@@ -59,6 +66,34 @@ internal sealed class TrayIcon : IDisposable
         _versionItem.Text = serviceVersion is null || serviceVersion == AppVersion
             ? $"SI EntryDesk {AppVersion}"
             : $"SI EntryDesk {AppVersion} (Dienst {serviceVersion})";
+    }
+
+    /// <summary>Einträge für das Livebild ohne Klingeln, vor dem Testklingeln.</summary>
+    public void SetDoors(bool enabled, IReadOnlyList<DoorEntry> doors)
+    {
+        foreach (var item in _doorItems)
+        {
+            _menu.Items.Remove(item);
+            item.Dispose();
+        }
+        _doorItems.Clear();
+        if (!enabled)
+            return;
+
+        if (doors.Count == 0)
+            _doorItems.Add(new Forms.ToolStripMenuItem("Livebild: erscheint nach dem ersten Klingeln") { Enabled = false });
+        foreach (var door in doors)
+        {
+            var doorId = door.DoorId;
+            // "&" wäre im Menü ein Tastenkürzel.
+            _doorItems.Add(new Forms.ToolStripMenuItem($"Livebild {door.Name.Replace("&", "&&", StringComparison.Ordinal)}",
+                null, (_, _) => _onLiveView(doorId)));
+        }
+        _doorItems.Add(new Forms.ToolStripSeparator());
+
+        var index = _menu.Items.IndexOf(_testItem);
+        foreach (var item in _doorItems)
+            _menu.Items.Insert(index++, item);
     }
 
     public void Notify(string title, string text) =>

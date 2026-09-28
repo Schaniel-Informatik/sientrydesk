@@ -29,11 +29,14 @@ internal sealed class CallCoordinator(
     private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan VideoMaxLifetime = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StreamCacheLifetime = TimeSpan.FromMinutes(5);
+    /// <summary>Livebild ohne Klingeln schliesst sich nach dieser Zeit.</summary>
+    private static readonly TimeSpan LiveViewLifetime = TimeSpan.FromMinutes(2);
 
     private readonly ConcurrentDictionary<string, (DateTimeOffset Fetched, IReadOnlyDictionary<string, StreamSource> Streams)> _streamCache =
         new(StringComparer.Ordinal);
 
     private CallTracker? _tracker;
+    private DoorDirectory? _doors;
     private AccessApiClient? _accessApi;
     private ProtectApiClient? _protectApi;
     private StreamProxy? _proxy;
@@ -68,11 +71,14 @@ internal sealed class CallCoordinator(
         state.Set(false, "Noch keine Verbindung zu Access");
         _accessApi = new AccessApiClient(host, secrets.AccessUnlockToken ?? secrets.AccessToken, pin);
         SetUpVideo(opt, secrets, host);
+        _doors = new DoorDirectory(ServicePaths.DoorsFile);
+        PublishDoors();
         pipes.RequestHandler = HandleRequestAsync;
 
-        log.LogInformation("Start {Version}: Konsole {Host}, Türen {Doors}, eigener Öffnen-Token {Separate}, Livebild {Video}",
+        log.LogInformation(
+            "Start {Version}: Konsole {Host}, Türen {Doors}, eigener Öffnen-Token {Separate}, Livebild {Video}, ohne Klingeln {LiveView}",
             ServiceState.Version, host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors), secrets.AccessUnlockToken is not null,
-            state.VideoEnabled ? "ein" : "aus");
+            state.VideoEnabled ? "ein" : "aus", state.Doors.Enabled ? "ein" : "aus");
 
         try
         {
@@ -148,6 +154,11 @@ internal sealed class CallCoordinator(
                 case CallStarted s:
                     log.LogInformation("Klingeln: {Door} (Ruf {Call})", s.Call.DoorName, s.Call.CallId);
                     pipes.Broadcast(state.ToMessage(s.Call));
+                    if (_doors?.Learn(s.Call) == true)
+                    {
+                        log.LogInformation("Kamera der Tür {Door} gelernt, Livebild ohne Klingeln verfügbar", s.Call.DoorName);
+                        PublishDoors();
+                    }
                     break;
                 case CallEnded e:
                     log.LogInformation("Ruf beendet: {Door}, {Reason} (Ruf {Call})", e.Call.DoorName, e.Reason, e.Call.CallId);
@@ -166,8 +177,24 @@ internal sealed class CallCoordinator(
     {
         UnlockRequest unlock => await UnlockAsync(unlock.CallId, user, ct).ConfigureAwait(false),
         VideoRequest video => await VideoAsync(video.CallId, user, ct).ConfigureAwait(false),
+        LiveViewRequest live => await LiveViewAsync(live.DoorId, user, ct).ConfigureAwait(false),
         _ => null,
     };
+
+    /// <summary>Türliste für das Livebild ohne Klingeln, nur Türen, die dieser PC anzeigt.</summary>
+    private void PublishDoors()
+    {
+        var opt = options.Value;
+        var enabled = opt.LiveView && state.VideoEnabled;
+        var doors = enabled && _doors is not null
+            ? _doors.All()
+                .Where(d => opt.AcceptsDoor(d.DoorId, d.DoorName))
+                .Select(d => new DoorEntry(d.DoorId, d.DoorName))
+                .ToArray()
+            : [];
+        state.Doors = new DoorsMessage(enabled, doors);
+        pipes.Broadcast(state.Doors);
+    }
 
     private async Task<UnlockResultMessage> UnlockAsync(string callId, string user, CancellationToken ct)
     {
@@ -215,34 +242,64 @@ internal sealed class CallCoordinator(
     {
         if (!UntrustedText.IsSafeId(callId))
             return new VideoUnavailableMessage(string.Empty, "Ungültige Anfrage");
-        if (_protectApi is null || _proxy is null)
-            return new VideoUnavailableMessage(callId, "Livebild ist nicht eingerichtet");
         var call = _tracker?.FindActive(callId);
         if (call is null)
             return new VideoUnavailableMessage(callId, "Kein laufender Ruf");
         if (call.CameraId.Length == 0)
             return new VideoUnavailableMessage(callId, "Zu dieser Tür ist keine Kamera bekannt");
 
+        var (url, problem) = await OpenStreamAsync(call.CameraId, call.DoorName, callId, VideoMaxLifetime, ct).ConfigureAwait(false);
+        if (url is null)
+            return new VideoUnavailableMessage(callId, problem!);
+        log.LogInformation("Livebild beim Klingeln für {User}: {Door}", user, call.DoorName);
+        return new VideoReadyMessage(callId, url);
+    }
+
+    /// <summary>Livebild ohne Klingeln, auf diesem PC abschaltbar. Jeder Abruf wird mit Benutzer protokolliert.</summary>
+    private async Task<IpcMessage> LiveViewAsync(string doorId, string user, CancellationToken ct)
+    {
+        if (!UntrustedText.IsSafeId(doorId))
+            return new LiveViewUnavailableMessage(string.Empty, "Ungültige Anfrage");
+        var opt = options.Value;
+        if (!opt.LiveView)
+            return new LiveViewUnavailableMessage(doorId, "Livebild ohne Klingeln ist auf diesem PC abgeschaltet");
+        var door = _doors?.Find(doorId);
+        if (door is null || !opt.AcceptsDoor(door.DoorId, door.DoorName))
+            return new LiveViewUnavailableMessage(doorId, "Tür unbekannt");
+
+        var until = time.GetUtcNow() + LiveViewLifetime;
+        var (url, problem) = await OpenStreamAsync(
+            door.CameraId, door.DoorName, $"live:{doorId}:{Guid.NewGuid():N}", LiveViewLifetime, ct).ConfigureAwait(false);
+        if (url is null)
+            return new LiveViewUnavailableMessage(doorId, problem!);
+        log.LogInformation("Livebild ohne Klingeln: {Door} von {User} bis {Until:HH:mm:ss}", door.DoorName, user, until.ToLocalTime());
+        return new LiveViewReadyMessage(doorId, door.DoorName, url, until);
+    }
+
+    /// <summary>Holt die Stream-Adresse über Protect und öffnet eine Einmal-Adresse im Proxy.</summary>
+    private async Task<(string? Url, string? Problem)> OpenStreamAsync(
+        string cameraId, string doorName, string key, TimeSpan lifetime, CancellationToken ct)
+    {
+        if (_protectApi is null || _proxy is null)
+            return (null, "Livebild ist nicht eingerichtet");
         try
         {
-            var streams = await GetStreamsAsync(call.CameraId, ct).ConfigureAwait(false);
+            var streams = await GetStreamsAsync(cameraId, ct).ConfigureAwait(false);
             var source = options.Value.StreamQualities
                 .Select(q => streams.GetValueOrDefault(q.Trim()))
                 .FirstOrDefault(s => s is not null);
             if (source is null)
             {
-                log.LogWarning("Livebild: Für die Kamera von {Door} ist in Protect kein RTSPS-Stream freigegeben", call.DoorName);
-                return new VideoUnavailableMessage(callId, "Livebild in Protect nicht freigegeben");
+                log.LogWarning("Livebild: Für die Kamera von {Door} ist in Protect kein RTSPS-Stream freigegeben", doorName);
+                return (null, "Livebild in Protect nicht freigegeben");
             }
-            var url = _proxy.Open(callId, source, VideoMaxLifetime);
-            log.LogInformation("Livebild für {User}: {Door}", user, call.DoorName);
-            return new VideoReadyMessage(callId, url);
+            return (_proxy.Open(key, source, lifetime), null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException
                                        or AuthenticationException or JsonException)
         {
             log.LogError("Livebild nicht verfügbar: {Type}: {Message}", ex.GetType().Name, ex.Message);
-            return new VideoUnavailableMessage(callId, ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized }
+            return (null, ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized }
                 ? "Protect-Schlüssel abgelehnt"
                 : "Protect nicht erreichbar");
         }

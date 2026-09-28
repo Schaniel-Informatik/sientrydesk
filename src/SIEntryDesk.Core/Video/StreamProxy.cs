@@ -64,8 +64,25 @@ public sealed class StreamProxy : IAsyncDisposable
     {
         PruneExpired();
         var token = Base64Url(RandomNumberGenerator.GetBytes(24));
-        _sessions[token] = new Session(key, source, _time.GetUtcNow() + lifetime);
+        var session = new Session(key, source, _time.GetUtcNow() + lifetime);
+        _sessions[token] = session;
+        _ = CloseAtExpiryAsync(token, session, lifetime);
         return $"rtsp://127.0.0.1:{Port}/{token}";
+    }
+
+    /// <summary>Beendet die Adresse und laufende Verbindungen genau zum Ablauf, nicht erst beim nächsten Aufbau.</summary>
+    private async Task CloseAtExpiryAsync(string token, Session session, TimeSpan lifetime)
+    {
+        try
+        {
+            await Task.Delay(lifetime < TimeSpan.Zero ? TimeSpan.Zero : lifetime, _time, session.Closed.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        if (_sessions.TryRemove(token, out _))
+            session.Closed.Cancel();
     }
 
     /// <summary>Schliesst alle Adressen und laufenden Verbindungen eines Rufs.</summary>

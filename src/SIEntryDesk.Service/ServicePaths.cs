@@ -14,4 +14,8 @@ internal static class ServicePaths
     public static string ConfigFile => Path.Combine(DataDirectory, "config.json");
     public static string SecretsFile => Path.Combine(DataDirectory, "secrets.dat");
     public static string LogDirectory => Path.Combine(DataDirectory, "logs");
+
+    /// <summary>Vom Dienst beschreibbar, z. B. für die gelernte Zuordnung Tür → Kamera.</summary>
+    public static string StateDirectory => Path.Combine(DataDirectory, "state");
+    public static string DoorsFile => Path.Combine(StateDirectory, "doors.json");
 }

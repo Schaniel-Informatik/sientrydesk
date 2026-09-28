@@ -8,7 +8,8 @@
     - Daten unter %ProgramData%\SIEntryDesk, lesbar nur für SYSTEM, Administratoren und den Dienst
     - Tokens werden verdeckt abgefragt und mit DPAPI (Maschinenschlüssel) verschlüsselt abgelegt
     - Tray-App startet bei jeder Anmeldung
-    - Livebild nur mit -ProtectPin und Protect-API-Schlüssel, nur während eines Rufs
+    - Livebild nur mit -ProtectPin und Protect-API-Schlüssel. Ohne Klingeln über das Tray-Menü, mit -NoLiveView
+      auf diesem PC abgeschaltet. Jeder Abruf steht mit Benutzer im Protokoll des Dienstes.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\install.ps1 -ConsoleHost 192.0.2.10 -AccessPin 'AA:BB:…' -ProtectPin 'CC:DD:…' -Doors 'Eingang'
@@ -19,6 +20,7 @@ param(
     [string[]] $Doors = @(),
     [string] $ProtectPin = '',
     [string] $StreamPin = '',
+    [switch] $NoLiveView,
     [switch] $KeepTokens
 )
 
@@ -28,6 +30,7 @@ $serviceAccount = "NT SERVICE\$serviceName"
 $installDir     = Join-Path $env:ProgramFiles 'SIEntryDesk'
 $dataDir        = Join-Path $env:ProgramData 'SIEntryDesk'
 $logDir         = Join-Path $dataDir 'logs'
+$stateDir       = Join-Path $dataDir 'state'
 $serviceExe     = Join-Path $installDir 'Service\SIEntryDesk.Service.exe'
 $appExe         = Join-Path $installDir 'App\SIEntryDesk.exe'
 
@@ -58,13 +61,15 @@ Invoke-Native 'sc.exe' @('config', $serviceName, 'obj=', $serviceAccount, 'start
 Invoke-Native 'sc.exe' @('failure', $serviceName, 'reset=', '86400', 'actions=', 'restart/5000/restart/5000/restart/30000')
 
 Write-Host '4/7 Datenordner und Rechte'
-New-Item -ItemType Directory -Force -Path $dataDir, $logDir | Out-Null
+New-Item -ItemType Directory -Force -Path $dataDir, $logDir, $stateDir | Out-Null
 # Nur SYSTEM (S-1-5-18), Administratoren (S-1-5-32-544) und das Dienstkonto, keine Vererbung von ProgramData.
 Invoke-Native 'icacls.exe' @($dataDir, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', "${serviceAccount}:(OI)(CI)RX")
 Invoke-Native 'icacls.exe' @($logDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
+Invoke-Native 'icacls.exe' @($stateDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 
 Write-Host '5/7 Konfiguration schreiben'
-[ordered]@{ Host = $ConsoleHost; AccessPin = $AccessPin; Doors = @($Doors); ProtectPin = $ProtectPin; StreamPin = $StreamPin } |
+[ordered]@{ Host = $ConsoleHost; AccessPin = $AccessPin; Doors = @($Doors); ProtectPin = $ProtectPin; StreamPin = $StreamPin
+    LiveView = -not $NoLiveView } |
     ConvertTo-Json | Set-Content -Encoding UTF8 -Path (Join-Path $dataDir 'config.json')
 
 Write-Host '6/7 Tokens'
