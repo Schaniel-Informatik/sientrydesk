@@ -70,8 +70,8 @@ internal sealed class CallCoordinator(
         SetUpVideo(opt, secrets, host);
         pipes.RequestHandler = HandleRequestAsync;
 
-        log.LogInformation("Start: Konsole {Host}, Türen {Doors}, eigener Öffnen-Token {Separate}, Livebild {Video}",
-            host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors), secrets.AccessUnlockToken is not null,
+        log.LogInformation("Start {Version}: Konsole {Host}, Türen {Doors}, eigener Öffnen-Token {Separate}, Livebild {Video}",
+            ServiceState.Version, host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors), secrets.AccessUnlockToken is not null,
             state.VideoEnabled ? "ein" : "aus");
 
         try

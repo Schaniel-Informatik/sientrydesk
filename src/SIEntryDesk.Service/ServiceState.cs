@@ -7,7 +7,7 @@ namespace SIEntryDesk.Service;
 /// <summary>Gemeinsamer Zustand für Pipe-Server und Koordinator.</summary>
 internal sealed class ServiceState
 {
-    private static readonly string Version =
+    public static readonly string Version =
         typeof(ServiceState).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
         ?? "?";
 

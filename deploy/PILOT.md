@@ -26,8 +26,9 @@ Das Skript fragt die Tokens verdeckt ab: Access-Token, Token zum Öffnen, Protec
 Optional nur bestimmte Türen: `-Doors 'Türname 1','Türname 2'`. `-KeepTokens` behält die gespeicherten Tokens.
 **Beim Update von 0.1.x auf das Livebild `-KeepTokens` weglassen**, damit der Protect-Schlüssel dazukommt.
 
-Unten rechts erscheint ein Klingel-Symbol: **grün** = bereit, **orange** = Problem (Text im Menü),
-**grau** = Dienst nicht erreichbar.
+Die App startet am Ende der Installation und danach bei jeder Anmeldung, von Hand über das Startmenü („SI EntryDesk“).
+Unten rechts erscheint ein Klingel-Symbol, eventuell erst unter dem Pfeil ^ in der Taskleiste: **grün** = bereit, **orange** = Problem (Text im Menü),
+**grau** = Dienst nicht erreichbar. Die erste Zeile im Menü zeigt die Version.
 
 ## Testen
 1. **Testklingeln:** Rechtsklick auf das Symbol → „Testklingeln“. Nur auf diesem PC, ohne Livebild, Öffnen gesperrt.

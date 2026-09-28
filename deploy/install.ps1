@@ -90,11 +90,18 @@ if ($KeepTokens -and (Test-Path (Join-Path $dataDir 'secrets.dat'))) {
 Write-Host '7/7 Autostart und Start'
 New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' `
     -Value "`"$appExe`"" -PropertyType String -Force | Out-Null
+# Eintrag im Startmenü für alle Benutzer, falls die App beendet wurde.
+$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk'))
+$shortcut.TargetPath = $appExe
+$shortcut.WorkingDirectory = Split-Path $appExe
+$shortcut.Description = 'SI EntryDesk: Türsprechstelle'
+$shortcut.Save()
 Start-Service $serviceName
 Start-Sleep -Seconds 3
 Write-Host "    Dienst: $((Get-Service $serviceName).Status)"
 # Die App im normalen Benutzerkontext starten, nicht in dieser erhöhten Sitzung.
 Start-Process explorer.exe -ArgumentList "`"$appExe`""
 
+Write-Host "    Version: $((Get-Item $appExe).VersionInfo.ProductVersion.Split('+')[0])"
 Write-Host ''
 Write-Host 'Fertig. Protokoll des Dienstes:' $logDir

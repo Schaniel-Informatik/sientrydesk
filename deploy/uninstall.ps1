@@ -14,6 +14,7 @@ if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
     & sc.exe delete $serviceName | Out-Null
 }
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk') -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $env:ProgramFiles 'SIEntryDesk') -ErrorAction SilentlyContinue
 if (-not $KeepData) {
     Remove-Item -Recurse -Force (Join-Path $env:ProgramData 'SIEntryDesk') -ErrorAction SilentlyContinue

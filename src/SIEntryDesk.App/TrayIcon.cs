@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Forms = System.Windows.Forms;
 
@@ -9,7 +10,12 @@ namespace SIEntryDesk.App;
 internal sealed class TrayIcon : IDisposable
 {
     private readonly Forms.NotifyIcon _icon;
+    private static readonly string AppVersion =
+        typeof(TrayIcon).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+        ?? "?";
+
     private readonly Forms.ToolStripMenuItem _statusItem;
+    private readonly Forms.ToolStripMenuItem _versionItem;
     private readonly Icon _ready = CreateIcon(Color.FromArgb(40, 200, 90));
     private readonly Icon _problem = CreateIcon(Color.FromArgb(255, 150, 20));
     private readonly Icon _offline = CreateIcon(Color.FromArgb(140, 140, 140));
@@ -17,7 +23,9 @@ internal sealed class TrayIcon : IDisposable
     public TrayIcon(Action onTestRing, Action onExit)
     {
         _statusItem = new Forms.ToolStripMenuItem("Verbinde …") { Enabled = false };
+        _versionItem = new Forms.ToolStripMenuItem($"SI EntryDesk {AppVersion}") { Enabled = false };
         var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add(_versionItem);
         menu.Items.Add(_statusItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Testklingeln (nur dieser PC)", null, (_, _) => onTestRing());
@@ -47,6 +55,10 @@ internal sealed class TrayIcon : IDisposable
         var tooltip = $"SI EntryDesk: {text}";
         _icon.Text = tooltip.Length > 127 ? tooltip[..127] : tooltip;
         _statusItem.Text = text;
+        var serviceVersion = status.Service?.ServiceVersion;
+        _versionItem.Text = serviceVersion is null || serviceVersion == AppVersion
+            ? $"SI EntryDesk {AppVersion}"
+            : $"SI EntryDesk {AppVersion} (Dienst {serviceVersion})";
     }
 
     public void Notify(string title, string text) =>
