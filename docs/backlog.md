@@ -25,5 +25,8 @@ Gesammelt während des Pilots, noch nicht umgesetzt. Entscheide von Marcel, Stan
     damit es für alle Benutzer verständlich bleibt.
 - **Ton der Tür an einem echten PC prüfen** („Ton an“ im Klingelfenster). Die Türstationen liefern Ton, auf der
   Test-VM über Fernwartung war er nicht zu hören.
+- **Idee, abhängig von der Prüfung:** Access schwieg in der Aufzeichnung vom Mac zweimal 15 s, während Protect verbunden
+  blieb. Bestätigt das Dienstprotokoll auf Windows solche Lücken, dann Protect-Klingeln als Ersatz nutzen, solange
+  Access getrennt ist (Fenster ja; Abnehmen anderswo und Öffnen nur mit Access).
 - **Beobachten:** Nach der Installation von 0.2.4 kam das erste Livebild erst nach einiger Zeit, nach einem Neustart
   des Dienstes sofort. Ursache unklar.
