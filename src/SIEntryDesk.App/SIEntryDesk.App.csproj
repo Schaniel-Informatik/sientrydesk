@@ -9,6 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>SIEntryDesk.App</RootNamespace>
     <AssemblyName>SIEntryDesk</AssemblyName>
+    <ApplicationIcon>Assets\SIEntryDesk.ico</ApplicationIcon>
     <!-- LibVLC nur für x64, ohne Lua-Skripte (nicht benötigt). -->
     <VlcWindowsX86Enabled>false</VlcWindowsX86Enabled>
     <VlcWindowsArm64Enabled>false</VlcWindowsArm64Enabled>

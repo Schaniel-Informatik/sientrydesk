@@ -25,6 +25,10 @@ Aus der offiziellen Dokumentation, Stand 2026-09. Quellen:
   der Text `"Hello"`. WebSocket-Pings des Clients beantwortet der Server nicht. Der Client darf also keine Pings
   erwarten und muss die Verbindung anhand der `"Hello"`-Nachrichten überwachen.
 
+**Rechte prüfen, ohne etwas zu ändern (im Test ermittelt):** `PUT /doors/{id}/unlock` mit einer Tür-ID, die es nicht
+gibt. Ohne `edit:space` kommt HTTP 401 `CODE_UNAUTHORIZED`, mit `edit:space` HTTP 200 `CODE_NOT_EXISTS`. Leserechte
+lassen sich mit einem lesenden Aufruf je Recht prüfen (`sied.py scopes`).
+
 **IDs im Klingel-Ereignis (im Test ermittelt):**
 - `door_id` ist die Tür-ID für `PUT /doors/{id}/unlock`. `access.data.device.remote_unlock` liefert sie als `data.unique_id`.
 - `connected_uah_id` ist die ID des UA Hub. `remote_unlock` liefert sie als `event_object_id`, `access.logs.add`

@@ -29,6 +29,15 @@ internal sealed class CallCoordinator(
     private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan VideoMaxLifetime = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StreamCacheLifetime = TimeSpan.FromMinutes(5);
+    /// <summary>Kurze Unterbrüche lösen keinen Statuswechsel aus, erst wenn sie länger dauern.</summary>
+    private static readonly TimeSpan LinkDebounce = TimeSpan.FromSeconds(10);
+    /// <summary>So oft werden Protect (Schlüssel, Kameranamen) und die Ablaufdaten geprüft.</summary>
+    private static readonly TimeSpan HealthInterval = TimeSpan.FromMinutes(15);
+
+    private readonly object _linkGate = new();
+    private CancellationTokenSource? _pendingDegrade;
+    private (LinkHealth Health, string Problem) _pendingLink;
+    private string? _videoProblem;
 
     private readonly ConcurrentDictionary<string, (DateTimeOffset Fetched, IReadOnlyDictionary<string, StreamSource> Streams)> _streamCache =
         new(StringComparer.Ordinal);
@@ -66,10 +75,11 @@ internal sealed class CallCoordinator(
         var pin = CertificatePin.Parse(opt.AccessPin);
         _tracker = new CallTracker(time, opt.AcceptsDoor);
         state.Tracker = _tracker;
-        state.Set(false, "Noch keine Verbindung zu Access");
         _accessApi = new AccessApiClient(host, secrets.AccessUnlockToken ?? secrets.AccessToken, pin);
         SetUpVideo(opt, secrets, host);
         _doors = new DoorDirectory(ServicePaths.DoorsFile);
+        foreach (var (doorId, cameraId) in opt.DoorCameras)
+            _doors.Seed(doorId, cameraId);
         PublishDoors();
         pipes.RequestHandler = HandleRequestAsync;
 
@@ -82,6 +92,7 @@ internal sealed class CallCoordinator(
         {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5), time);
             var expiry = ExpireLoopAsync(timer, _tracker, ct);
+            var health = HealthLoopAsync(ct);
             var stream = new AccessEventStream(host, secrets.AccessToken, pin, log);
             await stream.RunAsync(
                 (ev, _) =>
@@ -89,13 +100,10 @@ internal sealed class CallCoordinator(
                     Publish(_tracker.Apply(ev));
                     return ValueTask.CompletedTask;
                 },
-                connected =>
-                {
-                    state.Set(connected, connected ? string.Empty : "Keine Verbindung zu Access");
-                    pipes.Broadcast(state.Status());
-                },
+                OnLinkState,
                 ct).ConfigureAwait(false);
             await expiry.ConfigureAwait(false);
+            await health.ConfigureAwait(false);
         }
         finally
         {
@@ -127,8 +135,124 @@ internal sealed class CallCoordinator(
     private void Fail(string problem)
     {
         log.LogError("{Problem}", problem);
-        state.Set(false, problem);
+        state.SetLink(LinkHealth.Error, problem);
         pipes.Broadcast(state.Status());
+    }
+
+    /// <summary>
+    /// Übersetzt den Zustand der Access-Verbindung für die Anzeige. Verbunden gilt sofort, ein Wechsel weg von
+    /// „bereit“ erst nach <see cref="LinkDebounce"/>, damit kurze Wiederverbindungen nicht als Störung erscheinen.
+    /// </summary>
+    private void OnLinkState(AccessLinkState link)
+    {
+        lock (_linkGate)
+        {
+            if (link == AccessLinkState.Connected)
+            {
+                _pendingDegrade?.Cancel();
+                _pendingDegrade = null;
+                ApplyLink(LinkHealth.Ready, string.Empty);
+                return;
+            }
+
+            _pendingLink = link switch
+            {
+                AccessLinkState.Unreachable => (LinkHealth.Unreachable, "Konsole nicht erreichbar (nicht im Firmennetz?)"),
+                AccessLinkState.Rejected => (LinkHealth.Error, "Access lehnt den Token ab, dieser PC klingelt nicht"),
+                AccessLinkState.CertificateMismatch => (LinkHealth.Error, "Zertifikat der Konsole passt nicht zum Pin, dieser PC klingelt nicht"),
+                _ => (LinkHealth.Error, "Verbindung zu Access gestört, dieser PC klingelt nicht"),
+            };
+            if (state.Health != LinkHealth.Ready)
+            {
+                ApplyLink(_pendingLink.Health, _pendingLink.Problem);
+                return;
+            }
+            if (_pendingDegrade is not null)
+                return;
+
+            var cts = _pendingDegrade = CancellationTokenSource.CreateLinkedTokenSource(_stopping);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(LinkDebounce, time, cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                lock (_linkGate)
+                {
+                    if (_pendingDegrade != cts)
+                        return;
+                    _pendingDegrade = null;
+                    ApplyLink(_pendingLink.Health, _pendingLink.Problem);
+                }
+            });
+        }
+    }
+
+    private void ApplyLink(LinkHealth health, string problem)
+    {
+        state.SetLink(health, problem);
+        pipes.Broadcast(state.Status());
+    }
+
+    /// <summary>Prüft Protect und die Ablaufdaten beim Start und danach regelmässig, holt dabei die Kameranamen.</summary>
+    private async Task HealthLoopAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(HealthInterval, time);
+        do
+        {
+            await RefreshProtectAsync(ct).ConfigureAwait(false);
+            var warnings = new[] { _videoProblem, options.Value.ExpiryWarning(time.GetLocalNow().DateTime) }
+                .Where(w => !string.IsNullOrEmpty(w));
+            if (state.SetWarning(string.Join(", ", warnings)))
+            {
+                log.LogInformation("Hinweis: {Warning}", state.Status().Warning is { Length: > 0 } w ? w : "keiner");
+                pipes.Broadcast(state.Status());
+            }
+        }
+        while (await WaitAsync(timer, ct).ConfigureAwait(false));
+    }
+
+    private static async Task<bool> WaitAsync(PeriodicTimer timer, CancellationToken ct)
+    {
+        try
+        {
+            return await timer.WaitForNextTickAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private async Task RefreshProtectAsync(CancellationToken ct)
+    {
+        if (_protectApi is null)
+            return;
+        try
+        {
+            var names = await _protectApi.GetCameraNamesAsync(ct).ConfigureAwait(false);
+            var changed = names.Count != state.CameraNames.Count ||
+                          names.Any(n => !state.CameraNames.TryGetValue(n.Key, out var old) || old != n.Value);
+            foreach (var (id, name) in names)
+                state.CameraNames[id] = name;
+            _videoProblem = null;
+            if (changed)
+                PublishDoors();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException
+                                       or AuthenticationException or JsonException)
+        {
+            if (ct.IsCancellationRequested)
+                return;
+            _videoProblem = ex is HttpRequestException { StatusCode: System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden }
+                ? "Livebild gestört, Protect-Schlüssel abgelehnt"
+                : "Livebild gestört, Protect nicht erreichbar";
+            log.LogWarning("{Problem}: {Type}: {Message}", _videoProblem, ex.GetType().Name, ex.Message);
+        }
     }
 
     private async Task ExpireLoopAsync(PeriodicTimer timer, CallTracker tracker, CancellationToken ct)
@@ -187,7 +311,7 @@ internal sealed class CallCoordinator(
         var doors = enabled && _doors is not null
             ? _doors.All()
                 .Where(d => opt.AcceptsDoor(d.DoorId, d.DoorName))
-                .Select(d => new DoorEntry(d.DoorId, d.DoorName))
+                .Select(d => new DoorEntry(d.DoorId, state.DisplayName(d.CameraId, d.DoorName.Length > 0 ? d.DoorName : "Tür")))
                 .ToArray()
             : [];
         state.Doors = new DoorsMessage(enabled, doors);
@@ -271,7 +395,7 @@ internal sealed class CallCoordinator(
         if (url is null)
             return new LiveViewUnavailableMessage(doorId, problem!);
         log.LogInformation("Livebild ohne Klingeln: {Door} von {User} bis {Until:HH:mm:ss}", door.DoorName, user, until.ToLocalTime());
-        return new LiveViewReadyMessage(doorId, door.DoorName, url, until);
+        return new LiveViewReadyMessage(doorId, state.DisplayName(door.CameraId, door.DoorName), url, until);
     }
 
     /// <summary>Holt die Stream-Adresse über Protect und öffnet eine Einmal-Adresse im Proxy.</summary>

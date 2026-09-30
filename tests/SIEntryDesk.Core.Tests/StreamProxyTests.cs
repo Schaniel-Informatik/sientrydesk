@@ -120,6 +120,13 @@ public sealed class StreamProxyTests : IAsyncLifetime
         Assert.Equal("RTSP/1.0 404 Not Found", response.StartLine);
     }
 
+    [Fact]
+    public async Task Probe_reads_the_presented_fingerprint()
+    {
+        var fingerprint = await CertificateProbe.FetchFingerprintAsync("127.0.0.1", ServerPort, TimeSpan.FromSeconds(5), CancellationToken.None);
+        Assert.Equal(CertificatePin.Format(SHA256.HashData(_certificate.RawData)), fingerprint);
+    }
+
     private static StreamProxy NewProxy(CertificatePin pin)
     {
         var proxy = new StreamProxy(pin, NullLogger.Instance, TimeProvider.System);

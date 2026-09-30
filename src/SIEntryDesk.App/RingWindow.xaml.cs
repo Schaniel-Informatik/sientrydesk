@@ -139,11 +139,13 @@ public partial class RingWindow : Window
         FlashTaskbar();
     }
 
-    /// <summary>Spielt das Livebild über die Einmal-Adresse des Dienstes. Der Ton der Tür ist zuerst stumm.</summary>
-    public void PlayVideo(LibVLC libVlc, string url)
+    /// <summary>Spielt das Livebild über die Einmal-Adresse des Dienstes. Der Ton der Tür ist stumm, ausser der
+    /// Benutzer hat „Ton der Tür automatisch einschalten“ gewählt. Dann ersetzt er den Klingelton.</summary>
+    public void PlayVideo(LibVLC libVlc, string url, bool autoSound)
     {
         if (_player is not null || _closed)
             return;
+        _muted = !autoSound;
         using var media = new Media(libVlc, new Uri(url), ":network-caching=300", ":rtsp-tcp");
         _player = new MediaPlayer(media);
         _player.Playing += (_, _) => Dispatcher.InvokeAsync(() =>
@@ -153,6 +155,9 @@ public partial class RingWindow : Window
             _player.Mute = _muted;
             VideoText.Text = "Livebild";
             SoundButton.IsEnabled = true;
+            SoundButton.Content = _muted ? "Ton an" : "Ton aus";
+            if (!_muted)
+                StopRinging();
         });
         _player.EncounteredError += (_, _) => Dispatcher.InvokeAsync(() => ShowVideoProblem("Livebild unterbrochen"));
         Video.MediaPlayer = _player;
@@ -192,6 +197,9 @@ public partial class RingWindow : Window
         _muted = !_muted;
         _player.Mute = _muted;
         SoundButton.Content = _muted ? "Ton an" : "Ton aus";
+        // Wer die Tür hören will, braucht den Klingelton nicht mehr.
+        if (!_muted)
+            StopRinging();
     }
 
     private void OnOpenClick(object sender, RoutedEventArgs e)

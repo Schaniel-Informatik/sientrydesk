@@ -26,6 +26,20 @@ public sealed class DoorDirectoryTests : IDisposable
     }
 
     [Fact]
+    public void Configured_cameras_win_over_learned_ones()
+    {
+        var doors = new DoorDirectory(null);
+        doors.Learn(Call(camera: "cam-gelernt-01"));
+        doors.Seed("11111111-2222-4333-8444-555555555555", "cam-konfig-001");
+        var door = Assert.Single(doors.All());
+        Assert.Equal("cam-konfig-001", door.CameraId);
+        Assert.Equal("Tür 1", door.DoorName);
+
+        doors.Seed("../boese", "cam-konfig-002");
+        Assert.Single(doors.All());
+    }
+
+    [Fact]
     public void Calls_without_camera_teach_nothing()
     {
         var doors = new DoorDirectory(null);

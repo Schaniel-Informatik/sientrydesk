@@ -57,6 +57,32 @@ public sealed partial class ProtectApiClient : IDisposable
         return streams;
     }
 
+    /// <summary>Kamera-ID → Name aus Protect. Dient auch als Lebenszeichen für Schlüssel und Erreichbarkeit.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> GetCameraNamesAsync(CancellationToken ct)
+    {
+        using var response = await _http.GetAsync($"{BasePath}/cameras", ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        using var doc = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), cancellationToken: ct).ConfigureAwait(false);
+
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array)
+            return names;
+        foreach (var camera in doc.RootElement.EnumerateArray())
+        {
+            if (camera.ValueKind == JsonValueKind.Object &&
+                camera.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String &&
+                camera.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String &&
+                UntrustedText.IsSafeId(id.GetString()))
+            {
+                var clean = UntrustedText.Clean(name.GetString(), 60);
+                if (clean.Length > 0)
+                    names[id.GetString()!] = clean;
+            }
+        }
+        return names;
+    }
+
     [GeneratedRegex("^/[A-Za-z0-9_-]{8,64}$")]
     private static partial Regex StreamPath();
 

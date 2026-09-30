@@ -1,0 +1,27 @@
+// SI EntryDesk: Anlagen-Konfiguration. Als sientrydesk.json neben install.ps1 legen.
+// Keine Geheimnisse: Tokens und Schlüssel kommen über set-tokens.ps1 bzw. install.ps1 -SetTokens.
+// Kommentare nur auf eigenen Zeilen.
+{
+  // Adresse der UniFi-Konsole (Name oder IP)
+  "Host": "unifi.example.local",
+
+  // Zertifikats-Fingerabdrücke, anzeigen mit: SIEntryDesk.Service.exe show-pins <Host>
+  "AccessPin": "00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF",
+  "ProtectPin": "00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF",
+
+  // Türen, die angezeigt werden (Tür-ID oder Name aus Access). Leer = alle.
+  "Doors": [],
+
+  // Tür-ID (Access) → Kamera-ID der Türstation (Protect). Ohne Eintrag lernt der Dienst es beim ersten Klingeln.
+  "DoorCameras": {
+    "00000000-0000-4000-8000-000000000001": "000000000000000000000001"
+  },
+
+  // Livebild ohne Klingeln im Tray-Menü und wie lange es offen bleibt (15–600 s)
+  "LiveView": true,
+  "LiveViewSeconds": 60,
+
+  // Ablaufdaten der Schlüssel, 30 Tage vorher wird das Symbol orange
+  "TokenExpires": "2027-09-30",
+  "ProtectKeyExpires": "2027-09-30"
+}

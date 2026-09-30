@@ -23,8 +23,26 @@ namespace SIEntryDesk.Core.Ipc;
 [JsonDerivedType(typeof(LiveViewUnavailableMessage), "liveViewUnavailable")]
 public abstract record IpcMessage;
 
-/// <summary>Dienst → App: Verbindungszustand. Problem ist leer, wenn alles läuft.</summary>
-public sealed record StatusMessage(bool AccessConnected, string Problem, string ServiceVersion) : IpcMessage;
+/// <summary>Zustand des Dienstes aus Sicht der Anzeige.</summary>
+public enum LinkHealth
+{
+    Starting,
+    /// <summary>Klingeln kommt an.</summary>
+    Ready,
+    /// <summary>Konsole nicht erreichbar, typisch ausserhalb des Firmennetzes. Kein Alarm.</summary>
+    Unreachable,
+    /// <summary>Konsole erreichbar, aber gestört (Token, Zertifikat, Konfiguration, Unterbruch). Alarm.</summary>
+    Error,
+}
+
+/// <summary>Dienst → App: Verbindungszustand. Problem erklärt Unreachable/Error, Warning betrifft Nebensachen
+/// wie das Livebild oder bald ablaufende Schlüssel.</summary>
+public sealed record StatusMessage(
+    bool AccessConnected,
+    string Problem,
+    string ServiceVersion,
+    LinkHealth Health = LinkHealth.Starting,
+    string Warning = "") : IpcMessage;
 
 /// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern.</summary>
 public sealed record CallStartedMessage(

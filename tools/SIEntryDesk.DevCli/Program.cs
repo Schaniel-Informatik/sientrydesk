@@ -89,7 +89,7 @@ await stream.RunAsync(
         Report(tracker.Apply(ev));
         return ValueTask.CompletedTask;
     },
-    connected => log.LogInformation("Verbindung: {State}", connected ? "verbunden" : "getrennt"),
+    link => log.LogInformation("Verbindung: {State}", link),
     cts.Token);
 await expiry;
 log.LogInformation("Beendet, {Count} Lebenszeichen empfangen", heartbeats);

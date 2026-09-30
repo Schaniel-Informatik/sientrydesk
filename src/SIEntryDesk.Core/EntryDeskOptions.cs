@@ -28,7 +28,36 @@ public sealed class EntryDeskOptions
     public bool LiveView { get; set; } = true;
 
     /// <summary>So lange bleibt das Livebild ohne Klingeln offen, begrenzt auf 15–600 s.</summary>
-    public int LiveViewSeconds { get; set; } = 90;
+    public int LiveViewSeconds { get; set; } = 60;
+
+    /// <summary>Tür-ID → Protect-Kamera-ID. Aus der Konfiguration, damit das Livebild ohne erstes Klingeln verfügbar ist.
+    /// Gelernte Zuordnungen aus Klingel-Ereignissen ergänzen sie.</summary>
+    public Dictionary<string, string> DoorCameras { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ablaufdatum der Access-Tokens, für die Warnung vorher. Leer = unbekannt.</summary>
+    public DateTime? TokenExpires { get; set; }
+
+    /// <summary>Ablaufdatum des Protect-Schlüssels, für die Warnung vorher. Leer = unbekannt.</summary>
+    public DateTime? ProtectKeyExpires { get; set; }
+
+    /// <summary>So viele Tage vor Ablauf wird gewarnt.</summary>
+    public const int ExpiryWarningDays = 30;
+
+    /// <summary>Warnung zu bald ablaufenden oder abgelaufenen Schlüsseln, oder null.</summary>
+    public string? ExpiryWarning(DateTime today)
+    {
+        static string? Check(string what, DateTime? expires, DateTime today) => expires switch
+        {
+            null => null,
+            { } d when d.Date < today.Date => $"{what} ist am {d:dd.MM.yyyy} abgelaufen",
+            { } d when (d.Date - today.Date).TotalDays <= ExpiryWarningDays => $"{what} läuft am {d:dd.MM.yyyy} ab",
+            _ => null,
+        };
+        var warnings = new[] { Check("Access-Token", TokenExpires, today), Check("Protect-Schlüssel", ProtectKeyExpires, today) }
+            .Where(w => w is not null);
+        var text = string.Join(", ", warnings);
+        return text.Length > 0 ? text : null;
+    }
 
     public TimeSpan LiveViewLifetime => TimeSpan.FromSeconds(Math.Clamp(LiveViewSeconds, 15, 600));
 

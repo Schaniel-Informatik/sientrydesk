@@ -14,7 +14,7 @@ dotnet test tests/SIEntryDesk.Core.Tests --nologo -v quiet
 common=(-c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:DebugType=none --nologo -v quiet)
 dotnet publish src/SIEntryDesk.Service "${common[@]}" -o "$out/Service"
 dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
-cp deploy/install.ps1 deploy/uninstall.ps1 deploy/PILOT.md "$out/"
+cp deploy/install.ps1 deploy/uninstall.ps1 deploy/set-tokens.ps1 deploy/sientrydesk.example.json deploy/PILOT.md "$out/"
 
 (cd artifacts && zip -qr "$name.zip" "$name")
 echo "Paket: artifacts/$name.zip ($(du -h "artifacts/$name.zip" | cut -f1))"

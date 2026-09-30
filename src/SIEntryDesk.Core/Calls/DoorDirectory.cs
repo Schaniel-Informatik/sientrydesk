@@ -51,6 +51,18 @@ public sealed class DoorDirectory
         }
     }
 
+    /// <summary>Zuordnung aus der Konfiguration. Sie hat Vorrang vor einer gelernten Kamera, der Türname bleibt erhalten.</summary>
+    public void Seed(string doorId, string cameraId)
+    {
+        if (!UntrustedText.IsSafeId(doorId) || !UntrustedText.IsSafeId(cameraId))
+            return;
+        lock (_gate)
+        {
+            var name = _doors.GetValueOrDefault(doorId)?.DoorName ?? string.Empty;
+            _doors[doorId] = new KnownDoor(doorId, name, cameraId);
+        }
+    }
+
     public IReadOnlyList<KnownDoor> All()
     {
         lock (_gate)

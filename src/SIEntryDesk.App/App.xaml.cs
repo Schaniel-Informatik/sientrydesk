@@ -1,6 +1,9 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using Microsoft.Win32;
+using SIEntryDesk.Core;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
 
@@ -17,6 +20,24 @@ public partial class App : Application
     private Ringtone? _ringtone;
     private Task<LibVLC?>? _libVlc;
 
+    /// <summary>Wartezeit, bevor ein „dieser PC klingelt nicht“ gemeldet wird, damit kurze Störungen still bleiben.</summary>
+    private static readonly TimeSpan AlarmDelay = TimeSpan.FromSeconds(30);
+    private const string SettingsKey = @"Software\SIEntryDesk";
+
+    /// <summary>Null bis zum ersten Verbindungsversuch, damit das Symbol beim Start nicht kurz rot aufblitzt.</summary>
+    private ServiceClientStatus? _status;
+    private readonly DispatcherTimer _alarmTimer = new() { Interval = AlarmDelay };
+    private bool _alarmNotified;
+
+    // Pause gilt nur für diese Sitzung, ein Neustart beendet sie bewusst.
+    private readonly DispatcherTimer _pauseTimer = new();
+    private DateTimeOffset? _pausedUntil;
+    private int _missedCount;
+    private DateTimeOffset _missedLast;
+    private string _missedDoor = string.Empty;
+
+    private bool _autoSound;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -30,11 +51,20 @@ public partial class App : Application
         // LibVLC im Hintergrund laden, damit das erste Klingeln nicht darauf wartet.
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
-        _tray = new TrayIcon(ShowTestRing, RequestLiveView, Shutdown);
+        _autoSound = LoadAutoSound();
+        _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound, Shutdown));
+        _tray.SetAutoSound(_autoSound);
+        _alarmTimer.Tick += (_, _) => NotifyAlarm();
+        _pauseTimer.Tick += (_, _) => Resume(manual: false);
         _client = new ServiceClient(Dispatcher);
-        _client.StatusChanged += status => _tray.SetStatus(status);
+        _client.StatusChanged += status =>
+        {
+            _status = status;
+            UpdateTray();
+        };
         _client.MessageReceived += OnMessage;
         _ = _client.RunAsync(_cts.Token);
+        UpdateTray();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -69,6 +99,13 @@ public partial class App : Application
     {
         switch (message)
         {
+            case CallStartedMessage call when IsPaused:
+                // Während der Pause kein Fenster und kein Ton, nur mitzählen.
+                _missedCount++;
+                _missedLast = DateTimeOffset.Now;
+                _missedDoor = call.DoorName;
+                UpdateTray();
+                break;
             case CallStartedMessage call:
                 // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
                 foreach (var live in _liveWindows.Values.ToList())
@@ -176,7 +213,80 @@ public partial class App : Application
         if (libVlc is null)
             window.ShowVideoProblem("Videoplayer konnte nicht geladen werden");
         else
-            window.PlayVideo(libVlc, url);
+            window.PlayVideo(libVlc, url, _autoSound);
+    }
+
+    private bool IsPaused => _pausedUntil is { } until && until > DateTimeOffset.Now;
+
+    private void Pause(TimeSpan duration)
+    {
+        _pausedUntil = DateTimeOffset.Now + duration;
+        _missedCount = 0;
+        _pauseTimer.Stop();
+        _pauseTimer.Interval = duration;
+        _pauseTimer.Start();
+        // Wer mitten im Klingeln pausiert, will Ruhe: offene Klingelfenster schliessen.
+        foreach (var window in _windows.Values.Where(w => w.Mode == WindowMode.Ring).ToList())
+            window.Close();
+        UpdateTray();
+    }
+
+    private void Resume(bool manual)
+    {
+        _pauseTimer.Stop();
+        if (_pausedUntil is null)
+            return;
+        _pausedUntil = null;
+        if (_missedCount > 0)
+            _tray?.Notify(manual ? "Klingel wieder an" : "Pause beendet, Klingel wieder an", MissedText()!);
+        UpdateTray();
+    }
+
+    private string? MissedText() => _missedCount == 0
+        ? null
+        : $"Während der Pause {_missedCount}× geklingelt, zuletzt {_missedLast:HH:mm} {_missedDoor}";
+
+    private void UpdateTray()
+    {
+        if (_tray is null)
+            return;
+        var state = TrayStatus.Evaluate(_status?.Connected ?? true, _status?.Service, _pausedUntil, DateTimeOffset.Now);
+        _tray.Update(state, _status?.Service?.ServiceVersion);
+        _tray.SetPause(IsPaused ? _pausedUntil : null, MissedText());
+
+        if (!state.Alarm)
+        {
+            _alarmTimer.Stop();
+            _alarmNotified = false;
+        }
+        else if (!_alarmNotified && !_alarmTimer.IsEnabled)
+        {
+            _alarmTimer.Start();
+        }
+    }
+
+    /// <summary>Meldet einmal pro Störung, wenn dieser PC seit <see cref="AlarmDelay"/> nicht klingeln kann.</summary>
+    private void NotifyAlarm()
+    {
+        _alarmTimer.Stop();
+        var state = TrayStatus.Evaluate(_status?.Connected ?? true, _status?.Service, _pausedUntil, DateTimeOffset.Now);
+        if (!state.Alarm || _alarmNotified)
+            return;
+        _alarmNotified = true;
+        _tray?.Notify("SI EntryDesk: dieser PC klingelt nicht", state.Text);
+    }
+
+    private static bool LoadAutoSound()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
+        return key?.GetValue("AutoDoorSound") is int value && value != 0;
+    }
+
+    private void SetAutoSound(bool on)
+    {
+        _autoSound = on;
+        using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
+        key.SetValue("AutoDoorSound", on ? 1 : 0, RegistryValueKind.DWord);
     }
 
     private void ShowTestRing()

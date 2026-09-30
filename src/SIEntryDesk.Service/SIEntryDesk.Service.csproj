@@ -6,6 +6,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <OutputType>Exe</OutputType>
     <RootNamespace>SIEntryDesk.Service</RootNamespace>
+    <ApplicationIcon>..\SIEntryDesk.App\Assets\SIEntryDesk.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

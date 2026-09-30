@@ -5,6 +5,20 @@ using SIEntryDesk.Core.Security;
 
 namespace SIEntryDesk.Core.Access;
 
+/// <summary>Zustand der Verbindung zu Access, für die Anzeige am PC.</summary>
+public enum AccessLinkState
+{
+    Connected,
+    /// <summary>Konsole nicht erreichbar, typisch ausserhalb des Firmennetzes. Kein Alarm.</summary>
+    Unreachable,
+    /// <summary>Token abgelehnt (401/403).</summary>
+    Rejected,
+    /// <summary>Zertifikat passt nicht zum Pin.</summary>
+    CertificateMismatch,
+    /// <summary>Verbindung erreicht, aber gestört oder unterbrochen.</summary>
+    Interrupted,
+}
+
 /// <summary>
 /// Dauerhafte Verbindung zum Ereignis-WebSocket der Access Developer API.
 /// Access beantwortet keine WebSocket-Pings, sendet aber alle 5 s ein "Hello". Bleibt es länger still,
@@ -33,7 +47,7 @@ public sealed class AccessEventStream
 
     public async Task RunAsync(
         Func<AccessEvent, CancellationToken, ValueTask> onEvent,
-        Action<bool> onConnectionChanged,
+        Action<AccessLinkState> onStateChanged,
         CancellationToken ct)
     {
         var backoff = MinBackoff;
@@ -65,9 +79,10 @@ public sealed class AccessEventStream
                 connected = true;
                 backoff = MinBackoff;
                 _log.LogInformation("Access-Ereignisse verbunden");
-                onConnectionChanged(true);
+                onStateChanged(AccessLinkState.Connected);
                 await ReceiveLoopAsync(ws, onEvent, ct).ConfigureAwait(false);
                 _log.LogWarning("Access hat die Verbindung geschlossen");
+                onStateChanged(AccessLinkState.Interrupted);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -76,27 +91,33 @@ public sealed class AccessEventStream
             catch (Exception ex)
             {
                 var status = (int)ws.HttpStatusCode;
+                AccessLinkState state;
                 if (rejectedFingerprint is not null)
                 {
                     _log.LogError(
                         "Zertifikat der Konsole passt nicht zum Pin, Verbindung abgelehnt. Erhalten: {Fingerprint}. " +
                         "Nur wenn die Konsole ihr Zertifikat nachweislich erneuert hat, den Pin anpassen", rejectedFingerprint);
                     backoff = MaxBackoff;
+                    state = AccessLinkState.CertificateMismatch;
                 }
                 else if (status is 401 or 403)
                 {
                     _log.LogError("Access lehnt den Token ab (HTTP {Status}). Token und Recht view:device prüfen", status);
                     backoff = AuthFailureBackoff;
+                    state = AccessLinkState.Rejected;
+                }
+                else if (!connected && IsUnreachable(ex))
+                {
+                    _log.LogWarning("Konsole nicht erreichbar: {Message}",
+                        ex is OperationCanceledException ? "keine Antwort innerhalb von 10 s" : ex.Message);
+                    state = AccessLinkState.Unreachable;
                 }
                 else
                 {
                     _log.LogWarning("Access-Verbindung unterbrochen: {Type}: {Message}", ex.GetType().Name, ex.Message);
+                    state = AccessLinkState.Interrupted;
                 }
-            }
-            finally
-            {
-                if (connected)
-                    onConnectionChanged(false);
+                onStateChanged(state);
             }
 
             try
@@ -110,6 +131,17 @@ public sealed class AccessEventStream
             if (backoff < AuthFailureBackoff)
                 backoff = TimeSpan.FromTicks(Math.Min(backoff.Ticks * 2, MaxBackoff.Ticks));
         }
+    }
+
+    /// <summary>Kein TCP-Verbindungsaufbau möglich (Zeitüberschreitung, Netz oder Host nicht erreichbar, DNS).</summary>
+    private static bool IsUnreachable(Exception ex)
+    {
+        for (var e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is System.Net.Sockets.SocketException or OperationCanceledException or TimeoutException)
+                return true;
+        }
+        return false;
     }
 
     private async Task ReceiveLoopAsync(
