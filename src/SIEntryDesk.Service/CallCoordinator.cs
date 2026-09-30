@@ -26,7 +26,7 @@ internal sealed class CallCoordinator(
     ILogger<CallCoordinator> log) : BackgroundService
 {
     /// <summary>So lange nach dem Rufende läuft das Bild noch, damit man sieht, wer hereinkommt.</summary>
-    private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(25);
     private static readonly TimeSpan VideoMaxLifetime = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StreamCacheLifetime = TimeSpan.FromMinutes(5);
     /// <summary>Kurze Unterbrüche lösen keinen Statuswechsel aus, erst wenn sie länger dauern.</summary>
@@ -205,9 +205,8 @@ internal sealed class CallCoordinator(
         do
         {
             await RefreshProtectAsync(ct).ConfigureAwait(false);
-            var warnings = new[] { _videoProblem, options.Value.ExpiryWarning(time.GetLocalNow().DateTime) }
-                .Where(w => !string.IsNullOrEmpty(w));
-            if (state.SetWarning(string.Join(", ", warnings)))
+            var expiry = options.Value.ExpiryWarning(time.GetLocalNow().DateTime) ?? string.Empty;
+            if (state.SetWarning(_videoProblem ?? string.Empty, expiry))
             {
                 log.LogInformation("Hinweis: {Warning}", state.Status().Warning is { Length: > 0 } w ? w : "keiner");
                 pipes.Broadcast(state.Status());
@@ -332,6 +331,7 @@ internal sealed class CallCoordinator(
                 UnlockDecision.CallEnded => "Der Ruf ist bereits beendet",
                 UnlockDecision.NotAllowedByAccess => "Access erlaubt hier kein Öffnen",
                 UnlockDecision.AlreadyRequested => "Wird bereits geöffnet",
+                UnlockDecision.AlreadyOpened => "Die Tür wurde bereits geöffnet",
                 _ => "Kein laufender Ruf",
             });
         }

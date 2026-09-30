@@ -38,6 +38,9 @@ public partial class App : Application
 
     private bool _autoSound;
 
+    // Erinnerung vor Ablauf der Schlüssel: einmal pro Tag und Benutzer, stündlich geprüft (Datumswechsel).
+    private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromHours(1) };
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -56,11 +59,14 @@ public partial class App : Application
         _tray.SetAutoSound(_autoSound);
         _alarmTimer.Tick += (_, _) => NotifyAlarm();
         _pauseTimer.Tick += (_, _) => Resume(manual: false);
+        _expiryTimer.Tick += (_, _) => CheckExpiryNotice();
+        _expiryTimer.Start();
         _client = new ServiceClient(Dispatcher);
         _client.StatusChanged += status =>
         {
             _status = status;
             UpdateTray();
+            CheckExpiryNotice();
         };
         _client.MessageReceived += OnMessage;
         _ = _client.RunAsync(_cts.Token);
@@ -274,6 +280,20 @@ public partial class App : Application
             return;
         _alarmNotified = true;
         _tray?.Notify("SI EntryDesk: dieser PC klingelt nicht", state.Text);
+    }
+
+    /// <summary>Ab 14 Tagen vor Ablauf der Schlüssel einmal pro Tag eine Meldung, auf jeder App.</summary>
+    private void CheckExpiryNotice()
+    {
+        var notice = _status?.Service?.ExpiryNotice;
+        if (string.IsNullOrEmpty(notice))
+            return;
+        var today = DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
+        if (key.GetValue("ExpiryNoticeShown") as string == today)
+            return;
+        key.SetValue("ExpiryNoticeShown", today);
+        _tray?.Notify("SI EntryDesk", $"{notice}. Bitte der IT melden.");
     }
 
     private static bool LoadAutoSound()

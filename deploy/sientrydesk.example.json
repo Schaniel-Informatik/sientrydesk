@@ -21,7 +21,7 @@
   "LiveView": true,
   "LiveViewSeconds": 60,
 
-  // Ablaufdaten der Schlüssel, 30 Tage vorher wird das Symbol orange
+  // Ablaufdaten der Schlüssel. Ab 14 Tagen vorher: Symbol orange und einmal pro Tag eine Meldung
   "TokenExpires": "2027-09-30",
   "ProtectKeyExpires": "2027-09-30"
 }

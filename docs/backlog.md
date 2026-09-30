@@ -5,6 +5,14 @@ grau ohne Meldung ausserhalb des Firmennetzes), Klingel pausieren, Livebild ohne
 Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurationsdatei statt Installer-Parameter,
 `set-tokens.ps1`, `show-pins`, Warnung vor ablaufenden Schlüsseln.
 
+## Für den nächsten Build umgesetzt (noch nicht gebaut)
+- Erinnerung vor Ablauf: ab 14 Tagen einmal pro Tag eine Meldung auf jeder App, Symbol erst dann orange.
+- Fenster nach Rufende 10 s offen, Livebild läuft weiter. In dieser Zeit noch öffnen nach 108 (Besucher hat
+  abgebrochen) und 105 (niemand hat abgenommen), nicht nach 400 und 106. Kein zweites Öffnen, wenn schon geöffnet.
+- Öffnung ohne Namen („N/A“) als „Tür geöffnet“.
+- Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
+  (Variante A, Risiko zur Kenntnis genommen).
+
 ## Nächste Schritte
 - **0.4: Einrichtungsassistent** für Admins: Erreichbarkeit, Pins bestätigen, Tokens und Rechte prüfen (lesend und
   mit der Probe „Öffnen einer Tür, die es nicht gibt“), Protect-Schlüssel, Türen den Kameras zuordnen, RTSPS anlegen,

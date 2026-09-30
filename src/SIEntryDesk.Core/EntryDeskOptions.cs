@@ -30,6 +30,8 @@ public sealed class EntryDeskOptions
     /// <summary>So lange bleibt das Livebild ohne Klingeln offen, begrenzt auf 15–600 s.</summary>
     public int LiveViewSeconds { get; set; } = 60;
 
+    public TimeSpan LiveViewLifetime => TimeSpan.FromSeconds(Math.Clamp(LiveViewSeconds, 15, 600));
+
     /// <summary>Tür-ID → Protect-Kamera-ID. Aus der Konfiguration, damit das Livebild ohne erstes Klingeln verfügbar ist.
     /// Gelernte Zuordnungen aus Klingel-Ereignissen ergänzen sie.</summary>
     public Dictionary<string, string> DoorCameras { get; set; } = new(StringComparer.Ordinal);
@@ -40,26 +42,23 @@ public sealed class EntryDeskOptions
     /// <summary>Ablaufdatum des Protect-Schlüssels, für die Warnung vorher. Leer = unbekannt.</summary>
     public DateTime? ProtectKeyExpires { get; set; }
 
-    /// <summary>So viele Tage vor Ablauf wird gewarnt.</summary>
-    public const int ExpiryWarningDays = 30;
+    /// <summary>So viele Tage vor Ablauf wird gewarnt (Entscheid 2026-09-30).</summary>
+    public const int ExpiryWarningDays = 14;
 
-    /// <summary>Warnung zu bald ablaufenden oder abgelaufenen Schlüsseln, oder null.</summary>
+    /// <summary>Hinweis, dass die Schlüssel bald ablaufen oder abgelaufen sind, oder null. Massgebend ist das frühere
+    /// der beiden Ablaufdaten, weil beide zusammen erneuert werden.</summary>
     public string? ExpiryWarning(DateTime today)
     {
-        static string? Check(string what, DateTime? expires, DateTime today) => expires switch
-        {
-            null => null,
-            { } d when d.Date < today.Date => $"{what} ist am {d:dd.MM.yyyy} abgelaufen",
-            { } d when (d.Date - today.Date).TotalDays <= ExpiryWarningDays => $"{what} läuft am {d:dd.MM.yyyy} ab",
-            _ => null,
-        };
-        var warnings = new[] { Check("Access-Token", TokenExpires, today), Check("Protect-Schlüssel", ProtectKeyExpires, today) }
-            .Where(w => w is not null);
-        var text = string.Join(", ", warnings);
-        return text.Length > 0 ? text : null;
+        var dates = new[] { TokenExpires, ProtectKeyExpires }.Where(d => d.HasValue).Select(d => d!.Value.Date).ToList();
+        if (dates.Count == 0)
+            return null;
+        var next = dates.Min();
+        if (next < today.Date)
+            return $"Die Tokens von SI EntryDesk sind am {next:dd.MM.yyyy} abgelaufen";
+        return (next - today.Date).TotalDays <= ExpiryWarningDays
+            ? $"Die Tokens von SI EntryDesk müssen bis am {next:dd.MM.yyyy} erneuert werden"
+            : null;
     }
-
-    public TimeSpan LiveViewLifetime => TimeSpan.FromSeconds(Math.Clamp(LiveViewSeconds, 15, 600));
 
     public bool VideoConfigured => !string.IsNullOrWhiteSpace(ProtectPin);
 

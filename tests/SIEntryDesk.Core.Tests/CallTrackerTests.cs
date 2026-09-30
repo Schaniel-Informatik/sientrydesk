@@ -80,15 +80,69 @@ public class CallTrackerTests
         Assert.Equal(UnlockDecision.Allowed, tracker.TryBeginUnlock("req-1", out _));
     }
 
-    [Fact]
-    public void No_unlock_after_the_call_ended()
+    [Theory]
+    [InlineData(400)] // anderswo angenommen: jemand kümmert sich
+    [InlineData(106)] // abgelehnt: bewusst entschieden
+    [InlineData(107)]
+    public void No_unlock_after_the_call_was_handled(int reason)
     {
         var tracker = new CallTracker(new ManualTime());
         tracker.Apply(Ring());
-        tracker.Apply(new AccessRingEnded("req-1", 105));
+        tracker.Apply(new AccessRingEnded("req-1", reason));
         Assert.Equal(UnlockDecision.CallEnded, tracker.TryBeginUnlock("req-1", out var call));
         Assert.Null(call);
         Assert.Equal(UnlockDecision.UnknownCall, tracker.TryBeginUnlock("req-unbekannt", out _));
+    }
+
+    [Theory]
+    [InlineData(108)] // Besucher hat abgebrochen, z. B. zweimal gedrückt
+    [InlineData(105)] // niemand hat abgenommen
+    public void Unlock_still_possible_shortly_after_cancel_or_timeout(int reason)
+    {
+        var time = new ManualTime();
+        var tracker = new CallTracker(time);
+        tracker.Apply(Ring());
+        tracker.Apply(new AccessRingEnded("req-1", reason));
+
+        time.Now += TimeSpan.FromSeconds(9);
+        Assert.Equal(UnlockDecision.Allowed, tracker.TryBeginUnlock("req-1", out var call));
+        Assert.Equal(DoorId, call!.DoorId);
+        Assert.Equal(UnlockDecision.AlreadyRequested, tracker.TryBeginUnlock("req-1", out _));
+    }
+
+    [Fact]
+    public void Grace_period_ends_after_ten_seconds()
+    {
+        var time = new ManualTime();
+        var tracker = new CallTracker(time);
+        tracker.Apply(Ring());
+        tracker.Apply(new AccessRingEnded("req-1", 108));
+        time.Now += TimeSpan.FromSeconds(11);
+        Assert.Equal(UnlockDecision.CallEnded, tracker.TryBeginUnlock("req-1", out _));
+    }
+
+    [Fact]
+    public void No_unlock_in_grace_period_when_already_opened()
+    {
+        var time = new ManualTime();
+        var tracker = new CallTracker(time);
+        tracker.Apply(Ring());
+        tracker.Apply(new AccessRingEnded("req-1", 108));
+        tracker.Apply(new AccessDoorUnlocked(DoorId, HubId, "Tür 1"));
+        Assert.Equal(UnlockDecision.AlreadyOpened, tracker.TryBeginUnlock("req-1", out _));
+    }
+
+    [Fact]
+    public void Unlock_in_progress_survives_the_end_of_the_call()
+    {
+        // Nach dem Öffnen über die API endet der Ruf mit 108. Das darf kein zweites Öffnen freigeben.
+        var tracker = new CallTracker(new ManualTime());
+        tracker.Apply(Ring());
+        Assert.Equal(UnlockDecision.Allowed, tracker.TryBeginUnlock("req-1", out _));
+        tracker.Apply(new AccessRingEnded("req-1", 108));
+        Assert.Equal(UnlockDecision.AlreadyRequested, tracker.TryBeginUnlock("req-1", out _));
+        tracker.CompleteUnlock("req-1", success: true);
+        Assert.Equal(UnlockDecision.AlreadyRequested, tracker.TryBeginUnlock("req-1", out _));
     }
 
     [Fact]

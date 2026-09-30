@@ -28,6 +28,8 @@ public enum UnlockDecision
     CallEnded,
     NotAllowedByAccess,
     AlreadyRequested,
+    /// <summary>Die Tür wurde nach dem Ruf bereits geöffnet, zum Beispiel an der Tür selbst.</summary>
+    AlreadyOpened,
 }
 
 /// <summary>
@@ -44,6 +46,7 @@ public sealed class CallTracker
         public bool OpenedReported { get; set; }
         public string? OpenedBy { get; set; }
         public DateTimeOffset? EndedAt { get; set; }
+        public CallEndReason? EndReason { get; set; }
     }
 
     private readonly object _gate = new();
@@ -57,6 +60,10 @@ public sealed class CallTracker
 
     /// <summary>So lange nach dem Ende werden Öffnungen noch dem Ruf zugeordnet.</summary>
     public TimeSpan OpenedCorrelationWindow { get; init; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>So lange darf nach „Besucher hat abgebrochen“ oder „Niemand hat abgenommen“ noch geöffnet werden,
+    /// solange das Fenster mit dem Livebild offen ist. Nach „anderswo angenommen“ oder „abgelehnt“ nicht.</summary>
+    public TimeSpan UnlockGraceAfterEnd { get; init; } = TimeSpan.FromSeconds(10);
 
     public CallTracker(TimeProvider time, Func<AccessRingStarted, bool>? accept = null)
     {
@@ -117,7 +124,17 @@ public sealed class CallTracker
         {
             call = null;
             if (!_active.TryGetValue(callId, out var entry))
-                return _recentlyEnded.Any(e => e.Info.CallId == callId) ? UnlockDecision.CallEnded : UnlockDecision.UnknownCall;
+            {
+                entry = _recentlyEnded.FirstOrDefault(e => e.Info.CallId == callId);
+                if (entry is null)
+                    return UnlockDecision.UnknownCall;
+                var reopenable = entry.EndReason is CallEndReason.Cancelled or CallEndReason.Timeout &&
+                                 entry.EndedAt is { } ended && _time.GetUtcNow() - ended <= UnlockGraceAfterEnd;
+                if (!reopenable)
+                    return UnlockDecision.CallEnded;
+                if (entry.OpenedReported)
+                    return UnlockDecision.AlreadyOpened;
+            }
             if (!entry.Info.UnlockAllowed)
                 return UnlockDecision.NotAllowedByAccess;
             if (entry.UnlockInProgress || entry.Unlocked)
@@ -160,7 +177,8 @@ public sealed class CallTracker
         if (end.RequestId is null || !_active.Remove(end.RequestId, out var entry))
             return [];
         entry.EndedAt = now;
-        entry.UnlockInProgress = false;
+        entry.EndReason = end.Reason;
+        // Ein laufendes Öffnen bleibt bestehen, sonst wäre in der Nachfrist ein zweites möglich.
         _recentlyEnded.Add(entry);
         return [new CallEnded(entry.Info, end.Reason)];
     }

@@ -78,27 +78,30 @@ public class ExpiryWarningTests
     }
 
     [Fact]
-    public void Far_away_no_warning()
+    public void Fifteen_days_ahead_no_warning()
     {
-        Assert.Null(new EntryDeskOptions { TokenExpires = Today.AddDays(31) }.ExpiryWarning(Today));
+        Assert.Null(new EntryDeskOptions { TokenExpires = Today.AddDays(15) }.ExpiryWarning(Today));
     }
 
     [Fact]
-    public void Within_thirty_days_warns()
+    public void Fourteen_days_ahead_warns()
     {
-        var warning = new EntryDeskOptions { TokenExpires = Today.AddDays(30) }.ExpiryWarning(Today);
-        Assert.Equal("Access-Token läuft am 30.10.2026 ab", warning);
+        Assert.Equal("Die Tokens von SI EntryDesk müssen bis am 14.10.2026 erneuert werden",
+            new EntryDeskOptions { TokenExpires = Today.AddDays(14) }.ExpiryWarning(Today));
     }
 
     [Fact]
-    public void Expired_and_both_keys()
+    public void Earlier_of_both_dates_counts()
     {
-        var warning = new EntryDeskOptions
-        {
-            TokenExpires = Today.AddDays(-1),
-            ProtectKeyExpires = Today.AddDays(5),
-        }.ExpiryWarning(Today);
-        Assert.Equal("Access-Token ist am 29.09.2026 abgelaufen, Protect-Schlüssel läuft am 05.10.2026 ab", warning);
+        Assert.Equal("Die Tokens von SI EntryDesk müssen bis am 05.10.2026 erneuert werden",
+            new EntryDeskOptions { TokenExpires = Today.AddDays(200), ProtectKeyExpires = Today.AddDays(5) }.ExpiryWarning(Today));
+    }
+
+    [Fact]
+    public void Expired()
+    {
+        Assert.Equal("Die Tokens von SI EntryDesk sind am 29.09.2026 abgelaufen",
+            new EntryDeskOptions { TokenExpires = Today.AddDays(-1) }.ExpiryWarning(Today));
     }
 
     [Fact]

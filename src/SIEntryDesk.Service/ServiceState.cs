@@ -16,6 +16,7 @@ internal sealed class ServiceState
     private LinkHealth _health = LinkHealth.Starting;
     private string _problem = "Dienst startet";
     private string _warning = string.Empty;
+    private string _expiryNotice = string.Empty;
 
     public CallTracker? Tracker { get; set; }
 
@@ -46,14 +47,16 @@ internal sealed class ServiceState
         }
     }
 
-    /// <summary>True, wenn sich die Warnung geändert hat.</summary>
-    public bool SetWarning(string warning)
+    /// <summary>True, wenn sich etwas geändert hat. Warning färbt orange, ExpiryNotice löst zusätzlich die tägliche
+    /// Meldung in der App aus.</summary>
+    public bool SetWarning(string warning, string expiryNotice)
     {
         lock (_gate)
         {
-            if (_warning == warning)
+            if (_warning == warning && _expiryNotice == expiryNotice)
                 return false;
             _warning = warning;
+            _expiryNotice = expiryNotice;
             return true;
         }
     }
@@ -64,7 +67,8 @@ internal sealed class ServiceState
     public StatusMessage Status()
     {
         lock (_gate)
-            return new StatusMessage(_health == LinkHealth.Ready, _problem, Version, _health, _warning);
+            return new StatusMessage(_health == LinkHealth.Ready, _problem, Version, _health,
+                string.Join(", ", new[] { _warning, _expiryNotice }.Where(w => w.Length > 0)), _expiryNotice);
     }
 
     public IEnumerable<IpcMessage> Snapshot()

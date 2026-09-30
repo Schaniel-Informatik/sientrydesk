@@ -27,7 +27,9 @@ public partial class RingWindow : Window
 {
     /// <summary>Sicherheitsnetz, falls das Ende des Rufs nie ankommt (Access beendet nach 60 s).</summary>
     private static readonly TimeSpan MaxLifetime = TimeSpan.FromSeconds(90);
-    private static readonly TimeSpan LingerAfterEnd = TimeSpan.FromSeconds(4);
+    /// <summary>So lange bleibt das Fenster nach dem Ende offen, mit Livebild. Gleich lang wie die Nachfrist des Dienstes
+    /// zum Öffnen nach „Besucher hat abgebrochen“ oder „Niemand hat abgenommen“.</summary>
+    private static readonly TimeSpan LingerAfterEnd = TimeSpan.FromSeconds(10);
 
     private static readonly Brush Neutral = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
     private static readonly Brush Good = new SolidColorBrush(Color.FromRgb(0x5F, 0xD0, 0x7A));
@@ -37,6 +39,9 @@ public partial class RingWindow : Window
     private readonly bool _unlockAllowed;
     private bool _ended;
     private bool _opened;
+    private bool _unlockPending;
+    /// <summary>Nach dem Ende noch öffnen erlaubt (108/105), bis sich das Fenster schliesst.</summary>
+    private bool _reopenable;
     private bool _closed;
     private bool _muted = true;
     private MediaPlayer? _player;
@@ -100,37 +105,44 @@ public partial class RingWindow : Window
             return;
         _ended = true;
         StopRinging();
-        OpenButton.IsEnabled = false;
+        // Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, darf man in der Nachfrist
+        // noch öffnen. Der Dienst prüft das ebenfalls.
+        _reopenable = _unlockAllowed && !_opened && reason is CallEndReason.Cancelled or CallEndReason.Timeout;
+        OpenButton.IsEnabled = _reopenable && !_unlockPending;
         Headline.Text = "Ruf beendet";
         Headline.Foreground = Neutral;
         // Nach dem Öffnen über die API meldet Access das Ende als "Besucher hat abgebrochen" (108).
         // Die Öffnung hat in der Anzeige Vorrang.
         if (!_opened)
-            SetStatus(CallEndReasons.ToGerman(reason), reason == CallEndReason.Opened ? Good : Neutral);
+            SetStatus(_reopenable ? $"{CallEndReasons.ToGerman(reason)}, Öffnen noch kurz möglich" : CallEndReasons.ToGerman(reason),
+                reason == CallEndReason.Opened ? Good : Neutral);
         CloseAfter(LingerAfterEnd);
     }
 
     public void ShowOpened(string? openedBy)
     {
         _opened = true;
+        _reopenable = false;
         StopRinging();
         OpenButton.IsEnabled = false;
-        SetStatus(openedBy is null ? "Tür geöffnet" : $"Tür geöffnet von {openedBy}", Good);
+        SetStatus(string.IsNullOrWhiteSpace(openedBy) ? "Tür geöffnet" : $"Tür geöffnet von {openedBy}", Good);
         CloseAfter(LingerAfterEnd);
     }
 
     public void ShowUnlockResult(bool success, string message)
     {
+        _unlockPending = false;
         if (success)
         {
             _opened = true;
+            _reopenable = false;
             StopRinging();
             SetStatus(message, Good);
-            CloseAfter(LingerAfterEnd + LingerAfterEnd);
+            CloseAfter(LingerAfterEnd);
             return;
         }
         SetStatus(message, Bad);
-        OpenButton.IsEnabled = _unlockAllowed && !_ended;
+        OpenButton.IsEnabled = _unlockAllowed && (!_ended || _reopenable);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -205,6 +217,7 @@ public partial class RingWindow : Window
     private void OnOpenClick(object sender, RoutedEventArgs e)
     {
         OpenButton.IsEnabled = false;
+        _unlockPending = true;
         SetStatus("Öffne …", Neutral);
         UnlockRequested?.Invoke();
     }

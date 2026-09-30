@@ -42,7 +42,8 @@ public sealed record StatusMessage(
     string Problem,
     string ServiceVersion,
     LinkHealth Health = LinkHealth.Starting,
-    string Warning = "") : IpcMessage;
+    string Warning = "",
+    string ExpiryNotice = "") : IpcMessage;
 
 /// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern.</summary>
 public sealed record CallStartedMessage(
