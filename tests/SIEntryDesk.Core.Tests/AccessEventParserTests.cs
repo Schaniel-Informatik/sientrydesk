@@ -105,6 +105,18 @@ public class AccessEventParserTests
     }
 
     [Fact]
+    public void Unlock_without_a_person_has_no_name()
+    {
+        var log = Assert.IsType<AccessUnlockLogged>(AccessEventParser.Parse("""
+            {"event":"access.logs.add","data":{"_source":{
+              "actor":{"type":"user","display_name":"N/A"},
+              "event":{"type":"access.door.unlock","result":"ACCESS"},
+              "target":[{"type":"door","id":"0123456789ab","display_name":"Tür 1"}]}}}
+            """));
+        Assert.Equal(string.Empty, log.ActorName);
+    }
+
+    [Fact]
     public void Other_log_entries_are_just_named()
     {
         var other = Assert.IsType<AccessOtherEvent>(AccessEventParser.Parse("""

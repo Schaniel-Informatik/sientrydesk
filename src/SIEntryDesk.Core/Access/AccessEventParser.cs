@@ -109,6 +109,9 @@ public static class AccessEventParser
             return null;
 
         var actor = UntrustedText.Clean(GetString(GetObject(source, "actor"), "display_name"), 60);
+        // Bei Öffnungen direkt an der Tür (Karte, PIN, Taster) nennt Access keinen Namen, sondern "N/A".
+        if (actor.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+            actor = string.Empty;
         var provider = UntrustedText.Clean(GetString(GetObject(source, "authentication"), "credential_provider"), 30);
         return new AccessUnlockLogged(hubId!, actor, provider.Length > 0 ? provider : null);
     }
