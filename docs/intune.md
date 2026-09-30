@@ -10,6 +10,10 @@ liegen und die App für jeden Benutzer dieser Geräte startet:
 
 So stehen die Zugänge nie im Programmpaket, und ein Software-Update berührt sie nicht.
 
+Das sind **zwei getrennte Pakete**: `IntuneWinAppUtil.exe` zweimal aufrufen, jedes Mal mit einem anderen Quellordner.
+Das Werkzeug packt den ganzen Quellordner (`-c`) samt Unterordnern ein. `tokens.txt` darf deshalb nie im Ordner von
+App 1 liegen, auch nicht im Unterordner `intune-zugaenge`.
+
 ## Vorbereitung
 - **Microsoft Win32 Content Prep Tool** (`IntuneWinAppUtil.exe`) auf einem Windows-PC.
 - **Gerätegruppe** in Entra ID, z. B. „SIEntryDesk-Geräte“. Zum Testen zuerst eine Gruppe mit einem einzigen Gerät.
