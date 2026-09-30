@@ -12,10 +12,14 @@ using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Protect;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Setup;
 using SIEntryDesk.Core.Video;
 
 if (args is ["video", var cameraId, ..])
     return await VideoTestAsync(cameraId, args.Contains("--play"));
+
+if (args is ["setup-check"])
+    return await SetupCheckAsync();
 
 if (args is not ["listen", ..])
 {
@@ -165,4 +169,47 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
     await after.WaitForExitAsync();
     log.LogInformation("Nach dem Schliessen: Code {Code} {Errors}", after.ExitCode, afterErrors.Trim());
     return probe.ExitCode;
+}
+
+
+// Die Prüfungen des Einrichtungsassistenten gegen eine echte Konsole, alle lesend. Ausgabe ohne Geheimnisse.
+static async Task<int> SetupCheckAsync()
+{
+    static string Get(string name) =>
+        Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v.Trim()
+            : throw new InvalidOperationException($"Umgebungsvariable {name} fehlt");
+    var host = Get("SIED_HOST");
+    var ct = CancellationToken.None;
+
+    Console.WriteLine("== 1. Konsole und Zertifikate");
+    var ports = await SetupChecks.CheckPortsAsync(host, ct);
+    foreach (var p in ports)
+        Console.WriteLine($"  {p.Name,-20} Port {p.Port,5}: {(p.Reachable ? "erreichbar" : "NICHT erreichbar")} {p.Fingerprint?[..17]}… {p.Problem}");
+    var accessPin = ports.First(p => p.Port == AccessApiClient.Port).Fingerprint!;
+    var protectPin = ports.First(p => p.Port == 443).Fingerprint!;
+    Console.WriteLine($"  Access-Pin entspricht Konfiguration: {CertificatePin.Parse(accessPin).ToString() == CertificatePin.Parse(Get("SIED_PIN_ACCESS")).ToString()}");
+
+    Console.WriteLine("== 2. Access-Token");
+    using var access = new AccessApiClient(host, Get("SIED_ACCESS_TOKEN"), CertificatePin.Parse(accessPin));
+    var rights = await SetupChecks.CheckAccessTokenAsync(access, ct);
+    Console.WriteLine($"  Ereignisse (Gerät anzeigen): {rights.Events} | Türen (Standorte anzeigen): {rights.Doors} | Öffnen (Standorte bearbeiten): {rights.Unlock}");
+    Console.WriteLine($"  Überflüssige Rechte: {(rights.Excess.Count == 0 ? "keine" : string.Join(", ", rights.Excess))} | vollständig und minimal: {rights.Minimal}");
+    var doors = await access.GetDoorsAsync(ct);
+    Console.WriteLine($"  Türen: {string.Join(", ", doors.Select(d => d.Name))}");
+
+    Console.WriteLine("== 3. Protect-Schlüssel");
+    using var protect = new ProtectApiClient(host, Get("SIED_PROTECT_KEY"), CertificatePin.Parse(protectPin));
+    Console.WriteLine($"  Protect {await protect.GetVersionAsync(ct)}");
+    var cameras = await protect.GetCameraNamesAsync(ct);
+    Console.WriteLine($"  Kameras: {string.Join(", ", cameras.Values)}");
+
+    Console.WriteLine("== 4. Vorschlag Türen → Kameras");
+    var suggestions = SetupChecks.SuggestDoorCameras(doors, cameras);
+    foreach (var door in doors)
+    {
+        var cam = suggestions.GetValueOrDefault(door.Id);
+        var streams = cam is null ? null : await protect.GetStreamsAsync(cam, ct);
+        Console.WriteLine($"  {door.Name,-28} → {(cam is null ? "(keine Zuordnung)" : cameras[cam]),-22} Stream: {(streams is null ? "-" : streams.Count == 0 ? "fehlt" : string.Join(",", streams.Keys))}");
+    }
+    return rights.Complete ? 0 : 1;
 }

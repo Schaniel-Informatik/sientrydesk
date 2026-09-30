@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using SIEntryDesk.Core.Security;
@@ -55,6 +56,30 @@ public sealed partial class ProtectApiClient : IDisposable
             }
         }
         return streams;
+    }
+
+    /// <summary>Protect-Version, als einfache Prüfung des Schlüssels.</summary>
+    public async Task<string> GetVersionAsync(CancellationToken ct)
+    {
+        using var response = await _http.GetAsync($"{BasePath}/meta/info", ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        using var doc = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), cancellationToken: ct).ConfigureAwait(false);
+        return doc.RootElement.ValueKind == JsonValueKind.Object &&
+               doc.RootElement.TryGetProperty("applicationVersion", out var v) && v.ValueKind == JsonValueKind.String
+            ? UntrustedText.Clean(v.GetString(), 30)
+            : "?";
+    }
+
+    /// <summary>Legt für eine Kamera einen RTSPS-Stream an. Ändert die Kamera-Konfiguration, nur nach Bestätigung.</summary>
+    public async Task<IReadOnlyDictionary<string, StreamSource>> CreateStreamAsync(string cameraId, string quality, CancellationToken ct)
+    {
+        if (!UntrustedText.IsSafeId(cameraId) || quality is not ("low" or "medium" or "high"))
+            throw new ArgumentException("Ungültige Kamera oder Qualität.");
+        using var response = await _http.PostAsJsonAsync($"{BasePath}/cameras/{cameraId}/rtsps-stream",
+            new Dictionary<string, string[]> { ["qualities"] = [quality] }, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await GetStreamsAsync(cameraId, ct).ConfigureAwait(false);
     }
 
     /// <summary>Kamera-ID → Name aus Protect. Dient auch als Lebenszeichen für Schlüssel und Erreichbarkeit.</summary>
