@@ -5,6 +5,8 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using LibVLCSharp.Shared;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32;
@@ -28,6 +30,18 @@ public partial class SetupWindow : Window
     {
         public override string ToString() => Name;
     }
+
+    private enum Mark
+    {
+        Ok,
+        Fail,
+        Warn,
+        Info,
+    }
+
+    private static readonly Brush OkBrush = new SolidColorBrush(Color.FromRgb(0x1E, 0x8E, 0x3E));
+    private static readonly Brush FailBrush = new SolidColorBrush(Color.FromRgb(0xC6, 0x28, 0x28));
+    private static readonly Brush WarnBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x7B, 0x00));
 
     private readonly Task<LibVLC?> _libVlc;
     private readonly List<DoorRow> _rows = [];
@@ -69,13 +83,13 @@ public partial class SetupWindow : Window
         var host = HostBox.Text.Trim();
         if (Uri.CheckHostName(host) == UriHostNameType.Unknown)
         {
-            HostResult.Text = "✗ Kein gültiger Name und keine gültige IP.";
+            ShowLine(HostResult, Mark.Fail, "Kein gültiger Name und keine gültige IP.");
             return;
         }
         ResetAfterHost();
         _host = host;
         HostCheck.IsEnabled = false;
-        HostResult.Text = "Prüfe …";
+        ShowLine(HostResult, Mark.Info, "Prüfe …");
         try
         {
             _ports = await SetupChecks.CheckPortsAsync(host, CancellationToken.None);
@@ -85,19 +99,15 @@ public partial class SetupWindow : Window
             HostCheck.IsEnabled = true;
         }
 
-        var text = new StringBuilder();
-        foreach (var port in _ports)
-        {
-            text.AppendLine(port.Reachable
-                ? $"✓ {port.Name}, Port {port.Port}: erreichbar, Zertifikat {port.Fingerprint}"
-                : $"✗ {port.Name}, Port {port.Port}: nicht erreichbar ({port.Problem})");
-        }
+        var lines = _ports.Select(port => port.Reachable
+            ? (Mark.Ok, $"{port.Name}, Port {port.Port}: erreichbar, Zertifikat {port.Fingerprint}")
+            : (Mark.Fail, $"{port.Name}, Port {port.Port}: nicht erreichbar ({port.Problem})")).ToList();
         var accessOk = Pin(AccessApiClient.Port) is not null;
         if (!accessOk)
-            text.AppendLine("Ohne Port 12445 geht es nicht: Netz, VPN oder Firewall prüfen.");
+            lines.Add((Mark.Info, "Ohne Port 12445 geht es nicht: Netz, VPN oder Firewall prüfen."));
         else if (Pin(443) is null || Pin(7441) is null)
-            text.AppendLine("Ohne Port 443 und 7441 gibt es kein Livebild.");
-        HostResult.Text = text.ToString().TrimEnd();
+            lines.Add((Mark.Warn, "Ohne Port 443 und 7441 gibt es kein Livebild."));
+        ShowLines(HostResult, lines);
         PinsConfirmed.IsEnabled = accessOk;
     }
 
@@ -112,8 +122,8 @@ public partial class SetupWindow : Window
         _doors = null;
         _cameras = null;
         _rights = null;
-        AccessResult.Text = string.Empty;
-        ProtectResult.Text = string.Empty;
+        AccessResult.Inlines.Clear();
+        ProtectResult.Inlines.Clear();
         BuildDoorRows();
     }
 
@@ -133,7 +143,7 @@ public partial class SetupWindow : Window
         if (token.Length == 0 || Pin(AccessApiClient.Port) is not { } pin)
             return;
         AccessCheck.IsEnabled = false;
-        AccessResult.Text = "Prüfe …";
+        ShowLine(AccessResult, Mark.Info, "Prüfe …");
         try
         {
             _access?.Dispose();
@@ -141,20 +151,22 @@ public partial class SetupWindow : Window
             _rights = await SetupChecks.CheckAccessTokenAsync(_access, CancellationToken.None);
             _doors = _rights.Doors ? await _access.GetDoorsAsync(CancellationToken.None) : null;
 
-            var text = new StringBuilder()
-                .AppendLine(Mark(_rights.Events) + "Klingel-Ereignisse (Gerät = Anzeigen)")
-                .AppendLine(Mark(_rights.Doors) + "Türliste (Standorte = Anzeigen)")
-                .AppendLine(Mark(_rights.Unlock) + "Öffnen (Standorte = Bearbeiten)");
-            text.AppendLine(_rights.Excess.Count == 0
-                ? "✓ Keine überflüssigen Rechte"
-                : $"⚠ Überflüssige Rechte: {string.Join(", ", _rights.Excess)}. Token löschen und neu anlegen, dort „Keinen“.");
+            var lines = new List<(Mark, string)>
+            {
+                (_rights.Events ? Mark.Ok : Mark.Fail, "Klingel-Ereignisse (Gerät = Anzeigen)"),
+                (_rights.Doors ? Mark.Ok : Mark.Fail, "Türliste (Standorte = Anzeigen)"),
+                (_rights.Unlock ? Mark.Ok : Mark.Fail, "Öffnen (Standorte = Bearbeiten)"),
+                _rights.Excess.Count == 0
+                    ? (Mark.Ok, "Keine überflüssigen Rechte")
+                    : (Mark.Warn, $"Überflüssige Rechte: {string.Join(", ", _rights.Excess)}. Token löschen und neu anlegen, dort „Keinen“."),
+            };
             if (_doors is not null)
-                text.AppendLine($"Türen: {string.Join(", ", _doors.Select(d => d.Name))}");
-            AccessResult.Text = text.ToString().TrimEnd();
+                lines.Add((Mark.Info, $"Türen: {string.Join(", ", _doors.Select(d => d.Name))}"));
+            ShowLines(AccessResult, lines);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or AuthenticationException or JsonException)
         {
-            AccessResult.Text = $"✗ Keine Antwort von Access: {ex.Message}";
+            ShowLine(AccessResult, Mark.Fail, $"Keine Antwort von Access: {ex.Message}");
         }
         finally
         {
@@ -164,7 +176,30 @@ public partial class SetupWindow : Window
         UpdateSaveButton();
     }
 
-    private static string Mark(bool ok) => ok ? "✓ " : "✗ ";
+    private static void ShowLine(TextBlock target, Mark mark, string text) => ShowLines(target, [(mark, text)]);
+
+    /// <summary>Ergebniszeilen mit farbigem Zeichen: ✓ grün, ✗ rot, ⚠ orange.</summary>
+    private static void ShowLines(TextBlock target, IEnumerable<(Mark Mark, string Text)> lines)
+    {
+        target.Inlines.Clear();
+        var first = true;
+        foreach (var (mark, text) in lines)
+        {
+            if (!first)
+                target.Inlines.Add(new LineBreak());
+            first = false;
+            var (glyph, brush) = mark switch
+            {
+                Mark.Ok => ("✓ ", OkBrush),
+                Mark.Fail => ("✗ ", FailBrush),
+                Mark.Warn => ("⚠ ", WarnBrush),
+                _ => (string.Empty, (Brush?)null),
+            };
+            if (glyph.Length > 0)
+                target.Inlines.Add(new Run(glyph) { Foreground = brush, FontWeight = FontWeights.Bold });
+            target.Inlines.Add(new Run(text));
+        }
+    }
 
     // ---------------------------------------------------------------- 3. Protect
 
@@ -174,24 +209,24 @@ public partial class SetupWindow : Window
         if (key.Length == 0 || Pin(443) is not { } pin)
             return;
         ProtectCheck.IsEnabled = false;
-        ProtectResult.Text = "Prüfe …";
+        ShowLine(ProtectResult, Mark.Info, "Prüfe …");
         try
         {
             _protect?.Dispose();
             _protect = new ProtectApiClient(_host, key, CertificatePin.Parse(pin));
             var version = await _protect.GetVersionAsync(CancellationToken.None);
             _cameras = await _protect.GetCameraNamesAsync(CancellationToken.None);
-            ProtectResult.Text = $"✓ Protect {version}\nKameras: {string.Join(", ", _cameras.Values)}";
+            ShowLines(ProtectResult, [(Mark.Ok, $"Protect {version}"), (Mark.Info, $"Kameras: {string.Join(", ", _cameras.Values)}")]);
         }
         catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
         {
             _cameras = null;
-            ProtectResult.Text = "✗ Protect lehnt den Schlüssel ab.";
+            ShowLine(ProtectResult, Mark.Fail, "Protect lehnt den Schlüssel ab.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or AuthenticationException or JsonException)
         {
             _cameras = null;
-            ProtectResult.Text = $"✗ Keine Antwort von Protect: {ex.Message}";
+            ShowLine(ProtectResult, Mark.Fail, $"Keine Antwort von Protect: {ex.Message}");
         }
         finally
         {
@@ -258,21 +293,34 @@ public partial class SetupWindow : Window
         row.Test.IsEnabled = false;
         if (_protect is null || SelectedCamera(row) is not { } camera)
         {
-            row.Stream.Text = _protect is null ? "" : "–";
+            row.Stream.Inlines.Clear();
+            if (_protect is not null)
+                ShowLine(row.Stream, Mark.Info, "–");
+            UpdateStreamHint();
             return;
         }
-        row.Stream.Text = "prüfe …";
+        ShowLine(row.Stream, Mark.Info, "prüfe …");
         try
         {
             var streams = await _protect.GetStreamsAsync(camera, CancellationToken.None);
-            row.Stream.Text = streams.Count == 0 ? "kein Stream" : $"Stream: {string.Join(", ", streams.Keys)}";
+            if (streams.Count == 0)
+                ShowLine(row.Stream, Mark.Fail, "kein Stream");
+            else
+                ShowLine(row.Stream, Mark.Ok, $"Stream: {string.Join(", ", streams.Keys)}");
             row.Create.IsEnabled = streams.Count == 0;
             row.Test.IsEnabled = streams.Count > 0 && Pin(7441) is not null;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or AuthenticationException or JsonException)
         {
-            row.Stream.Text = "nicht lesbar";
+            ShowLine(row.Stream, Mark.Warn, "nicht lesbar");
         }
+        UpdateStreamHint();
+    }
+
+    /// <summary>Hinweis, wo man einen fehlenden Stream anlegt, sobald einer Tür mit Kamera der Stream fehlt.</summary>
+    private void UpdateStreamHint()
+    {
+        StreamHint.Visibility = _rows.Any(r => r.Create.IsEnabled) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task CreateStreamAsync(DoorRow row)
@@ -334,7 +382,7 @@ public partial class SetupWindow : Window
     {
         if (!int.TryParse(LiveViewSecondsBox.Text.Trim(), out var seconds) || seconds is < 15 or > 600)
         {
-            SaveResult.Text = "✗ Dauer des Livebilds: eine Zahl von 15 bis 600.";
+            ShowLine(SaveResult, Mark.Fail, "Dauer des Livebilds: eine Zahl von 15 bis 600.");
             return;
         }
         var warnings = new List<string>();
@@ -373,6 +421,6 @@ public partial class SetupWindow : Window
         if (dialog.ShowDialog(this) != true)
             return;
         File.WriteAllText(dialog.FileName, SetupChecks.ToConfigJson(options, DateTime.Now), new UTF8Encoding(false));
-        SaveResult.Text = $"✓ Gespeichert: {dialog.FileName}";
+        ShowLine(SaveResult, Mark.Ok, $"Gespeichert: {dialog.FileName}");
     }
 }

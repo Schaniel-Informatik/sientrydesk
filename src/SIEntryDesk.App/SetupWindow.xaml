@@ -53,6 +53,10 @@
                 <PasswordBox x:Name="AccessTokenBox" />
             </DockPanel>
             <TextBlock x:Name="AccessResult" Style="{StaticResource Result}" />
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="Gültig bis (wie in Access beim Anlegen angezeigt):" VerticalAlignment="Center" Width="360" />
+                <DatePicker x:Name="TokenExpiresPicker" Width="160" />
+            </StackPanel>
 
             <TextBlock Style="{StaticResource Heading}" Text="3. Protect-Schlüssel (für das Livebild)" />
             <TextBlock Style="{StaticResource Hint}"
@@ -62,6 +66,12 @@
                 <PasswordBox x:Name="ProtectKeyBox" />
             </DockPanel>
             <TextBlock x:Name="ProtectResult" Style="{StaticResource Result}" />
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <TextBlock Text="Gültig bis (wie in UniFi OS beim Anlegen angezeigt):" VerticalAlignment="Center" Width="360" />
+                <DatePicker x:Name="ProtectKeyExpiresPicker" Width="160" />
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                       Text="Das Ablaufdatum geben die Schnittstellen nicht preis, es steht nur in der UniFi-Oberfläche. Ab 14 Tagen vor dem früheren der beiden Daten wird das Symbol orange, und jede App meldet einmal pro Tag, bis wann erneuert werden muss." />
 
             <TextBlock Style="{StaticResource Heading}" Text="4. Türen und Kameras" />
             <TextBlock Style="{StaticResource Hint}"
@@ -77,23 +87,18 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
             </Grid>
+            <TextBlock x:Name="StreamHint" Style="{StaticResource Hint}" Margin="0,8,0,0" Visibility="Collapsed"
+                       Text="Ohne Stream kein Livebild. Anlegen mit „Stream anlegen“ oder in Protect bei der Kamera unter Einstellungen → Erweitert → RTSP, Qualität „Mittel“. Die Stream-Adresse wirkt wie ein Zugangsschlüssel, nicht weitergeben." />
 
-            <TextBlock Style="{StaticResource Heading}" Text="5. Einstellungen" />
-            <CheckBox x:Name="LiveViewBox" IsChecked="True" Content="Livebild ohne Klingeln im Menü der App" />
+            <TextBlock Style="{StaticResource Heading}" Text="5. Livebild ohne Klingeln" />
+            <CheckBox x:Name="LiveViewBox" IsChecked="True">
+                <TextBlock TextWrapping="Wrap"
+                           Text="Benutzer dürfen das Livebild jederzeit öffnen, auch wenn niemand klingelt (Linksklick auf das Klingel-Symbol, dann die Tür). Jeder Abruf wird mit Benutzer protokolliert." />
+            </CheckBox>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Dauer des Livebilds ohne Klingeln (15–600 s):" VerticalAlignment="Center" Width="330" />
+                <TextBlock Text="Das Livebild schliesst sich nach (15–600 Sekunden):" VerticalAlignment="Center" Width="360" />
                 <TextBox x:Name="LiveViewSecondsBox" Text="60" Width="70" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Access-Token gültig bis:" VerticalAlignment="Center" Width="330" />
-                <DatePicker x:Name="TokenExpiresPicker" Width="160" />
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Protect-Schlüssel gültig bis:" VerticalAlignment="Center" Width="330" />
-                <DatePicker x:Name="ProtectKeyExpiresPicker" Width="160" />
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
-                       Text="Ab 14 Tagen vor dem früheren Datum wird das Symbol orange, und jede App meldet einmal pro Tag, bis wann erneuert werden muss." />
 
             <TextBlock Style="{StaticResource Heading}" Text="6. Speichern" />
             <StackPanel Orientation="Horizontal">
