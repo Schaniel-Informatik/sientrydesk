@@ -18,6 +18,7 @@ Stand: Pilot, Repository privat.
 | [docs/machbarkeitstest.md](docs/machbarkeitstest.md) | Was an einer echten Anlage getestet wurde, mit Ergebnissen |
 | [docs/api-notizen.md](docs/api-notizen.md) | Verwendete API-Endpunkte, Ereignisse und im Test ermitteltes Verhalten |
 | [docs/mvp.md](docs/mvp.md) | Architektur und Entscheide (Dienst und App getrennt, Livebild über den Dienst) |
+| [docs/gegensprechen.md](docs/gegensprechen.md) | Gegensprechen: wie es geht, Grenzen, Entscheide |
 | [docs/backlog.md](docs/backlog.md) | Offene Punkte und nächste Schritte |
 | [docs/vorwissen.md](docs/vorwissen.md) | Hintergrund aus der Praxis |
 | `src/` | Quellcode: `SIEntryDesk.Core` (gemeinsame Logik), `.Service` (Windows-Dienst), `.App` (Tray-App) |

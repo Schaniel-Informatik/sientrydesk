@@ -20,9 +20,8 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 ## Nächste Schritte
 - **0.4 Einrichtungsassistent:** umgesetzt (`SIEntryDesk.exe --setup`). Unter Windows noch zu testen.
 - **Intune-Paketierung:** in Arbeit (2026-09-30).
-- **Gegensprechen (Stufe 2):** Die Anlage kann es wieder (Access-Web-App und Mobile, 2026-09-30). Weg über die
-  Protect-Talkback-Sitzung (Opus 24 kHz per RTP an die Türstation, im Machbarkeitstest bestätigt). Zu klären:
-  Sprechtaste oder Vollduplex (Echo), Mikrofonwahl, nur während Ruf/Livebild, UDP von den PCs zu den Türstationen.
+- **Gegensprechen (Stufe 2):** Die Anlage kann es wieder (Access-Web-App und Mobile, 2026-09-30). Grundlagen,
+  Grenzen und offene Entscheide in [gegensprechen.md](gegensprechen.md).
 - **Ton der Tür an einem echten PC prüfen:** erledigt am 2026-09-30, Ton hörbar. Gegensprechen geht an der Anlage
   derzeit auch in der Mobile-App nicht, das Problem liegt bei UniFi Access.
 
