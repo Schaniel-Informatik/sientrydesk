@@ -17,3 +17,6 @@ obj/
 
 # Build-Pakete
 artifacts/
+
+# Zugänge für das Intune-Paket, nie einchecken
+tokens.txt

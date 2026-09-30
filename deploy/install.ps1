@@ -117,12 +117,142 @@ $shortcut.Save()
 Start-Service $serviceName
 Start-Sleep -Seconds 3
 Write-Host "    Dienst: $((Get-Service $serviceName).Status)"
-# Im System-Kontext (Intune) gibt es keine Anzeige, die App startet dann bei der nächsten Anmeldung.
-if (-not ([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
-    # Im normalen Benutzerkontext starten, nicht in dieser erhöhten Sitzung.
+$version = (Get-Item $appExe).VersionInfo.ProductVersion.Split('+')[0]
+New-Item -Force -Path 'HKLM:\SOFTWARE\SIEntryDesk' | Out-Null
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Name 'Version' -Value $version
+
+if (([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
+    # Intune installiert als SYSTEM. Die Tray-App wurde oben beendet und muss in den angemeldeten Sitzungen wieder
+    # laufen, sonst klingelt bis zur nächsten Anmeldung nichts. Als SYSTEM geht das über die Sitzungsverwaltung,
+    # gestartet wird mit dem normalen (nicht erhöhten) Token des jeweiligen Benutzers.
+    try {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class SIEntryDeskSessionLauncher
+{
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WTS_SESSION_INFO
+    {
+        public uint SessionId;
+        public IntPtr WinStationName;
+        public int State;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct STARTUPINFO
+    {
+        public int cb;
+        public string lpReserved;
+        public string lpDesktop;
+        public string lpTitle;
+        public int dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars, dwFillAttribute, dwFlags;
+        public short wShowWindow, cbReserved2;
+        public IntPtr lpReserved2, hStdInput, hStdOutput, hStdError;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PROCESS_INFORMATION
+    {
+        public IntPtr hProcess, hThread;
+        public int dwProcessId, dwThreadId;
+    }
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSEnumerateSessions(IntPtr server, int reserved, int version, out IntPtr sessionInfo, out int count);
+    [DllImport("wtsapi32.dll")]
+    private static extern void WTSFreeMemory(IntPtr memory);
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSQueryUserToken(uint sessionId, out IntPtr token);
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool DuplicateTokenEx(IntPtr existing, uint access, IntPtr attributes, int level, int type, out IntPtr newToken);
+    [DllImport("userenv.dll", SetLastError = true)]
+    private static extern bool CreateEnvironmentBlock(out IntPtr environment, IntPtr token, bool inherit);
+    [DllImport("userenv.dll", SetLastError = true)]
+    private static extern bool DestroyEnvironmentBlock(IntPtr environment);
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CreateProcessAsUser(IntPtr token, string application, string commandLine, IntPtr processAttributes,
+        IntPtr threadAttributes, bool inheritHandles, uint creationFlags, IntPtr environment, string currentDirectory,
+        ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation);
+    [DllImport("kernel32.dll")]
+    private static extern bool CloseHandle(IntPtr handle);
+
+    private const int WTSActive = 0;
+    private const int WTSDisconnected = 4;
+    private const uint MaximumAllowed = 0x02000000;
+    private const int SecurityImpersonation = 2;
+    private const int TokenPrimary = 1;
+    private const uint CreateUnicodeEnvironment = 0x00000400;
+
+    // Startet ein Programm in jeder angemeldeten Benutzersitzung, mit dem normalen Token des Benutzers.
+    // Geht nur als SYSTEM (Intune), gibt die Anzahl gestarteter Prozesse zurück.
+    public static int StartInUserSessions(string exe, string directory)
+    {
+        IntPtr sessions;
+        int count;
+        if (!WTSEnumerateSessions(IntPtr.Zero, 0, 1, out sessions, out count))
+            return 0;
+        int started = 0;
+        try
+        {
+            int size = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
+            for (int i = 0; i < count; i++)
+            {
+                WTS_SESSION_INFO info = (WTS_SESSION_INFO)Marshal.PtrToStructure(
+                    new IntPtr(sessions.ToInt64() + i * size), typeof(WTS_SESSION_INFO));
+                if (info.State != WTSActive && info.State != WTSDisconnected)
+                    continue;
+                IntPtr userToken;
+                if (!WTSQueryUserToken(info.SessionId, out userToken))
+                    continue;
+                IntPtr primary = IntPtr.Zero;
+                IntPtr environment = IntPtr.Zero;
+                try
+                {
+                    if (!DuplicateTokenEx(userToken, MaximumAllowed, IntPtr.Zero, SecurityImpersonation, TokenPrimary, out primary))
+                        continue;
+                    CreateEnvironmentBlock(out environment, primary, false);
+                    STARTUPINFO startup = new STARTUPINFO();
+                    startup.cb = Marshal.SizeOf(typeof(STARTUPINFO));
+                    startup.lpDesktop = "winsta0\\default";
+                    PROCESS_INFORMATION process;
+                    if (CreateProcessAsUser(primary, exe, "\"" + exe + "\"", IntPtr.Zero, IntPtr.Zero, false,
+                            CreateUnicodeEnvironment, environment, directory, ref startup, out process))
+                    {
+                        CloseHandle(process.hThread);
+                        CloseHandle(process.hProcess);
+                        started++;
+                    }
+                }
+                finally
+                {
+                    if (environment != IntPtr.Zero)
+                        DestroyEnvironmentBlock(environment);
+                    if (primary != IntPtr.Zero)
+                        CloseHandle(primary);
+                    CloseHandle(userToken);
+                }
+            }
+        }
+        finally
+        {
+            WTSFreeMemory(sessions);
+        }
+        return started;
+    }
+}
+'@
+        $started = [SIEntryDeskSessionLauncher]::StartInUserSessions($appExe, (Split-Path $appExe))
+        Write-Host "    App in $started angemeldeten Sitzung(en) gestartet."
+    } catch {
+        Write-Warning "App konnte nicht in den Sitzungen gestartet werden, sie startet bei der nächsten Anmeldung: $($_.Exception.Message)"
+    }
+} else {
+    # Von Hand installiert: im normalen Benutzerkontext starten, nicht in dieser erhöhten Sitzung.
     Start-Process explorer.exe -ArgumentList "`"$appExe`""
 }
 
-Write-Host "    Version: $((Get-Item $appExe).VersionInfo.ProductVersion.Split('+')[0])"
+Write-Host "    Version: $version"
 Write-Host ''
 Write-Host 'Fertig. Protokoll des Dienstes:' $logDir

@@ -84,9 +84,8 @@ Paket entpacken, `sientrydesk.json` daneben legen, PowerShell als Administrator:
 | Livebild ohne Klingeln auf diesem PC aus | zusätzlich `-NoLiveView` |
 | Entfernen | `powershell -ExecutionPolicy Bypass -File .\uninstall.ps1` (mit `-KeepData` bleiben Konfiguration und Zugänge) |
 
-**Intune (geplant):** Win32-App an eine **Gerätegruppe** (nicht Benutzer), Installationsbefehl ohne `-SetTokens`,
-Erkennung über die Version von `SIEntryDesk.exe`. Die Zugänge kommen getrennt auf die Geräte. Wie, wird bei der
-Paketierung festgelegt.
+**Intune:** zwei Win32-Apps an eine Gerätegruppe, das Programm und die Zugänge getrennt. Schritt für Schritt in
+[intune.md](intune.md).
 
 ## Zugänge jährlich erneuern
 Ohne Unterbruch, weil der alte Zugang bis zum Schluss gültig bleibt:

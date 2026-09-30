@@ -13,7 +13,8 @@ Stand: Pilot, Repository privat.
 | Pfad | Inhalt |
 |---|---|
 | [docs/betrieb.md](docs/betrieb.md) | **Einrichtung und Betrieb:** Zugänge und Rechte, Voraussetzungen bei UniFi, Konfiguration, Installation, jährliche Erneuerung, Störungen |
-| [deploy/](deploy/) | Installationsskripte, Beispiel-Konfiguration, Kurzanleitung für Installation und Test (`PILOT.md`) |
+| [docs/intune.md](docs/intune.md) | **Verteilung mit Intune:** zwei Win32-Apps (Programm und Zugänge), Befehle, Erkennung, Updates, jährliche Erneuerung |
+| [deploy/](deploy/) | Installationsskripte, Beispiel-Konfiguration, Intune-Skript für die Zugänge, Kurzanleitung (`PILOT.md`) |
 | [docs/machbarkeitstest.md](docs/machbarkeitstest.md) | Was an einer echten Anlage getestet wurde, mit Ergebnissen |
 | [docs/api-notizen.md](docs/api-notizen.md) | Verwendete API-Endpunkte, Ereignisse und im Test ermitteltes Verhalten |
 | [docs/mvp.md](docs/mvp.md) | Architektur und Entscheide (Dienst und App getrennt, Livebild über den Dienst) |

@@ -15,6 +15,8 @@ common=(-c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:Debu
 dotnet publish src/SIEntryDesk.Service "${common[@]}" -o "$out/Service"
 dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
 cp deploy/install.ps1 deploy/uninstall.ps1 deploy/set-tokens.ps1 deploy/sientrydesk.example.json deploy/PILOT.md "$out/"
+mkdir -p "$out/intune-zugaenge"
+cp deploy/intune-zugaenge/set-tokens-intune.ps1 deploy/intune-zugaenge/tokens.example.txt "$out/intune-zugaenge/"
 
 (cd artifacts && zip -qr "$name.zip" "$name")
 echo "Paket: artifacts/$name.zip ($(du -h "artifacts/$name.zip" | cut -f1))"
