@@ -14,9 +14,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   (Variante A, Risiko zur Kenntnis genommen).
 
 ## Nächste Schritte
-- **0.4: Einrichtungsassistent** für Admins: Erreichbarkeit, Pins bestätigen, Tokens und Rechte prüfen (lesend und
-  mit der Probe „Öffnen einer Tür, die es nicht gibt“), Protect-Schlüssel, Türen den Kameras zuordnen, RTSPS anlegen,
-  Livebild testen, sientrydesk.json speichern.
+- **0.4 Einrichtungsassistent:** umgesetzt (`SIEntryDesk.exe --setup`). Unter Windows noch zu testen.
 - **Intune-Paketierung:** Win32-App an Gerätegruppe, Erkennung über die Version, Tokens getrennt verteilen.
 - **Ton der Tür an einem echten PC prüfen:** erledigt am 2026-09-30, Ton hörbar. Gegensprechen geht an der Anlage
   derzeit auch in der Mobile-App nicht, das Problem liegt bei UniFi Access.

@@ -38,8 +38,25 @@ Für Admins, die SI EntryDesk einrichten, verteilen und jährlich die Zugänge e
 - **Netz:** Die PCs erreichen die Konsole auf TCP 12445 (Access), 443 (Protect) und 7441 (Stream). Die App selbst
   braucht keine eingehenden Verbindungen, der Installer sperrt sie in der Windows-Firewall.
 
+## Einrichtungsassistent
+Der einfachste Weg zur Konfiguration. Auf einem Windows-PC im Firmennetz oder über VPN, aus dem entpackten Paket:
+```powershell
+.\App\SIEntryDesk.exe --setup
+```
+Er prüft Schritt für Schritt:
+1. Erreichbarkeit der Konsole (Ports 12445, 443, 7441) und zeigt die Zertifikats-Fingerabdrücke, die du als Pins bestätigst.
+2. Den Access-Token: die nötigen Rechte, Warnung bei überflüssigen. Das Recht zum Öffnen prüft er an einer Tür, die es nicht gibt.
+3. Den Protect-Schlüssel: Version und Kameras.
+4. Türen und Kameras: Er schlägt die Zuordnung über die Namen vor und zeigt, ob der RTSPS-Stream vorhanden ist. Auf
+   Bestätigung legt er ihn an. „Livebild testen“ zeigt das Bild über denselben geprüften Weg wie die App.
+5. Einstellungen: Livebild ohne Klingeln, Dauer, Ablaufdaten.
+6. Er speichert die sientrydesk.json.
+
+Tokens verwendet der Assistent nur zum Prüfen, er speichert sie nicht.
+
 ## Konfiguration: sientrydesk.json
-Vorlage: `deploy/sientrydesk.example.json`. Kommentare nur auf eigenen Zeilen.
+Erstellt mit dem Einrichtungsassistenten oder von Hand aus `deploy/sientrydesk.example.json`.
+Kommentare nur auf eigenen Zeilen.
 
 | Feld | Bedeutung |
 |---|---|

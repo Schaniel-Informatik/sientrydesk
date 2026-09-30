@@ -44,6 +44,17 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Einrichtungsassistent für Admins, unabhängig von einer laufenden Tray-App.
+        if (e.Args.Contains("--setup", StringComparer.OrdinalIgnoreCase))
+        {
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            _libVlc = Task.Run(LoadLibVlc);
+            MainWindow = new SetupWindow(_libVlc);
+            MainWindow.Show();
+            return;
+        }
+
         _singleInstance = new Mutex(true, @"Local\SIEntryDesk.App", out var isFirst);
         if (!isFirst)
         {
