@@ -85,8 +85,9 @@ ein eigenes Paket austauschen, aber nicht auslesen. Die Kennung (`2026-09`) ist 
 
 ## Software-Update
 Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, Erkennungsskript erzeugen,
-`.intunewin` erstellen. In Intune die App **SI EntryDesk** bearbeiten: Paket und Erkennungsskript ersetzen. Dasselbe,
-wenn sich nur die `sientrydesk.json` ändert. Alternativ eine neue App anlegen, die die
+`.intunewin` erstellen. In Intune die App **SI EntryDesk** bearbeiten: Paket und Erkennungsskript ersetzen, das Feld
+*App-Version* nachführen. Dasselbe, wenn sich nur die `sientrydesk.json` ändert. *App-Version* ist nur eine
+Beschriftung, die Intune in den Berichten anzeigt. Welche Version ein Gerät wirklich hat, steht auf dem Gerät. Alternativ eine neue App anlegen, die die
 alte per **Ablösung** ersetzt, *ohne* Deinstallation der alten.
 
 ## Zugänge jährlich erneuern
@@ -98,7 +99,11 @@ alte per **Ablösung** ersetzt, *ohne* Deinstallation der alten.
 4. Wenn alle Geräte die neue Kennung melden: die alten Zugänge in UniFi löschen.
 
 ## Kontrolle
-- Intune → App → Geräteinstallationsstatus.
+- Intune → App → Geräteinstallationsstatus. Der Bericht hinkt nach, oft um eine Stunde und mehr.
+- Sofort prüfen lassen statt warten: auf dem Gerät als Administrator
+  `Restart-Service IntuneManagementExtension`. Die Intune-Erweiterung prüft dann ihre Apps gleich neu.
+- Installierte Version auf dem Gerät:
+  `(Get-Item 'C:\Program Files\SIEntryDesk\App\SIEntryDesk.exe').VersionInfo.FileVersion`.
 - Auf dem Gerät: `HKLM\SOFTWARE\SIEntryDesk` mit `Version` und `TokenLabel`, Symbol grün, Protokoll unter
   `C:\ProgramData\SIEntryDesk\logs`.
 - Installation über Intune: `C:\Windows\Temp\SIEntryDesk-install.log`. Intune selbst:
