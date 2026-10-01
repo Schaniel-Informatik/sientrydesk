@@ -1,3 +1,10 @@
-ACCESS-TOKEN-HIER
+# SI EntryDesk: Zugänge für das Intune-Paket „SI EntryDesk Zugänge“
+# Als tokens.txt neben set-tokens-intune.ps1 speichern, Paket erstellen, danach tokens.txt sofort löschen.
+# Den Wert direkt hinter das Gleichheitszeichen kopieren, ohne Leerzeichen, Anführungszeichen oder <>.
+# Zeilen mit # zählen nicht.
 
-PROTECT-SCHLUESSEL-HIER
+# Access-Token: Access > Einstellungen > Allgemein > API Token. Pflicht.
+access=
+
+# API-Schlüssel: UniFi OS > Einstellungen > Control Plane > Integrations. Leer lassen = kein Livebild.
+protect=

@@ -43,7 +43,8 @@ allen angemeldeten Sitzungen. Die Benutzer merken vom Update höchstens ein kurz
 ## App 2: SI EntryDesk Zugänge
 1. Einen **eigenen** Ordner anlegen, am besten auf einem vertrauenswürdigen Admin-PC, mit:
    - `set-tokens-intune.ps1` (aus `intune-zugaenge` im Paket)
-   - `tokens.txt` nach `tokens.example.txt`: Zeile 1 Access-Token, Zeile 2 leer, Zeile 3 Protect-Schlüssel
+   - `tokens.txt`: `tokens.example.txt` kopieren und die Werte hinter `access=` und `protect=` einsetzen
+     (Pakete bis 0.4.2: ohne Namen, Zeile 1 Access-Token, Zeile 2 leer, Zeile 3 Protect-Schlüssel)
 2. Paket erstellen, dann **`tokens.txt` sofort löschen**:
    ```
    IntuneWinAppUtil.exe -c <Ordner> -s set-tokens-intune.ps1 -o <Ausgabeordner> -q

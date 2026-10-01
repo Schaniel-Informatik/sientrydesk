@@ -3,10 +3,11 @@
     Intune: setzt die Zugänge von SI EntryDesk. Eigene Win32-App „SI EntryDesk Zugänge“, abhängig von „SI EntryDesk“.
 
 .DESCRIPTION
-    Liest tokens.txt aus demselben Ordner (UTF-8):
-      Zeile 1: Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten)
-      Zeile 2: leer (optional eigener Token zum Öffnen)
-      Zeile 3: Protect-API-Schlüssel (leer = kein Livebild)
+    Liest tokens.txt aus demselben Ordner (UTF-8, Vorlage tokens.example.txt). Leere Zeilen und Zeilen mit # zählen
+    nicht, sonst gilt pro Zeile name=wert:
+      access=   Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten), Pflicht
+      protect=  Protect-API-Schlüssel, leer oder weggelassen = kein Livebild
+      unlock=   optional eigener Access-Token nur zum Öffnen, normalerweise weglassen
     Speichert sie mit DPAPI über den Dienst, startet ihn neu und hinterlegt die Kennung unter
     HKLM\SOFTWARE\SIEntryDesk\TokenLabel für die Erkennungsregel in Intune.
 
@@ -23,6 +24,29 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Fehlermeldungen nennen nur Zeilennummer und Namen, nie den Inhalt, damit kein Token im Intune-Protokoll landet.
+function Read-TokenFile([string] $Path) {
+    if (-not (Test-Path $Path)) { throw 'tokens.txt fehlt im Paket.' }
+    $values = @{}
+    $n = 0
+    foreach ($raw in @(Get-Content -Encoding UTF8 $Path)) {
+        $n++
+        $line = $raw.Trim()
+        if (-not $line -or $line.StartsWith('#')) { continue }
+        $eq = $line.IndexOf('=')
+        if ($eq -lt 1) { throw "tokens.txt, Zeile ${n}: erwartet name=wert, z. B. access=... (Vorlage tokens.example.txt)." }
+        $key = $line.Substring(0, $eq).Trim().ToLowerInvariant()
+        $value = $line.Substring($eq + 1).Trim()
+        if (@('access', 'unlock', 'protect') -notcontains $key) { throw "tokens.txt, Zeile ${n}: unbekannter Name, erlaubt sind access, protect und unlock." }
+        if ($values.ContainsKey($key)) { throw "tokens.txt, Zeile ${n}: $key kommt doppelt vor." }
+        if ($value -match '[\s<>"'']') { throw "tokens.txt, Zeile ${n}: Wert von $key enthält Leerzeichen, Anführungszeichen oder <>. Nur den Wert selbst einsetzen." }
+        $values[$key] = $value
+    }
+    if (-not $values['access']) { throw 'tokens.txt: access= fehlt oder ist leer.' }
+    return $values
+}
+
 $serviceExe = Join-Path $env:ProgramFiles 'SIEntryDesk\Service\SIEntryDesk.Service.exe'
 $secrets    = Join-Path $env:ProgramData 'SIEntryDesk\secrets.dat'
 $regPath    = 'HKLM:\SOFTWARE\SIEntryDesk'
@@ -37,15 +61,11 @@ if ($Remove) {
 if (-not $Label -or $Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Kennung fehlt oder ist ungültig, z. B. -Label 2026-09' }
 if (-not (Test-Path $serviceExe)) { throw 'SI EntryDesk ist nicht installiert (Abhängigkeit in Intune prüfen).' }
 
-$lines = @(Get-Content -Encoding UTF8 (Join-Path $PSScriptRoot 'tokens.txt'))
-$access = if ($lines.Count -gt 0) { $lines[0].Trim() } else { '' }
-if (-not $access) { throw 'tokens.txt: Zeile 1 (Access-Token) fehlt.' }
-$unlock = if ($lines.Count -gt 1) { $lines[1].Trim() } else { '' }
-$protect = if ($lines.Count -gt 2) { $lines[2].Trim() } else { '' }
-
-"$access`n$unlock`n$protect" | & $serviceExe set-secrets | Out-Null
+$tokens = Read-TokenFile (Join-Path $PSScriptRoot 'tokens.txt')
+"$($tokens['access'])`n$($tokens['unlock'])`n$($tokens['protect'])" | & $serviceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
-Remove-Variable access, unlock, protect, lines
+$tokens.Clear()
+Remove-Variable tokens
 if ($code -ne 0) { throw "Zugänge konnten nicht gespeichert werden (Code $code)" }
 
 New-Item -Force -Path $regPath | Out-Null
