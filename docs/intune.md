@@ -110,3 +110,24 @@ alte per **Ablösung** ersetzt, *ohne* Deinstallation der alten.
   `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\AppWorkload.log`.
 - „Nach erfolgreicher Installation nicht erkannt“ (0x87D1041C): Das Skript lief durch, die Erkennung passt nicht.
   Erkennungsskript im Gerät als Administrator ausführen; ohne Ausgabe zeigt es, dass etwas fehlt.
+
+### Fehlgeschlagene App sofort neu versuchen
+Nach einem Fehler versucht die Intune-Erweiterung eine Win32-App erst nach **24 Stunden** wieder (Global
+Re-evaluation Schedule). Neustart der Erweiterung oder des Geräts ändert daran nichts, auch nicht ein neues Paket.
+Auf einem Testgerät lässt sich der lokale Zustand zurücksetzen, die App wird dabei nicht deinstalliert. Die App-IDs
+stehen in Intune in der Adresse der App (`…/appId/<App-ID>`), PowerShell als Administrator:
+```powershell
+& {
+    $appIds = '<App-ID SI EntryDesk>', '<App-ID SI EntryDesk Zugänge>'
+    $root = 'HKLM:\SOFTWARE\Microsoft\IntuneManagementExtension\Win32Apps'
+    foreach ($scope in Get-ChildItem $root -ErrorAction SilentlyContinue) {
+        foreach ($appId in $appIds) {
+            Get-ChildItem $scope.PSPath | Where-Object { $_.PSChildName -like "$appId*" } | Remove-Item -Recurse -Force
+            Get-ChildItem (Join-Path $scope.PSPath 'GRS') -ErrorAction SilentlyContinue |
+                Where-Object { (Get-Item $_.PSPath).Property | Where-Object { $_ -like "$appId*" } } |
+                Remove-Item -Recurse -Force
+        }
+    }
+    Restart-Service IntuneManagementExtension
+}
+```
