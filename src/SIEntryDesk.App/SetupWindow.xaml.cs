@@ -136,8 +136,26 @@ public partial class SetupWindow : Window
         TokenExpiresPicker.SelectedDate = options.TokenExpires;
         ProtectKeyExpiresPicker.SelectedDate = options.ProtectKeyExpires;
         SaveResult.Inlines.Clear();
-        ShowLines(LoadResult, DescribeLoaded(path, options));
+        var lines = DescribeLoaded(path, options);
+        ShowLines(LoadResult, lines);
         await CheckHostAsync();
+        // Ergebnis der Fingerabdrücke gleich oben, die Einzelheiten stehen unter 1. Konsole.
+        if (Reference is not null && _ports.Count > 0)
+        {
+            lines.Insert(1, PinSummary(options));
+            ShowLines(LoadResult, lines);
+        }
+    }
+
+    private (Mark, string) PinSummary(EntryDeskOptions options)
+    {
+        var results = _ports.Select(p => (p.Port, State: SetupChecks.ComparePin(p, SetupChecks.ConfiguredPin(options, p.Port)))).ToList();
+        string Ports(PinComparison state) => string.Join(", ", results.Where(r => r.State == state).Select(r => r.Port));
+        if (results.Any(r => r.State == PinComparison.Mismatch))
+            return (Mark.Fail, $"Fingerabdruck auf Port {Ports(PinComparison.Mismatch)} stimmt nicht mit der Datei überein, Einzelheiten unter 1. Konsole.");
+        if (results.Any(r => r.State == PinComparison.Unreachable))
+            return (Mark.Warn, $"Port {Ports(PinComparison.Unreachable)} nicht erreichbar, dort ist der Fingerabdruck nicht geprüft.");
+        return (Mark.Ok, $"Fingerabdrücke aus der Datei stimmen mit der Konsole überein (Port {Ports(PinComparison.Match)}).");
     }
 
     private static List<(Mark, string)> DescribeLoaded(string path, EntryDeskOptions options)
@@ -160,8 +178,8 @@ public partial class SetupWindow : Window
         else if (dates.Count > 0)
             lines.Add((Mark.Ok, $"Zugänge gültig bis {dates.Min():dd.MM.yyyy}"));
 
-        lines.Add((Mark.Info, "Für die ganze Prüfung unten Access-Token und Protect-Schlüssel eingeben und prüfen. " +
-                              "Abweichungen von der Datei werden markiert."));
+        lines.Add((Mark.Info, "Access-Token und Protect-Schlüssel stehen nicht in der Datei. Für die Prüfung von Rechten, " +
+                              "Türen und Kameras unten eingeben und prüfen, Abweichungen von der Datei werden markiert."));
         return lines;
     }
 
@@ -217,9 +235,9 @@ public partial class SetupWindow : Window
             return (Mark.Ok, $"{prefix}: erreichbar, Zertifikat {port.Fingerprint}");
         return SetupChecks.ComparePin(port, SetupChecks.ConfiguredPin(reference, port.Port)) switch
         {
-            PinComparison.Match => (Mark.Ok, $"{prefix}: erreichbar, Zertifikat wie in der Konfiguration"),
-            PinComparison.Mismatch => (Mark.Fail, $"{prefix}: Zertifikat {port.Fingerprint} weicht von der Konfiguration ab"),
-            _ => (Mark.Info, $"{prefix}: erreichbar, Zertifikat {port.Fingerprint}, in der Konfiguration ohne Pin"),
+            PinComparison.Match => (Mark.Ok, $"{prefix}: erreichbar, Fingerabdruck stimmt mit der Datei überein"),
+            PinComparison.Mismatch => (Mark.Fail, $"{prefix}: Fingerabdruck {port.Fingerprint} stimmt nicht mit der Datei überein"),
+            _ => (Mark.Info, $"{prefix}: erreichbar, Fingerabdruck {port.Fingerprint}, in der Datei ohne Pin"),
         };
     }
 
