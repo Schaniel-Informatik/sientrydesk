@@ -36,5 +36,10 @@ Remove-ItemProperty -Path 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentV
 Remove-Item -Path 'HKLM:\SOFTWARE\WOW6432Node\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 if (-not $KeepData) {
     Remove-Item -Recurse -Force (Join-Path $env:ProgramData 'SIEntryDesk') -ErrorAction SilentlyContinue
+    Remove-Item -Force (Join-Path $env:WINDIR 'Temp\SIEntryDesk-install.log') -ErrorAction SilentlyContinue
+    # Einstellungen der Benutzer (Ton der Tür automatisch, Erinnerung), soweit ihre Profile geladen sind.
+    Get-ChildItem Registry::HKEY_USERS | ForEach-Object {
+        Remove-Item "Registry::$($_.Name)\Software\SIEntryDesk" -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 Write-Host 'SI EntryDesk entfernt.'
