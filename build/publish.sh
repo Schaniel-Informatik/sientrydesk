@@ -23,7 +23,8 @@ cp deploy/install.ps1 deploy/uninstall.ps1 deploy/set-tokens.ps1 deploy/sientryd
 mkdir -p "$tokensOut"
 cp deploy/intune-zugaenge/set-tokens-intune.ps1 deploy/intune-zugaenge/tokens.example.txt "$tokensOut/"
 
-# Sicherung: kein tokens.txt und keine Anlagen-Konfiguration in einem Paket.
+# Sicherung: Die ZIP-Dateien sind für alle Anlagen gleich und können später öffentlich werden. Die sientrydesk.json
+# einer Anlage und die tokens.txt legt der Admin erst beim Packen für Intune in den entpackten Ordner.
 if find "$out" "$tokensOut" \( -name tokens.txt -o -name sientrydesk.json \) | grep -q .; then
   echo "ABBRUCH: tokens.txt oder sientrydesk.json im Paket" >&2
   exit 1
