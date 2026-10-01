@@ -25,7 +25,23 @@ param(
     [switch] $NoLiveView
 )
 
+# Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
+# HKLM\SOFTWARE\WOW6432Node statt der richtigen Orte, deshalb hier in die 64-Bit-PowerShell wechseln.
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+    $arguments = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', $PSCommandPath)
+    foreach ($bound in $PSBoundParameters.GetEnumerator()) {
+        if ($bound.Value -is [switch]) { if ($bound.Value) { $arguments += "-$($bound.Key)" } }
+        else { $arguments += @("-$($bound.Key)", [string] $bound.Value) }
+    }
+    & (Join-Path $env:WINDIR 'Sysnative\WindowsPowerShell\v1.0\powershell.exe') @arguments
+    exit $LASTEXITCODE
+}
+
 $ErrorActionPreference = 'Stop'
+# Intune zeigt die Ausgabe nicht. Als SYSTEM deshalb ein Protokoll unter C:\Windows\Temp (enthält keine Zugänge).
+if (([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
+    Start-Transcript -Path (Join-Path $env:WINDIR 'Temp\SIEntryDesk-install.log') -Force | Out-Null
+}
 $serviceName    = 'SIEntryDesk'
 $serviceAccount = "NT SERVICE\$serviceName"
 $installDir     = Join-Path $env:ProgramFiles 'SIEntryDesk'
@@ -66,12 +82,20 @@ foreach ($part in 'Service', 'App') {
 }
 Copy-Item -Force (Join-Path $PSScriptRoot 'set-tokens.ps1') $installDir
 Get-ChildItem $installDir -Recurse -File | Unblock-File
+# Reste einer Installation durch die 32-Bit-PowerShell (Intune mit 0.5.0) entfernen.
+Remove-Item -Recurse -Force (Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk') -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
+Remove-Item -Path 'HKLM:\SOFTWARE\WOW6432Node\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 
 Write-Host '4/8 Dienst einrichten'
 if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
     New-Service -Name $serviceName -BinaryPathName "`"$serviceExe`"" -DisplayName 'SI EntryDesk' `
         -Description 'Klingel-Ereignisse von UniFi Access, Öffnen nur während eines Rufs' -StartupType Automatic | Out-Null
 }
+# Pfad immer setzen: Ein bestehender Dienst kann noch auf einen anderen Ort zeigen (z. B. Program Files (x86)).
+$change = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" |
+    Invoke-CimMethod -MethodName Change -Arguments @{ PathName = "`"$serviceExe`"" }
+if ($change.ReturnValue -ne 0) { throw "Programmpfad des Dienstes konnte nicht gesetzt werden (Code $($change.ReturnValue))" }
 Invoke-Native 'sc.exe' @('config', $serviceName, 'obj=', $serviceAccount, 'start=', 'auto')
 Invoke-Native 'sc.exe' @('failure', $serviceName, 'reset=', '86400', 'actions=', 'restart/5000/restart/5000/restart/30000')
 

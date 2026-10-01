@@ -21,11 +21,17 @@ und ein Software-Update berührt sie nicht. Das Werkzeug packt den ganzen Quello
 
 ## App 1: SI EntryDesk
 1. `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` in den Ordner neben `install.ps1` legen.
-2. Paket erstellen:
+2. Erkennungsskript erzeugen, im entpackten Ordner:
+   ```
+   powershell -ExecutionPolicy Bypass -File .\new-intune-detection.ps1
+   ```
+   Es schreibt `SIEntryDesk-<Version>-Erkennung.ps1` **neben** den Paketordner. Darin stehen die Version und der
+   SHA-256 der `sientrydesk.json`, keine Geheimnisse.
+3. Paket erstellen:
    ```
    IntuneWinAppUtil.exe -c <Paketordner> -s install.ps1 -o <Ausgabeordner> -q
    ```
-3. Intune → Apps → Windows → Hinzufügen → **Windows-App (Win32)**, die `.intunewin` hochladen.
+4. Intune → Apps → Windows → Hinzufügen → **Windows-App (Win32)**, die `.intunewin` hochladen.
 
 | Einstellung | Wert |
 |---|---|
@@ -34,11 +40,20 @@ und ein Software-Update berührt sie nicht. Das Werkzeug packt den ganzen Quello
 | Installationsverhalten | **System** |
 | Neustart des Geräts | Keine bestimmte Aktion |
 | Anforderungen | Windows 11, 64 Bit |
-| Erkennungsregel | Datei: `C:\Program Files\SIEntryDesk\App`, Datei `SIEntryDesk.exe`, **Version**, *größer oder gleich*, z. B. `0.5.0.0` |
+| Erkennungsregel | **Benutzerdefiniertes Erkennungsskript**: `SIEntryDesk-<Version>-Erkennung.ps1`. Als 32-Bit-Prozess ausführen: **Nein**. Signaturprüfung erzwingen: **Nein** |
 | Zuweisung | **Erforderlich** → Gerätegruppe |
+
+Das Erkennungsskript meldet „installiert“, wenn der Dienst vorhanden ist, `SIEntryDesk.exe` mindestens diese Version
+hat und die installierte `sientrydesk.json` genau der aus dem Paket entspricht. So verteilt Intune auch eine geänderte
+Konfiguration bei gleicher Version neu, z. B. neue Ablaufdaten. Einfacher, aber ohne diese Prüfung: Regeltyp
+*Datei*, Pfad `C:\Program Files\SIEntryDesk\App`, Datei `SIEntryDesk.exe`, *Zeichenfolge (Version)*,
+*Größer als oder gleich*, z. B. `0.5.1.0`.
 
 Das Installationsskript fragt nichts, behält vorhandene Zugänge und startet die Tray-App nach einem Update wieder in
 allen angemeldeten Sitzungen. Die Benutzer merken vom Update höchstens ein kurzes Verschwinden des Symbols.
+
+Intune startet den Installationsbefehl als 32-Bit-Prozess. Die Skripte wechseln selbst in die 64-Bit-PowerShell,
+der Befehl bleibt deshalb einfach `powershell.exe …`.
 
 ## App 2: SI EntryDesk Zugänge
 1. `SIEntryDesk-Zugaenge-<Version>.zip` entpacken, am besten auf einem vertrauenswürdigen Admin-PC.
@@ -69,18 +84,24 @@ Installation im Zwischenspeicher der Intune-Erweiterung. Wer in Intune Apps verw
 ein eigenes Paket austauschen, aber nicht auslesen. Die Kennung (`2026-09`) ist kein Geheimnis.
 
 ## Software-Update
-Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, `.intunewin` erstellen. In Intune
-die App **SI EntryDesk** bearbeiten: Paket ersetzen und die Version in der Erkennungsregel erhöhen. Alternativ eine neue App anlegen, die die
+Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, Erkennungsskript erzeugen,
+`.intunewin` erstellen. In Intune die App **SI EntryDesk** bearbeiten: Paket und Erkennungsskript ersetzen. Dasselbe,
+wenn sich nur die `sientrydesk.json` ändert. Alternativ eine neue App anlegen, die die
 alte per **Ablösung** ersetzt, *ohne* Deinstallation der alten.
 
 ## Zugänge jährlich erneuern
 1. Neue Zugänge anlegen (siehe `betrieb.md`). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
    neues Paket „SI EntryDesk Zugänge 2027-09“ mit `-Label 2027-09` erstellen.
 2. In Intune als neue App anlegen, die „SI EntryDesk Zugänge 2026-09“ per **Ablösung** ersetzt, *ohne* Deinstallation.
-3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen.
+3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen (neues
+   Erkennungsskript, siehe Software-Update).
 4. Wenn alle Geräte die neue Kennung melden: die alten Zugänge in UniFi löschen.
 
 ## Kontrolle
 - Intune → App → Geräteinstallationsstatus.
 - Auf dem Gerät: `HKLM\SOFTWARE\SIEntryDesk` mit `Version` und `TokenLabel`, Symbol grün, Protokoll unter
   `C:\ProgramData\SIEntryDesk\logs`.
+- Installation über Intune: `C:\Windows\Temp\SIEntryDesk-install.log`. Intune selbst:
+  `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\AppWorkload.log`.
+- „Nach erfolgreicher Installation nicht erkannt“ (0x87D1041C): Das Skript lief durch, die Erkennung passt nicht.
+  Erkennungsskript im Gerät als Administrator ausführen; ohne Ausgabe zeigt es, dass etwas fehlt.

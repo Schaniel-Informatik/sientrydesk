@@ -23,6 +23,18 @@ param(
     [switch] $Remove
 )
 
+# Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
+# HKLM\SOFTWARE\WOW6432Node statt der richtigen Orte, deshalb hier in die 64-Bit-PowerShell wechseln.
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
+    $arguments = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', $PSCommandPath)
+    foreach ($bound in $PSBoundParameters.GetEnumerator()) {
+        if ($bound.Value -is [switch]) { if ($bound.Value) { $arguments += "-$($bound.Key)" } }
+        else { $arguments += @("-$($bound.Key)", [string] $bound.Value) }
+    }
+    & (Join-Path $env:WINDIR 'Sysnative\WindowsPowerShell\v1.0\powershell.exe') @arguments
+    exit $LASTEXITCODE
+}
+
 $ErrorActionPreference = 'Stop'
 
 # Fehlermeldungen nennen nur Zeilennummer und Namen, nie den Inhalt, damit kein Token im Intune-Protokoll landet.
