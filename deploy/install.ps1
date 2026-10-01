@@ -80,10 +80,13 @@ foreach ($part in 'Service', 'App') {
     if (Test-Path $target) { Remove-Item -Recurse -Force $target }
     Copy-Item -Recurse -Force (Join-Path $PSScriptRoot $part) $target
 }
-Copy-Item -Force (Join-Path $PSScriptRoot 'set-tokens.ps1') $installDir
+# Für Admins am Gerät: Zugänge erneuern und Entfernen ohne das Paket.
+Copy-Item -Force (Join-Path $PSScriptRoot 'set-tokens.ps1'), (Join-Path $PSScriptRoot 'uninstall.ps1') $installDir
 Get-ChildItem $installDir -Recurse -File | Unblock-File
 # Reste einer Installation durch die 32-Bit-PowerShell (Intune mit 0.5.0) entfernen.
-Remove-Item -Recurse -Force (Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk') -ErrorAction SilentlyContinue
+$x86Dir = Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk'
+Remove-Item -Recurse -Force $x86Dir -ErrorAction SilentlyContinue
+if (Test-Path $x86Dir) { Write-Warning "$x86Dir liess sich nicht ganz entfernen, Rest bitte von Hand löschen." }
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
 Remove-Item -Path 'HKLM:\SOFTWARE\WOW6432Node\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 
