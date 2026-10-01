@@ -20,7 +20,9 @@
 #>
 param(
     [string] $Label,
-    [switch] $Remove
+    [switch] $Remove,
+    # Nur tokens.txt prüfen, nichts speichern (für prepare-intune.ps1).
+    [switch] $Check
 )
 
 # Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
@@ -57,6 +59,13 @@ function Read-TokenFile([string] $Path) {
     }
     if (-not $values['access']) { throw 'tokens.txt: access= fehlt oder ist leer.' }
     return $values
+}
+
+if ($Check) {
+    $checked = Read-TokenFile (Join-Path $PSScriptRoot 'tokens.txt')
+    Write-Host "    tokens.txt in Ordnung: $(@($checked.Keys | Where-Object { $checked[$_] } | Sort-Object) -join ', ')"
+    $checked.Clear()
+    exit 0
 }
 
 $serviceExe = Join-Path $env:ProgramFiles 'SIEntryDesk\Service\SIEntryDesk.Service.exe'

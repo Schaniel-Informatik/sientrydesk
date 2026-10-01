@@ -1,5 +1,6 @@
 # SI EntryDesk: Zugänge für das Intune-Paket „SI EntryDesk Zugänge“
-# Als tokens.txt neben set-tokens-intune.ps1 speichern, Paket erstellen, danach tokens.txt sofort löschen.
+# Als tokens.txt neben set-tokens-intune.ps1 speichern, dann prepare-intune.ps1 -Label JJJJ-MM ausführen.
+# Es prüft die Datei, erstellt das Intune-Paket und löscht tokens.txt danach.
 # Den Wert direkt hinter das Gleichheitszeichen kopieren, ohne Leerzeichen, Anführungszeichen oder <>.
 # Zeilen mit # zählen nicht.
 

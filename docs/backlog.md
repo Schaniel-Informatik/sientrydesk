@@ -13,11 +13,19 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## 0.5.1 (gebaut, unter Windows noch zu testen)
+## 0.5.2 (gebaut, unter Windows noch zu testen)
+- `prepare-intune.ps1` in beiden Paketen: prüft den Ordner, erzeugt `detect.ps1` bzw. prüft `tokens.txt`, ruft
+  IntuneWinAppUtil auf und zeigt die Einstellungen für Intune. Das Paket der Zugänge löscht `tokens.txt` danach selbst.
+- `detect.ps1` entsteht im Paketordner und wird mit `uninstall.ps1` und `set-tokens.ps1` nach
+  `C:\Program Files\SIEntryDesk` installiert.
+- `uninstall.ps1` entfernt auch Installationsprotokoll und Benutzereinstellungen.
+- Neu anfangen in Intune: Apps gelöscht und neu angelegt (neue IDs, keine 24-h-Sperre aus den Fehlversuchen mit 0.5.0).
+
+## 0.5.1
 - Intune startet Installationsbefehle als 32-Bit-Prozess. 0.5.0 installierte deshalb nach `C:\Program Files (x86)`
   und in `WOW6432Node`, die Erkennung fand nichts (0x87D1041C). Die Skripte wechseln jetzt selbst in die
   64-Bit-PowerShell, `install.ps1` setzt den Dienstpfad immer neu und räumt Reste der 32-Bit-Installation weg.
-- Erkennungsskript pro Paket (`new-intune-detection.ps1`): Dienst, Version, SHA-256 der sientrydesk.json.
+- Erkennungsskript pro Paket: Dienst, Version, SHA-256 der sientrydesk.json.
 - Installationsprotokoll unter Intune: `C:\Windows\Temp\SIEntryDesk-install.log`.
 - Assistent: Ergebnis der Fingerabdrücke nach dem Laden gleich oben.
 

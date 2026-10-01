@@ -80,8 +80,11 @@ foreach ($part in 'Service', 'App') {
     if (Test-Path $target) { Remove-Item -Recurse -Force $target }
     Copy-Item -Recurse -Force (Join-Path $PSScriptRoot $part) $target
 }
-# Für Admins am Gerät: Zugänge erneuern und Entfernen ohne das Paket.
-Copy-Item -Force (Join-Path $PSScriptRoot 'set-tokens.ps1'), (Join-Path $PSScriptRoot 'uninstall.ps1') $installDir
+# Für Admins am Gerät: Zugänge erneuern, entfernen und prüfen wie Intune (detect.ps1 aus prepare-intune.ps1).
+foreach ($script in 'set-tokens.ps1', 'uninstall.ps1', 'detect.ps1') {
+    $source = Join-Path $PSScriptRoot $script
+    if (Test-Path $source) { Copy-Item -Force $source $installDir }
+}
 Get-ChildItem $installDir -Recurse -File | Unblock-File
 # Reste einer Installation durch die 32-Bit-PowerShell (Intune mit 0.5.0) entfernen.
 $x86Dir = Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk'

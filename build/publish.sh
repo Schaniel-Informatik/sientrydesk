@@ -19,10 +19,11 @@ dotnet test tests/SIEntryDesk.Core.Tests --nologo -v quiet
 common=(-c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:DebugType=none --nologo -v quiet)
 dotnet publish src/SIEntryDesk.Service "${common[@]}" -o "$out/Service"
 dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
-cp deploy/install.ps1 deploy/uninstall.ps1 deploy/set-tokens.ps1 deploy/new-intune-detection.ps1 \
+cp deploy/install.ps1 deploy/uninstall.ps1 deploy/set-tokens.ps1 deploy/prepare-intune.ps1 \
    deploy/sientrydesk.example.json deploy/PILOT.md "$out/"
 mkdir -p "$tokensOut"
-cp deploy/intune-zugaenge/set-tokens-intune.ps1 deploy/intune-zugaenge/tokens.example.txt "$tokensOut/"
+cp deploy/intune-zugaenge/set-tokens-intune.ps1 deploy/intune-zugaenge/tokens.example.txt \
+   deploy/intune-zugaenge/prepare-intune.ps1 "$tokensOut/"
 
 # Sicherung: Die ZIP-Dateien sind für alle Anlagen gleich und können später öffentlich werden. Die sientrydesk.json
 # einer Anlage und die tokens.txt legt der Admin erst beim Packen für Intune in den entpackten Ordner.
