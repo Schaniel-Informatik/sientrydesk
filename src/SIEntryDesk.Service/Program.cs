@@ -3,6 +3,12 @@ using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Security;
 using SIEntryDesk.Service;
 
+if (args is [var helpArg] && helpArg.ToLowerInvariant() is "--help" or "-h" or "-?" or "/?" or "--hilfe")
+{
+    Console.WriteLine(Usage());
+    return 0;
+}
+
 // Für Admins: Zertifikats-Fingerabdrücke der Konsole anzeigen, zum Prüfen und Übernehmen in die Konfiguration.
 if (args is ["show-pins", var pinHost])
 {
@@ -53,6 +59,15 @@ if (args is ["set-secrets"])
     return 0;
 }
 
+// Als Dienst startet das Programm ohne Argumente. Alles andere ist ein Tippfehler und soll nicht den Dienst starten.
+if (args.Length > 0)
+{
+    Console.Error.WriteLine($"Unbekannter Aufruf: {string.Join(' ', args)}");
+    Console.Error.WriteLine();
+    Console.Error.WriteLine(Usage());
+    return 2;
+}
+
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = [],
@@ -79,3 +94,22 @@ builder.Services.AddHostedService<CallCoordinator>();
 
 await builder.Build().RunAsync();
 return 0;
+
+static string Usage() => $"""
+    SI EntryDesk Dienst {ServiceState.Version}
+
+    SIEntryDesk.Service.exe
+        Der Dienst. install.ps1 richtet ihn als Windows-Dienst ein.
+
+    SIEntryDesk.Service.exe show-pins <Konsole>
+        Zertifikats-Fingerabdrücke der Konsole für die sientrydesk.json. Nur übernehmen,
+        wenn die Verbindung sicher zur richtigen Konsole geht (Firmennetz oder VPN).
+
+    SIEntryDesk.Service.exe set-secrets
+        Zugänge von der Standardeingabe verschlüsselt speichern, als Administrator.
+        Zeile 1 Access-Token, Zeile 2 leer, Zeile 3 Protect-Schlüssel.
+        Einfacher: set-tokens.ps1 (von Hand) oder das Paket SI EntryDesk Zugänge (Intune).
+
+    SIEntryDesk.Service.exe --help
+        Diese Hilfe.
+    """;

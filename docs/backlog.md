@@ -13,13 +13,16 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## Für den nächsten Build (gewünscht, noch nicht umgesetzt)
-- **Hilfe-Aufruf:** `SIEntryDesk.exe --help` (auch `-h`, `-?`, `/?`) zeigt die Aufrufe (`--setup`),
-  `SIEntryDesk.Service.exe --help` die Befehle (`show-pins`, `set-secrets`).
+## 0.5.0 (gebaut, unter Windows noch zu testen)
+- Zwei getrennte Pakete: Programm (`SIEntryDesk-<Version>-win-x64.zip`) und Zugänge (`SIEntryDesk-Zugaenge-<Version>.zip`).
+- `tokens.txt` mit benannten Zeilen (`access=`, `protect=`), Prüfung mit Zeilennummer, ohne den Inhalt zu nennen.
+- Einrichtungsassistent lädt eine bestehende sientrydesk.json (installierte, andere Datei oder `--setup <Datei>`)
+  und zeigt Abweichungen: Pins, Ablaufdaten, Türen, Kameras.
+- `--help` für App und Dienst. Der Dienst startet bei unbekannten Argumenten nicht mehr.
 
 ## Nächste Schritte
 - **0.4 Einrichtungsassistent:** umgesetzt (`SIEntryDesk.exe --setup`). Unter Windows noch zu testen.
-- **Intune-Paketierung:** in Arbeit (2026-09-30).
+- **Intune-Paketierung:** 0.5.0 bereit, erster Durchlauf mit einem Gerät steht aus.
 - **Gegensprechen (Stufe 2):** Die Anlage kann es wieder (Access-Web-App und Mobile, 2026-09-30). Grundlagen,
   Grenzen und offene Entscheide in [gegensprechen.md](gegensprechen.md).
 - **Ton der Tür an einem echten PC prüfen:** erledigt am 2026-09-30, Ton hörbar. Gegensprechen geht an der Anlage

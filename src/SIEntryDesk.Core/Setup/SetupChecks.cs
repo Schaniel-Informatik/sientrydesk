@@ -4,6 +4,7 @@ using System.Security.Authentication;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Protect;
 using SIEntryDesk.Core.Security;
@@ -22,6 +23,32 @@ public sealed record AccessRights(bool Events, bool Doors, bool Unlock, IReadOnl
     public bool Complete => Events && Doors && Unlock;
     public bool Minimal => Complete && Excess.Count == 0;
 }
+
+/// <summary>Vergleich eines Ports der Konsole mit dem Pin einer bestehenden Konfiguration.</summary>
+public enum PinComparison
+{
+    /// <summary>Erreichbar, Fingerabdruck wie konfiguriert.</summary>
+    Match,
+
+    /// <summary>Erreichbar, aber ein anderer Fingerabdruck als konfiguriert.</summary>
+    Mismatch,
+
+    /// <summary>Erreichbar, in der Konfiguration steht kein Pin.</summary>
+    NotConfigured,
+
+    /// <summary>Nicht erreichbar, kein Vergleich möglich.</summary>
+    Unreachable,
+}
+
+public enum FindingLevel
+{
+    Ok,
+    Warn,
+    Fail,
+}
+
+/// <summary>Ergebnis beim Vergleich einer bestehenden Konfiguration mit der Anlage.</summary>
+public sealed record ConfigFinding(FindingLevel Level, string Text);
 
 /// <summary>Prüfungen für den Einrichtungsassistenten. Alle lesend, mit Ausnahme von <see cref="ProtectApiClient.CreateStreamAsync"/>.</summary>
 public static class SetupChecks
@@ -125,6 +152,107 @@ public static class SetupChecks
         return sb.ToString();
     }
 
+    private static readonly JsonSerializerOptions ConfigReadOptions = new()
+    {
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+    };
+
+    /// <summary>Liest eine bestehende sientrydesk.json. Kommentare und unbekannte Felder sind erlaubt wie beim Dienst.</summary>
+    public static EntryDeskOptions ParseConfigJson(string json)
+    {
+        var options = JsonSerializer.Deserialize<EntryDeskOptions>(json, ConfigReadOptions)
+                      ?? throw new JsonException("Die Datei enthält keine Konfiguration.");
+        options.Host ??= string.Empty;
+        options.AccessPin ??= string.Empty;
+        options.ProtectPin ??= string.Empty;
+        options.StreamPin ??= string.Empty;
+        options.Doors ??= [];
+        options.DoorCameras ??= new(StringComparer.Ordinal);
+        options.StreamQualities ??= ["low", "medium", "high"];
+        return options;
+    }
+
+    /// <summary>Pin, den eine Konfiguration für diesen Port vorgibt, oder leer.</summary>
+    public static string ConfiguredPin(EntryDeskOptions options, int port) => port switch
+    {
+        AccessApiClient.Port => options.AccessPin,
+        443 => options.ProtectPin,
+        7441 => options.EffectiveStreamPin,
+        _ => string.Empty,
+    };
+
+    public static PinComparison ComparePin(PortCheck port, string? configuredPin)
+    {
+        if (!port.Reachable || port.Fingerprint is null)
+            return PinComparison.Unreachable;
+        if (string.IsNullOrWhiteSpace(configuredPin))
+            return PinComparison.NotConfigured;
+        try
+        {
+            var actual = CertificatePin.Parse(port.Fingerprint).ToString();
+            return string.Equals(actual, CertificatePin.Parse(configuredPin).ToString(), StringComparison.Ordinal)
+                ? PinComparison.Match
+                : PinComparison.Mismatch;
+        }
+        catch (FormatException)
+        {
+            return PinComparison.Mismatch;
+        }
+    }
+
+    /// <summary>
+    /// True, wenn die Konsole genau die Zertifikate der Konfiguration zeigt: Access erreichbar und gleich, jeder andere
+    /// erreichbare Port ebenfalls gleich. Dann gibt es nichts neu zu bestätigen. Ein Port ohne Pin in der Konfiguration
+    /// zählt als neu, weil Speichern ihn übernehmen würde.
+    /// </summary>
+    public static bool PinsUnchanged(EntryDeskOptions options, IReadOnlyList<PortCheck> ports) =>
+        ports.Any(p => p.Port == AccessApiClient.Port && ComparePin(p, options.AccessPin) == PinComparison.Match) &&
+        ports.All(p => ComparePin(p, ConfiguredPin(options, p.Port)) is PinComparison.Match or PinComparison.Unreachable);
+
+    /// <summary>
+    /// Vergleicht Türen und Kamerazuordnung einer bestehenden Konfiguration mit dem, was Access und Protect melden.
+    /// <paramref name="cameras"/> ist null, solange der Protect-Schlüssel nicht geprüft ist.
+    /// </summary>
+    public static IReadOnlyList<ConfigFinding> CompareDoors(
+        EntryDeskOptions options, IReadOnlyList<AccessDoor> doors, IReadOnlyDictionary<string, string>? cameras)
+    {
+        var findings = new List<ConfigFinding>();
+        foreach (var entry in options.Doors.Where(e => !doors.Any(d => Names(e, d))))
+            findings.Add(new(FindingLevel.Warn, $"Doors nennt „{entry.Trim()}“, diese Tür gibt es in Access nicht."));
+
+        foreach (var (doorId, cameraId) in options.DoorCameras)
+        {
+            var door = doors.FirstOrDefault(d => d.Id == doorId);
+            if (door is null)
+                findings.Add(new(FindingLevel.Warn, $"DoorCameras nennt eine Tür, die es in Access nicht gibt ({doorId})."));
+            else if (cameras is not null && !cameras.ContainsKey(cameraId))
+                findings.Add(new(FindingLevel.Fail, $"{door.Name}: Die Kamera aus der Konfiguration gibt es in Protect nicht, kein Livebild."));
+        }
+
+        if (cameras is not null)
+        {
+            var suggestions = SuggestDoorCameras(doors, cameras);
+            foreach (var door in doors.Where(d => options.AcceptsDoor(d.Id, d.Name) && !options.DoorCameras.ContainsKey(d.Id)))
+            {
+                var hint = suggestions.TryGetValue(door.Id, out var camera) ? $" Vorschlag: {cameras[camera]}." : string.Empty;
+                findings.Add(new(FindingLevel.Warn, $"{door.Name}: keine Kamera zugeordnet, Livebild ohne Klingeln erst nach dem ersten Klingeln.{hint}"));
+            }
+        }
+
+        if (findings.Count == 0)
+            findings.Add(new(FindingLevel.Ok, cameras is null
+                ? "Türen wie in der Konfiguration. Die Kameras folgen mit der Prüfung des Protect-Schlüssels."
+                : "Türen und Kameras wie in der Konfiguration."));
+        return findings;
+
+        static bool Names(string entry, AccessDoor door) =>
+            string.Equals(entry.Trim(), door.Id, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(entry.Trim(), door.Name, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Anlagen-Konfiguration als Text für sientrydesk.json, mit Kopfkommentar auf eigenen Zeilen.</summary>
     public static string ToConfigJson(EntryDeskOptions options, DateTime created)
     {
@@ -151,6 +279,7 @@ public static class SetupChecks
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         });
         return $"// SI EntryDesk: Anlagen-Konfiguration, erstellt mit dem Einrichtungsassistenten am {created:dd.MM.yyyy HH:mm}.\n" +
-               "// Keine Geheimnisse. Tokens mit install.ps1 -SetTokens bzw. set-tokens.ps1 setzen.\n" + json + "\n";
+               "// Keine Geheimnisse. Zugänge von Hand mit install.ps1 -SetTokens, per Intune mit dem Paket SI EntryDesk Zugänge.\n" +
+               json + "\n";
     }
 }

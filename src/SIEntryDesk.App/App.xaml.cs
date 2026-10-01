@@ -41,16 +41,46 @@ public partial class App : Application
     // Erinnerung vor Ablauf der Schlüssel: einmal pro Tag und Benutzer, stündlich geprüft (Datumswechsel).
     private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromHours(1) };
 
+    private static readonly string[] HelpArgs = ["--help", "-h", "-?", "/?", "--hilfe"];
+
+    private static readonly string HelpText =
+        $"""
+        SI EntryDesk {TrayIcon.AppVersion}
+
+        SIEntryDesk.exe
+            Tray-App. Startet bei jeder Anmeldung von selbst.
+
+        SIEntryDesk.exe --setup
+            Einrichtungsassistent: neue sientrydesk.json erstellen oder eine bestehende
+            laden und gegen die Konsole prüfen. Die installierte Konfiguration ist nur
+            als Administrator lesbar.
+
+        SIEntryDesk.exe --setup <Datei>
+            Einrichtungsassistent mit dieser sientrydesk.json.
+
+        SIEntryDesk.exe --help
+            Diese Hilfe. Befehle des Dienstes: SIEntryDesk.Service.exe --help
+        """;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // Einrichtungsassistent für Admins, unabhängig von einer laufenden Tray-App.
-        if (e.Args.Contains("--setup", StringComparer.OrdinalIgnoreCase))
+        if (e.Args.Any(a => HelpArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))
         {
+            MessageBox.Show(HelpText, "SI EntryDesk", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        // Einrichtungsassistent für Admins, unabhängig von einer laufenden Tray-App. Optional mit bestehender Datei.
+        var setup = Array.FindIndex(e.Args, a => string.Equals(a, "--setup", StringComparison.OrdinalIgnoreCase));
+        if (setup >= 0)
+        {
+            var configPath = setup + 1 < e.Args.Length ? Path.GetFullPath(e.Args[setup + 1]) : null;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             _libVlc = Task.Run(LoadLibVlc);
-            MainWindow = new SetupWindow(_libVlc);
+            MainWindow = new SetupWindow(_libVlc, configPath);
             MainWindow.Show();
             return;
         }

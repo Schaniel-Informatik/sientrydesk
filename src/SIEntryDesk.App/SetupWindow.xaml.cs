@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Security.Authentication;
@@ -20,8 +21,9 @@ using SIEntryDesk.Core.Video;
 namespace SIEntryDesk.App;
 
 /// <summary>
-/// Einrichtungsassistent für Admins (SIEntryDesk.exe --setup). Prüft Konsole, Zugänge und Streams und speichert die
-/// sientrydesk.json. Tokens bleiben nur im Speicher dieses Fensters und werden nirgends abgelegt.
+/// Einrichtungsassistent für Admins (SIEntryDesk.exe --setup [Datei]). Prüft Konsole, Zugänge und Streams und speichert die
+/// sientrydesk.json. Eine bestehende lässt sich laden, dann zeigt er Abweichungen der Anlage davon. Tokens bleiben nur
+/// im Speicher dieses Fensters und werden nirgends abgelegt.
 /// </summary>
 public partial class SetupWindow : Window
 {
@@ -53,15 +55,26 @@ public partial class SetupWindow : Window
     private IReadOnlyList<AccessDoor>? _doors;
     private IReadOnlyDictionary<string, string>? _cameras;
     private AccessRights? _rights;
+    private EntryDeskOptions? _loaded;
+    private string? _loadedPath;
 
-    internal SetupWindow(Task<LibVLC?> libVlc)
+    private static string InstalledConfigPath { get; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SIEntryDesk", "sientrydesk.json");
+
+    internal SetupWindow(Task<LibVLC?> libVlc, string? configPath)
     {
         InitializeComponent();
         _libVlc = libVlc;
         var inOneYear = DateTime.Today.AddYears(1);
         TokenExpiresPicker.SelectedDate = inOneYear;
         ProtectKeyExpiresPicker.SelectedDate = inOneYear;
+        if (configPath is not null)
+            Loaded += async (_, _) => await LoadConfigAsync(configPath);
     }
+
+    /// <summary>Die geladene Konfiguration, solange sie zur geprüften Konsole gehört. Sonst wird nichts verglichen.</summary>
+    private EntryDeskOptions? Reference =>
+        _loaded is { } loaded && string.Equals(loaded.Host.Trim(), _host, StringComparison.OrdinalIgnoreCase) ? loaded : null;
 
     protected override void OnClosed(EventArgs e)
     {
@@ -76,9 +89,87 @@ public partial class SetupWindow : Window
 
     private string? Pin(int port) => _ports.FirstOrDefault(p => p.Port == port)?.Fingerprint;
 
+    /// <summary>Pin zum Speichern: der geprüfte Fingerabdruck, bei einem gerade nicht erreichbaren Port der bisherige.</summary>
+    private string? PinForSave(int port) =>
+        Pin(port) ?? (Reference is { } reference && SetupChecks.ConfiguredPin(reference, port) is { Length: > 0 } pin ? pin : null);
+
+    // ---------------------------------------------------------------- 0. Bestehende Konfiguration
+
+    private async void OnLoadInstalled(object sender, RoutedEventArgs e) => await LoadConfigAsync(InstalledConfigPath);
+
+    private async void OnOpenConfig(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "SI EntryDesk Konfiguration (*.json)|*.json", FileName = "sientrydesk.json" };
+        if (dialog.ShowDialog(this) == true)
+            await LoadConfigAsync(dialog.FileName);
+    }
+
+    private async Task LoadConfigAsync(string path)
+    {
+        EntryDeskOptions options;
+        try
+        {
+            options = SetupChecks.ParseConfigJson(await File.ReadAllTextAsync(path));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            ShowLine(LoadResult, Mark.Fail, $"Kein Zugriff auf {path}. Die installierte Konfiguration ist nur für " +
+                                            "Administratoren lesbar: PowerShell als Administrator öffnen und dort SIEntryDesk.exe --setup starten.");
+            return;
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            ShowLine(LoadResult, Mark.Fail, $"Nicht gefunden: {path}");
+            return;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or NotSupportedException or ArgumentException)
+        {
+            ShowLine(LoadResult, Mark.Fail, $"{path} ist nicht lesbar: {UntrustedText.Clean(ex.Message, 200)}");
+            return;
+        }
+
+        _loaded = options;
+        _loadedPath = path;
+        HostBox.Text = options.Host.Trim();
+        LiveViewBox.IsChecked = options.LiveView;
+        LiveViewSecondsBox.Text = options.LiveViewSeconds.ToString(CultureInfo.InvariantCulture);
+        TokenExpiresPicker.SelectedDate = options.TokenExpires;
+        ProtectKeyExpiresPicker.SelectedDate = options.ProtectKeyExpires;
+        SaveResult.Inlines.Clear();
+        ShowLines(LoadResult, DescribeLoaded(path, options));
+        await CheckHostAsync();
+    }
+
+    private static List<(Mark, string)> DescribeLoaded(string path, EntryDeskOptions options)
+    {
+        var lines = new List<(Mark, string)> { (Mark.Info, $"Geladen: {path}") };
+        if (options.Validate() is { } problem)
+            lines.Add((Mark.Fail, problem));
+        if (!options.VideoConfigured)
+            lines.Add((Mark.Info, "Ohne ProtectPin: kein Livebild."));
+        else if (options.ValidateVideo() is { } videoProblem)
+            lines.Add((Mark.Fail, videoProblem));
+        if (options.LiveViewSeconds is < 15 or > 600)
+            lines.Add((Mark.Warn, $"LiveViewSeconds {options.LiveViewSeconds} liegt nicht zwischen 15 und 600 und wird begrenzt."));
+
+        var dates = new[] { options.TokenExpires, options.ProtectKeyExpires }.OfType<DateTime>().ToList();
+        if (options.TokenExpires is null || (options.VideoConfigured && options.ProtectKeyExpires is null))
+            lines.Add((Mark.Warn, "Ablaufdatum fehlt (TokenExpires, ProtectKeyExpires), die Erinnerung vor Ablauf bleibt aus."));
+        if (options.ExpiryWarning(DateTime.Today) is { } expiry)
+            lines.Add((Mark.Warn, expiry));
+        else if (dates.Count > 0)
+            lines.Add((Mark.Ok, $"Zugänge gültig bis {dates.Min():dd.MM.yyyy}"));
+
+        lines.Add((Mark.Info, "Für die ganze Prüfung unten Access-Token und Protect-Schlüssel eingeben und prüfen. " +
+                              "Abweichungen von der Datei werden markiert."));
+        return lines;
+    }
+
     // ---------------------------------------------------------------- 1. Konsole
 
-    private async void OnCheckHost(object sender, RoutedEventArgs e)
+    private async void OnCheckHost(object sender, RoutedEventArgs e) => await CheckHostAsync();
+
+    private async Task CheckHostAsync()
     {
         var host = HostBox.Text.Trim();
         if (Uri.CheckHostName(host) == UriHostNameType.Unknown)
@@ -99,16 +190,37 @@ public partial class SetupWindow : Window
             HostCheck.IsEnabled = true;
         }
 
-        var lines = _ports.Select(port => port.Reachable
-            ? (Mark.Ok, $"{port.Name}, Port {port.Port}: erreichbar, Zertifikat {port.Fingerprint}")
-            : (Mark.Fail, $"{port.Name}, Port {port.Port}: nicht erreichbar ({port.Problem})")).ToList();
+        var reference = Reference;
+        var lines = _ports.Select(port => DescribePort(port, reference)).ToList();
         var accessOk = Pin(AccessApiClient.Port) is not null;
         if (!accessOk)
             lines.Add((Mark.Info, "Ohne Port 12445 geht es nicht: Netz, VPN oder Firewall prüfen."));
         else if (Pin(443) is null || Pin(7441) is null)
             lines.Add((Mark.Warn, "Ohne Port 443 und 7441 gibt es kein Livebild."));
+        if (reference is not null && _ports.Any(p => SetupChecks.ComparePin(p, SetupChecks.ConfiguredPin(reference, p.Port)) == PinComparison.Mismatch))
+            lines.Add((Mark.Info, "Die PCs lehnen diese Verbindung ab, solange der Pin nicht passt. Erst klären, ob die Konsole ein " +
+                                  "neues Zertifikat hat. Nur dann bestätigen, speichern und die sientrydesk.json neu verteilen."));
         ShowLines(HostResult, lines);
         PinsConfirmed.IsEnabled = accessOk;
+
+        // Zeigt die Konsole genau die Zertifikate der geladenen Datei, gibt es nichts neu zu bestätigen.
+        if (reference is not null && SetupChecks.PinsUnchanged(reference, _ports))
+            PinsConfirmed.IsChecked = true;
+    }
+
+    private static (Mark, string) DescribePort(PortCheck port, EntryDeskOptions? reference)
+    {
+        var prefix = $"{port.Name}, Port {port.Port}";
+        if (!port.Reachable)
+            return (Mark.Fail, $"{prefix}: nicht erreichbar ({port.Problem})");
+        if (reference is null)
+            return (Mark.Ok, $"{prefix}: erreichbar, Zertifikat {port.Fingerprint}");
+        return SetupChecks.ComparePin(port, SetupChecks.ConfiguredPin(reference, port.Port)) switch
+        {
+            PinComparison.Match => (Mark.Ok, $"{prefix}: erreichbar, Zertifikat wie in der Konfiguration"),
+            PinComparison.Mismatch => (Mark.Fail, $"{prefix}: Zertifikat {port.Fingerprint} weicht von der Konfiguration ab"),
+            _ => (Mark.Info, $"{prefix}: erreichbar, Zertifikat {port.Fingerprint}, in der Konfiguration ohne Pin"),
+        };
     }
 
     private void ResetAfterHost()
@@ -243,13 +355,18 @@ public partial class SetupWindow : Window
         DoorGrid.Children.Clear();
         DoorGrid.RowDefinitions.Clear();
         _rows.Clear();
+        DoorsResult.Inlines.Clear();
         DoorsPlaceholder.Visibility = _doors is null ? Visibility.Visible : Visibility.Collapsed;
         if (_doors is null)
             return;
 
-        var suggestions = _cameras is null
-            ? new Dictionary<string, string>()
-            : SetupChecks.SuggestDoorCameras(_doors, _cameras);
+        // Mit geladener Konfiguration gilt deren Zuordnung, Vorschläge erscheinen nur als Hinweis.
+        var reference = Reference;
+        var suggestions = reference is not null
+            ? reference.DoorCameras
+            : _cameras is null
+                ? new Dictionary<string, string>()
+                : SetupChecks.SuggestDoorCameras(_doors, _cameras);
         var choices = new List<CameraChoice> { new(null, "(keine Kamera)") };
         if (_cameras is not null)
             choices.AddRange(_cameras.Select(c => new CameraChoice(c.Key, c.Value)).OrderBy(c => c.Name));
@@ -258,7 +375,7 @@ public partial class SetupWindow : Window
         {
             var row = DoorGrid.RowDefinitions.Count;
             DoorGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var show = new CheckBox { IsChecked = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 6, 10, 6) };
+            var show = new CheckBox { IsChecked = reference?.AcceptsDoor(door.Id, door.Name) ?? true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 6, 10, 6) };
             var name = new TextBlock { Text = door.Name, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             var camera = new ComboBox { ItemsSource = choices, Margin = new Thickness(8, 4, 8, 4), IsEnabled = _cameras is not null };
             camera.SelectedItem = choices.FirstOrDefault(c => c.Id == suggestions.GetValueOrDefault(door.Id)) ?? choices[0];
@@ -283,6 +400,14 @@ public partial class SetupWindow : Window
             }
             _ = RefreshStreamAsync(entry);
         }
+
+        if (reference is not null)
+            ShowLines(DoorsResult, SetupChecks.CompareDoors(reference, _doors, _cameras).Select(f => (f.Level switch
+            {
+                FindingLevel.Ok => Mark.Ok,
+                FindingLevel.Warn => Mark.Warn,
+                _ => Mark.Fail,
+            }, f.Text)));
     }
 
     private static string? SelectedCamera(DoorRow row) => (row.Camera.SelectedItem as CameraChoice)?.Id;
@@ -401,8 +526,8 @@ public partial class SetupWindow : Window
         {
             Host = _host,
             AccessPin = Pin(AccessApiClient.Port)!,
-            ProtectPin = Pin(443) ?? string.Empty,
-            StreamPin = Pin(7441) ?? string.Empty,
+            ProtectPin = PinForSave(443) ?? string.Empty,
+            StreamPin = PinForSave(7441) ?? string.Empty,
             Doors = shown.Count == _rows.Count ? [] : shown,
             DoorCameras = _rows.Where(r => SelectedCamera(r) is not null)
                 .ToDictionary(r => r.Door.Id, r => SelectedCamera(r)!, StringComparer.Ordinal),
@@ -418,6 +543,9 @@ public partial class SetupWindow : Window
             Filter = "SI EntryDesk Konfiguration (*.json)|*.json",
             OverwritePrompt = true,
         };
+        // Neben der geladenen Datei vorschlagen, ausser bei der installierten: die überschreibt das nächste Update.
+        if (_loadedPath is not null && !string.Equals(_loadedPath, InstalledConfigPath, StringComparison.OrdinalIgnoreCase))
+            dialog.InitialDirectory = Path.GetDirectoryName(_loadedPath);
         if (dialog.ShowDialog(this) != true)
             return;
         File.WriteAllText(dialog.FileName, SetupChecks.ToConfigJson(options, DateTime.Now), new UTF8Encoding(false));

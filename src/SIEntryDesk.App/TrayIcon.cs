@@ -22,7 +22,7 @@ internal sealed record TrayActions(
 /// </summary>
 internal sealed class TrayIcon : IDisposable
 {
-    private static readonly string AppVersion =
+    internal static readonly string AppVersion =
         typeof(TrayIcon).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
         ?? "?";
 

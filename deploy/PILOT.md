@@ -21,6 +21,7 @@ Am einfachsten mit dem **Einrichtungsassistenten**, im Firmennetz oder über VPN
 ```
 Er prüft Konsole, Zugänge, Türen, Kameras und Streams, zeigt das Livebild zur Kontrolle und speichert die
 `sientrydesk.json`. Sie kommt neben `install.ps1`, gilt für alle PCs einer Anlage und enthält keine Geheimnisse.
+Eine bestehende prüfen: `.\App\SIEntryDesk.exe --setup <Pfad>\sientrydesk.json`. Alle Aufrufe: `--help`.
 Von Hand geht es mit der Vorlage `sientrydesk.example.json`.
 
 Die Pins sind die Fingerabdrücke der Zertifikate der Konsole. Anzeigen, **nur im Firmennetz oder über VPN**:

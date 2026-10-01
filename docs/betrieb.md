@@ -54,6 +54,18 @@ Er prüft Schritt für Schritt:
 
 Tokens verwendet der Assistent nur zum Prüfen, er speichert sie nicht.
 
+**Bestehende Konfiguration prüfen:** oben „Installierte Konfiguration laden“ (auf einem PC mit SI EntryDesk, nur als
+Administrator lesbar) oder „Andere sientrydesk.json öffnen …“, oder direkt:
+```powershell
+.\App\SIEntryDesk.exe --setup C:\Pfad\zur\sientrydesk.json
+```
+Der Assistent übernimmt die Werte und prüft sofort die Konsole. Er zeigt, ob die Zertifikate noch zu den Pins passen
+(dann ist die Bestätigung schon gesetzt) und wie lange die Zugänge gültig sind. Mit Access-Token und Protect-Schlüssel
+vergleicht er auch Türen und Kameras mit der Datei: fehlende Türen, Kameras, die es nicht mehr gibt, Türen ohne Kamera.
+Speichern ist nur nötig, wenn etwas geändert wurde.
+
+`SIEntryDesk.exe --help` und `SIEntryDesk.Service.exe --help` zeigen alle Aufrufe.
+
 ## Konfiguration: sientrydesk.json
 Erstellt mit dem Einrichtungsassistenten oder von Hand aus `deploy/sientrydesk.example.json`.
 Kommentare nur auf eigenen Zeilen.
@@ -84,7 +96,8 @@ Paket entpacken, `sientrydesk.json` daneben legen, PowerShell als Administrator:
 | Livebild ohne Klingeln auf diesem PC aus | zusätzlich `-NoLiveView` |
 | Entfernen | `powershell -ExecutionPolicy Bypass -File .\uninstall.ps1` (mit `-KeepData` bleiben Konfiguration und Zugänge) |
 
-**Intune:** zwei Win32-Apps an eine Gerätegruppe, das Programm und die Zugänge getrennt. Schritt für Schritt in
+**Intune:** zwei Win32-Apps an eine Gerätegruppe, aus zwei getrennten ZIP-Dateien: Programm
+(`SIEntryDesk-<Version>-win-x64.zip`) und Zugänge (`SIEntryDesk-Zugaenge-<Version>.zip`). Schritt für Schritt in
 [intune.md](intune.md).
 
 ## Zugänge jährlich erneuern

@@ -14,7 +14,7 @@ Stand: Pilot, Repository privat.
 |---|---|
 | [docs/betrieb.md](docs/betrieb.md) | **Einrichtung und Betrieb:** Zugänge und Rechte, Voraussetzungen bei UniFi, Konfiguration, Installation, jährliche Erneuerung, Störungen |
 | [docs/intune.md](docs/intune.md) | **Verteilung mit Intune:** zwei Win32-Apps (Programm und Zugänge), Befehle, Erkennung, Updates, jährliche Erneuerung |
-| [deploy/](deploy/) | Installationsskripte, Beispiel-Konfiguration, Intune-Skript für die Zugänge, Kurzanleitung (`PILOT.md`) |
+| [deploy/](deploy/) | Installationsskripte, Beispiel-Konfiguration, Kurzanleitung (`PILOT.md`); in `intune-zugaenge/` das eigene Paket für die Zugänge |
 | [docs/machbarkeitstest.md](docs/machbarkeitstest.md) | Was an einer echten Anlage getestet wurde, mit Ergebnissen |
 | [docs/api-notizen.md](docs/api-notizen.md) | Verwendete API-Endpunkte, Ereignisse und im Test ermitteltes Verhalten |
 | [docs/mvp.md](docs/mvp.md) | Architektur und Entscheide (Dienst und App getrennt, Livebild über den Dienst) |
@@ -27,5 +27,6 @@ Stand: Pilot, Repository privat.
 | `build/` | Build-Skripte (`publish.sh` erzeugt das Windows-Paket) |
 
 ## Bauen
-Auf dem Mac oder unter Windows mit dem .NET SDK 10: `./build/publish.sh` testet und erzeugt
-`artifacts/SIEntryDesk-<Version>-win-x64.zip`.
+Auf dem Mac oder unter Windows mit dem .NET SDK 10: `./build/publish.sh` testet und erzeugt zwei getrennte Pakete:
+`artifacts/SIEntryDesk-<Version>-win-x64.zip` (Programm) und `artifacts/SIEntryDesk-Zugaenge-<Version>.zip` (Skript
+und Vorlage für die Zugänge per Intune).

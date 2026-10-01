@@ -3,24 +3,24 @@
 Zwei Win32-Apps an dieselbe **Gerätegruppe** (nicht Benutzer), damit die Zugänge nur auf den vorgesehenen Geräten
 liegen und die App für jeden Benutzer dieser Geräte startet:
 
-| App | Inhalt | Wird erneuert |
-|---|---|---|
-| **SI EntryDesk** | Programm, Installationsskripte, `sientrydesk.json` der Anlage | bei jedem Software-Update |
-| **SI EntryDesk Zugänge** | `set-tokens-intune.ps1` und `tokens.txt` | jährlich mit den Zugängen |
+| Intune-App | Aus der Datei | Dazu kommt | Wird erneuert |
+|---|---|---|---|
+| **SI EntryDesk** | `SIEntryDesk-<Version>-win-x64.zip` | `sientrydesk.json` der Anlage | bei jedem Software-Update |
+| **SI EntryDesk Zugänge** | `SIEntryDesk-Zugaenge-<Version>.zip` | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
 
-So stehen die Zugänge nie im Programmpaket, und ein Software-Update berührt sie nicht.
-
-Das sind **zwei getrennte Pakete**: `IntuneWinAppUtil.exe` zweimal aufrufen, jedes Mal mit einem anderen Quellordner.
-Das Werkzeug packt den ganzen Quellordner (`-c`) samt Unterordnern ein. `tokens.txt` darf deshalb nie im Ordner von
-App 1 liegen, auch nicht im Unterordner `intune-zugaenge`.
+Zwei ZIP-Dateien, zwei Ordner, zwei Aufrufe von `IntuneWinAppUtil.exe`. So stehen die Zugänge nie im Programmpaket,
+und ein Software-Update berührt sie nicht. Das Werkzeug packt den ganzen Quellordner (`-c`) samt Unterordnern ein:
+`tokens.txt` gehört nur in den Ordner der Zugänge.
 
 ## Vorbereitung
 - **Microsoft Win32 Content Prep Tool** (`IntuneWinAppUtil.exe`) auf einem Windows-PC.
 - **Gerätegruppe** in Entra ID, z. B. „SIEntryDesk-Geräte“. Zum Testen zuerst eine Gruppe mit einem einzigen Gerät.
 - `sientrydesk.json` der Anlage, am einfachsten mit dem Einrichtungsassistenten (`SIEntryDesk.exe --setup`).
+  Eine bestehende vor dem Packen prüfen: `SIEntryDesk.exe --setup <Pfad>\sientrydesk.json`, siehe
+  [betrieb.md](betrieb.md#einrichtungsassistent).
 
 ## App 1: SI EntryDesk
-1. Paket entpacken, `sientrydesk.json` in den Ordner neben `install.ps1` legen.
+1. `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` in den Ordner neben `install.ps1` legen.
 2. Paket erstellen:
    ```
    IntuneWinAppUtil.exe -c <Paketordner> -s install.ps1 -o <Ausgabeordner> -q
@@ -34,22 +34,26 @@ App 1 liegen, auch nicht im Unterordner `intune-zugaenge`.
 | Installationsverhalten | **System** |
 | Neustart des Geräts | Keine bestimmte Aktion |
 | Anforderungen | Windows 11, 64 Bit |
-| Erkennungsregel | Datei: `C:\Program Files\SIEntryDesk\App`, Datei `SIEntryDesk.exe`, **Version**, *größer oder gleich*, z. B. `0.4.2.0` |
+| Erkennungsregel | Datei: `C:\Program Files\SIEntryDesk\App`, Datei `SIEntryDesk.exe`, **Version**, *größer oder gleich*, z. B. `0.5.0.0` |
 | Zuweisung | **Erforderlich** → Gerätegruppe |
 
 Das Installationsskript fragt nichts, behält vorhandene Zugänge und startet die Tray-App nach einem Update wieder in
 allen angemeldeten Sitzungen. Die Benutzer merken vom Update höchstens ein kurzes Verschwinden des Symbols.
 
 ## App 2: SI EntryDesk Zugänge
-1. Einen **eigenen** Ordner anlegen, am besten auf einem vertrauenswürdigen Admin-PC, mit:
-   - `set-tokens-intune.ps1` (aus `intune-zugaenge` im Paket)
-   - `tokens.txt`: `tokens.example.txt` kopieren und die Werte hinter `access=` und `protect=` einsetzen
-     (Pakete bis 0.4.2: ohne Namen, Zeile 1 Access-Token, Zeile 2 leer, Zeile 3 Protect-Schlüssel)
-2. Paket erstellen, dann **`tokens.txt` sofort löschen**:
+1. `SIEntryDesk-Zugaenge-<Version>.zip` entpacken, am besten auf einem vertrauenswürdigen Admin-PC.
+2. Im entpackten Ordner `tokens.example.txt` als `tokens.txt` kopieren und die Werte direkt hinter `access=` und
+   `protect=` einsetzen, ohne Leerzeichen, Anführungszeichen oder `<>`. Die Zeilen mit `#` dürfen bleiben:
+   ```
+   access=<Access-Token>
+   protect=<Protect-Schlüssel>
+   ```
+   Stimmt etwas nicht, bricht das Skript bei der Installation mit Zeilennummer ab und nennt nie den Inhalt.
+3. Paket erstellen, dann **`tokens.txt` sofort löschen**:
    ```
    IntuneWinAppUtil.exe -c <Ordner> -s set-tokens-intune.ps1 -o <Ausgabeordner> -q
    ```
-3. In Intune als Win32-App hinzufügen, Name z. B. „SI EntryDesk Zugänge 2026-09“:
+4. In Intune als Win32-App hinzufügen, Name z. B. „SI EntryDesk Zugänge 2026-09“:
 
 | Einstellung | Wert |
 |---|---|
@@ -65,12 +69,13 @@ Installation im Zwischenspeicher der Intune-Erweiterung. Wer in Intune Apps verw
 ein eigenes Paket austauschen, aber nicht auslesen. Die Kennung (`2026-09`) ist kein Geheimnis.
 
 ## Software-Update
-Neue Version entpacken, `sientrydesk.json` dazulegen, `.intunewin` erstellen. In Intune die App **SI EntryDesk**
-bearbeiten: Paket ersetzen und die Version in der Erkennungsregel erhöhen. Alternativ eine neue App anlegen, die die
+Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, `.intunewin` erstellen. In Intune
+die App **SI EntryDesk** bearbeiten: Paket ersetzen und die Version in der Erkennungsregel erhöhen. Alternativ eine neue App anlegen, die die
 alte per **Ablösung** ersetzt, *ohne* Deinstallation der alten.
 
 ## Zugänge jährlich erneuern
-1. Neue Zugänge anlegen (siehe `betrieb.md`), neues Paket „SI EntryDesk Zugänge 2027-09“ mit `-Label 2027-09`.
+1. Neue Zugänge anlegen (siehe `betrieb.md`). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
+   neues Paket „SI EntryDesk Zugänge 2027-09“ mit `-Label 2027-09` erstellen.
 2. In Intune als neue App anlegen, die „SI EntryDesk Zugänge 2026-09“ per **Ablösung** ersetzt, *ohne* Deinstallation.
 3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen.
 4. Wenn alle Geräte die neue Kennung melden: die alten Zugänge in UniFi löschen.

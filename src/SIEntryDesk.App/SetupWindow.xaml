@@ -31,7 +31,12 @@
         <StackPanel Margin="28,12,28,28">
             <TextBlock Text="Einrichtung" FontSize="26" FontWeight="SemiBold" />
             <TextBlock Style="{StaticResource Hint}"
-                       Text="Prüft die Voraussetzungen bei UniFi und erstellt die sientrydesk.json für diese Anlage. Tokens werden nur zum Prüfen verwendet und nicht gespeichert. Nur im Firmennetz oder über VPN ausführen." />
+                       Text="Prüft die Voraussetzungen bei UniFi und erstellt die sientrydesk.json für diese Anlage, oder prüft eine bestehende. Tokens werden nur zum Prüfen verwendet und nicht gespeichert. Nur im Firmennetz oder über VPN ausführen." />
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <Button Content="Installierte Konfiguration laden" Margin="0" Click="OnLoadInstalled" />
+                <Button Content="Andere sientrydesk.json öffnen …" Click="OnOpenConfig" />
+            </StackPanel>
+            <TextBlock x:Name="LoadResult" Style="{StaticResource Result}" />
 
             <TextBlock Style="{StaticResource Heading}" Text="1. Konsole" />
             <TextBlock Style="{StaticResource Hint}" Text="Name oder IP der UniFi-Konsole, auf der Access und Protect laufen." />
@@ -87,6 +92,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
             </Grid>
+            <TextBlock x:Name="DoorsResult" Style="{StaticResource Result}" />
             <TextBlock x:Name="StreamHint" Style="{StaticResource Hint}" Margin="0,8,0,0" Visibility="Collapsed"
                        Text="Ohne Stream kein Livebild. Anlegen mit „Stream anlegen“ oder in Protect bei der Kamera unter Einstellungen → Erweitert → RTSP, Qualität „Mittel“. Die Stream-Adresse wirkt wie ein Zugangsschlüssel, nicht weitergeben." />
 
@@ -106,7 +112,7 @@
             </StackPanel>
             <TextBlock x:Name="SaveResult" Style="{StaticResource Result}" />
             <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
-                       Text="Danach: sientrydesk.json neben install.ps1 legen. Von Hand installieren mit install.ps1 -SetTokens, per Intune ohne -SetTokens und die Tokens getrennt verteilen. Siehe docs/betrieb.md." />
+                       Text="Danach: sientrydesk.json neben install.ps1 legen. Von Hand installieren mit install.ps1 -SetTokens. Per Intune das Programmpaket mit der sientrydesk.json und die Zugänge als eigenes Paket (SIEntryDesk-Zugaenge), siehe docs/intune.md." />
         </StackPanel>
     </ScrollViewer>
 </Window>
