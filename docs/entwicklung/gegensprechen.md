@@ -1,6 +1,6 @@
 # Gegensprechen (Stufe 2): Grundlagen und Entscheide
 
-Stand 2026-09-30, Entscheide offen.
+Stand 2026-10-02, entschieden, noch nicht umgesetzt.
 
 ## Wie es technisch geht
 - **Hören** läuft bereits: Der Ton der Türstation kommt mit dem Livebild über die geprüfte RTSPS-Verbindung.
@@ -19,16 +19,16 @@ Stand 2026-09-30, Entscheide offen.
   Mobile-Apps und die Access-Web-App bis zum Abnehmen, Öffnen oder zur Zeitüberschreitung (60 s) weiter.
 - Das Livebild ist etwa 1 s verzögert. Antworten kommen also leicht verspätet an.
 
-## Offene Entscheide
-| # | Frage | Möglichkeiten | Empfehlung |
+## Entscheide (2026-10-02, Marcel)
+| # | Frage | Entscheid | Folgen für die Umsetzung |
 |---|---|---|---|
-| 1 | **Bedienung** | a) Taste halten zum Sprechen · b) Klick schaltet ein und aus · c) freies Sprechen in beide Richtungen gleichzeitig | **b)** Klick ein und aus. Während man spricht, ist der Ton der Tür am PC stumm, sonst gibt es Echo über Lautsprecher und Mikrofon. Nach 30 s Stille schaltet es selbst aus. c) bräuchte Echo-Unterdrückung und geht zuverlässig nur mit Headset |
-| 2 | **Wann** | a) nur während eines Klingelrufs (plus 10 s Nachfrist) · b) auch beim Livebild ohne Klingeln | **a)** Sonst wird die App zur Lautsprecheranlage an der Tür, ohne dass jemand geklingelt hat |
-| 3 | **Mehrere PCs** | a) immer nur einer gleichzeitig, die anderen sehen „<Name> spricht mit der Tür“ · b) frei | **a)** Zwei Stimmen gleichzeitig an der Tür sind unverständlich. Die anderen PCs stoppen zudem ihren Klingelton |
-| 4 | **Mikrofon** | a) Windows-Standard für Kommunikation · b) Auswahl im Menü der App | **a)** für den Anfang. Die Auswahl kommt, falls ein Arbeitsplatz ein anderes Gerät braucht |
-| 5 | **Protokoll** | jede Sprechphase mit Benutzer, Tür und Dauer im Dienstprotokoll | **ja** |
+| 1 | **Bedienung** | **Taste halten zum Sprechen** (abweichend von der Empfehlung „Klick ein und aus“) | Gesprochen wird nur, solange der Knopf „Sprechen“ gedrückt ist. Solange ist der Ton der Tür am PC stumm, sonst gibt es Echo über Lautsprecher und Mikrofon. Loslassen beendet sofort. Schutz gegen eine hängende Taste: nach 60 s am Stück endet das Sprechen von selbst |
+| 2 | **Wann** | nur während eines Klingelrufs, plus 10 s Nachfrist | Erzwingt der Dienst, wie beim Öffnen. Beim Livebild ohne Klingeln gibt es keinen Knopf „Sprechen“ |
+| 3 | **Mehrere PCs** | immer nur einer gleichzeitig | Der Dienst vergibt das Sprechen an einen PC. Die anderen zeigen „<Name> spricht mit der Tür“, ihr Knopf ist gesperrt und ihr Klingelton aus |
+| 4 | **Mikrofon** | Windows-Standard für Kommunikation | Keine Auswahl in der App. Die Mikrofonfreigabe von Windows für Desktop-Apps muss an sein |
+| 5 | **Protokoll** | ja | Jede Sprechphase mit Benutzer, PC, Tür und Dauer im Dienstprotokoll |
 
-## Umsetzung (nach den Entscheiden)
+## Umsetzung
 - Mikrofon: NAudio (WASAPI), Opus-Kodierung: Concentus (reines C#). Beide Bibliotheken mit freier Lizenz.
 - RTP-Pakete selbst gebaut (einfacher Kopf mit Sequenznummer und Zeitstempel, 20 ms pro Paket).
 - Test nur mit jemandem an der Tür: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset.
