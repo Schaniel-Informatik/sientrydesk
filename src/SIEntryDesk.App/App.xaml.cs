@@ -43,23 +43,29 @@ public partial class App : Application
 
     private static readonly string[] HelpArgs = ["--help", "-h", "-?", "/?", "--hilfe"];
 
+    // Zeilen höchstens etwa 45 Zeichen, sonst bricht das Meldungsfenster selbst um und zerstört die Einrückung.
     private static readonly string HelpText =
         $"""
         SI EntryDesk {TrayIcon.AppVersion}
 
         SIEntryDesk.exe
-            Tray-App. Startet bei jeder Anmeldung von selbst.
+            Tray-App, startet bei der Anmeldung
+            von selbst.
 
         SIEntryDesk.exe --setup
-            Einrichtungsassistent: neue sientrydesk.json erstellen oder eine bestehende
-            laden und gegen die Konsole prüfen. Die installierte Konfiguration ist nur
-            als Administrator lesbar.
+            Einrichtungsassistent: sientrydesk.json
+            erstellen oder eine bestehende prüfen.
 
         SIEntryDesk.exe --setup <Datei>
-            Einrichtungsassistent mit dieser sientrydesk.json.
+            Einrichtungsassistent mit dieser Datei.
+            Die installierte Datei ist nur als
+            Administrator lesbar.
 
         SIEntryDesk.exe --help
-            Diese Hilfe. Befehle des Dienstes: SIEntryDesk.Service.exe --help
+            Diese Hilfe.
+
+        Befehle des Dienstes:
+            SIEntryDesk.Service.exe --help
         """;
 
     protected override void OnStartup(StartupEventArgs e)

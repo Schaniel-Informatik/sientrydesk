@@ -13,7 +13,10 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## 0.5.3 (gebaut, unter Windows noch zu testen)
+## Nächste Version (umgesetzt, noch nicht gebaut)
+- Hilfe (`--help`) mit kürzeren Zeilen, das Meldungsfenster brach sie unschön um.
+
+## 0.5.3 (2026-10-02 getestet: Update über Intune, alte Zugänge, detect.ps1, Hilfe; Öffnen steht noch aus)
 - Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.
 - Eigener Token nur zum Öffnen entfernt (Altlast aus dem Machbarkeitstest, brachte keine Sicherheit). `set-secrets`
   behält das Format mit leerer Zeile 2, damit ältere Pakete der Zugänge passen; ein Wert dort wird abgelehnt.
