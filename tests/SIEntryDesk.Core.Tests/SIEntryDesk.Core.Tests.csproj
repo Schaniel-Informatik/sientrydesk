@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SIEntryDesk.Core\SIEntryDesk.Core.csproj" />
+    <ProjectReference Include="..\..\src\SIEntryDesk.Audio\SIEntryDesk.Audio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,6 +27,9 @@ public sealed class EntryDeskOptions
     /// <summary>Livebild ohne Klingeln über das Tray-Menü. Pro PC abschaltbar, jeder Abruf wird protokolliert.</summary>
     public bool LiveView { get; set; } = true;
 
+    /// <summary>Gegensprechen während eines Rufs. Pro PC abschaltbar (Entscheid 2026-10-02), braucht den Protect-Schlüssel.</summary>
+    public bool Talkback { get; set; } = true;
+
     /// <summary>So lange bleibt das Livebild ohne Klingeln offen, begrenzt auf 15–600 s.</summary>
     public int LiveViewSeconds { get; set; } = 60;
 

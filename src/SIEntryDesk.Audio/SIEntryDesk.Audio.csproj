@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Tonaufbereitung fürs Gegensprechen (Mono, Abtastrate, Opus). Plattformunabhängig, damit sie auf dem Mac getestet
+       werden kann. Die Aufnahme vom Mikrofon (Windows) liegt in der App. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SIEntryDesk.Audio</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- BSD-3-Clause (Lizenz von Opus), Hinweis in THIRD-PARTY-NOTICES.md. -->
+    <PackageReference Include="Concentus" Version="2.2.2" />
+  </ItemGroup>
+
+</Project>

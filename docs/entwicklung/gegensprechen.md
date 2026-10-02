@@ -24,7 +24,7 @@ Stand 2026-10-02, entschieden, noch nicht umgesetzt.
 |---|---|---|---|
 | 1 | **Bedienung** | **Taste halten zum Sprechen** (abweichend von der Empfehlung „Klick ein und aus“) | Gesprochen wird nur, solange der Knopf „Sprechen“ gedrückt ist. Solange ist der Ton der Tür am PC stumm, sonst gibt es Echo über Lautsprecher und Mikrofon. Loslassen beendet sofort. Schutz gegen eine hängende Taste: nach 60 s am Stück endet das Sprechen von selbst |
 | 2 | **Wann** | nur während eines Klingelrufs, plus 10 s Nachfrist | Erzwingt der Dienst, wie beim Öffnen. Beim Livebild ohne Klingeln gibt es keinen Knopf „Sprechen“ |
-| 3 | **Mehrere PCs** | immer nur einer gleichzeitig | Der Dienst vergibt das Sprechen an einen PC. Die anderen zeigen „<Name> spricht mit der Tür“, ihr Knopf ist gesperrt und ihr Klingelton aus |
+| 3 | **Mehrere PCs** | ursprünglich „immer nur einer“; **geändert 2026-10-02:** alle PCs dürfen sprechen, pro PC abschaltbar | Jeder PC hat seinen eigenen Dienst, eine Stelle zwischen den PCs gibt es nicht, und weder Access noch Protect melden, dass an einer Kamera gesprochen wird. Abstimmung zwischen PCs ginge nur mit eigenem Netzprotokoll, das ist verworfen. Auf einem PC spricht immer nur einer. Abschalten wie beim Livebild: `"Talkback": false` in der sientrydesk.local.json bzw. `-NoTalk` |
 | 4 | **Mikrofon** | Windows-Standard für Kommunikation | Keine Auswahl in der App. Die Mikrofonfreigabe von Windows für Desktop-Apps muss an sein |
 | 5 | **Protokoll** | ja | Jede Sprechphase mit Benutzer, PC, Tür und Dauer im Dienstprotokoll |
 

@@ -21,6 +21,10 @@ namespace SIEntryDesk.Core.Ipc;
 [JsonDerivedType(typeof(LiveViewRequest), "liveView")]
 [JsonDerivedType(typeof(LiveViewReadyMessage), "liveViewReady")]
 [JsonDerivedType(typeof(LiveViewUnavailableMessage), "liveViewUnavailable")]
+[JsonDerivedType(typeof(TalkRequest), "talk")]
+[JsonDerivedType(typeof(TalkResultMessage), "talkResult")]
+[JsonDerivedType(typeof(TalkAudioMessage), "talkAudio")]
+[JsonDerivedType(typeof(TalkEndedMessage), "talkEnded")]
 public abstract record IpcMessage;
 
 /// <summary>Zustand des Dienstes aus Sicht der Anzeige.</summary>
@@ -45,9 +49,11 @@ public sealed record StatusMessage(
     string Warning = "",
     string ExpiryNotice = "") : IpcMessage;
 
-/// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern.</summary>
+/// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern. TalkAvailable: Gegensprechen
+/// ist auf diesem PC eingerichtet und die Tür hat eine bekannte Kamera.</summary>
 public sealed record CallStartedMessage(
-    string CallId, string DoorName, DateTimeOffset StartedAt, bool UnlockAllowed, bool VideoAvailable = false) : IpcMessage;
+    string CallId, string DoorName, DateTimeOffset StartedAt, bool UnlockAllowed, bool VideoAvailable = false,
+    bool TalkAvailable = false) : IpcMessage;
 
 /// <summary>Dienst → App: Der Ruf ist beendet, das Fenster schliesst sich.</summary>
 public sealed record CallEndedMessage(string CallId, CallEndReason Reason) : IpcMessage;
@@ -88,3 +94,18 @@ public sealed record LiveViewReadyMessage(string DoorId, string DoorName, string
 
 /// <summary>Dienst → App: Kein Livebild für diese Tür, mit Grund.</summary>
 public sealed record LiveViewUnavailableMessage(string DoorId, string Reason) : IpcMessage;
+
+/// <summary>App → Dienst: Sprechtaste gedrückt (Start) oder losgelassen. Der Dienst holt die Talkback-Sitzung bei Protect
+/// und schickt den Ton selbst an die Türstation, die App erfährt deren Adresse nicht.</summary>
+public sealed record TalkRequest(string CallId, bool Start) : IpcMessage;
+
+/// <summary>Dienst → App: Antwort auf den Start. SampleRate: so kodiert die App (Opus, Mono, 20 ms). MaxSeconds: so lange
+/// höchstens am Stück.</summary>
+public sealed record TalkResultMessage(string CallId, bool Granted, string Message, int SampleRate = 0, int MaxSeconds = 0)
+    : IpcMessage;
+
+/// <summary>App → Dienst: ein Opus-Paket von 20 ms, Base64. Gilt nur, solange der Dienst das Sprechen freigegeben hat.</summary>
+public sealed record TalkAudioMessage(string CallId, string Opus) : IpcMessage;
+
+/// <summary>Dienst → App: Sprechen beendet, ohne dass die Taste losgelassen wurde (Höchstdauer, Rufende, Fehler).</summary>
+public sealed record TalkEndedMessage(string CallId, string Reason) : IpcMessage;

@@ -201,4 +201,34 @@ public class CallTrackerTests
         time.Now += TimeSpan.FromSeconds(16);
         Assert.Empty(tracker.Apply(new AccessDoorUnlocked(DoorId, HubId, "Tür 1")));
     }
+
+    [Fact]
+    public void Talking_is_allowed_during_the_call_and_briefly_after()
+    {
+        var time = new ManualTime();
+        var tracker = new CallTracker(time);
+        Assert.Equal(TalkDecision.UnknownCall, tracker.CanTalk("req-1", out _));
+
+        tracker.Apply(Ring());
+        Assert.Equal(TalkDecision.Allowed, tracker.CanTalk("req-1", out var call));
+        Assert.Equal(DoorId, call!.DoorId);
+
+        tracker.Apply(new AccessRingEnded("req-1", 107));
+        time.Now += TimeSpan.FromSeconds(9);
+        Assert.Equal(TalkDecision.Allowed, tracker.CanTalk("req-1", out _));
+        time.Now += TimeSpan.FromSeconds(2);
+        Assert.Equal(TalkDecision.CallEnded, tracker.CanTalk("req-1", out _));
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(106)]
+    public void No_talking_after_answered_elsewhere_or_declined(int reason)
+    {
+        var tracker = new CallTracker(new ManualTime());
+        tracker.Apply(Ring());
+        tracker.Apply(new AccessRingEnded("req-1", reason));
+        Assert.Equal(TalkDecision.CallEnded, tracker.CanTalk("req-1", out var call));
+        Assert.Null(call);
+    }
 }

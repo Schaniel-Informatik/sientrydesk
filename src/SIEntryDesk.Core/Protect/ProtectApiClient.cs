@@ -2,11 +2,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Talk;
 using SIEntryDesk.Core.Video;
 
 namespace SIEntryDesk.Core.Protect;
 
-/// <summary>Lesende Aufrufe der Protect Integration API über UniFi OS (Port 443), gepinnt, ohne Proxy.</summary>
+/// <summary>Aufrufe der Protect Integration API über UniFi OS (Port 443), gepinnt, ohne Proxy.</summary>
 public sealed partial class ProtectApiClient : IDisposable
 {
     private const string BasePath = "/proxy/protect/integration/v1";
@@ -80,6 +81,36 @@ public sealed partial class ProtectApiClient : IDisposable
             new Dictionary<string, string[]> { ["qualities"] = [quality] }, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         return await GetStreamsAsync(cameraId, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Öffnet eine Talkback-Sitzung zur Kamera (offizielle Integration API). Die Antwort nennt das Ziel für den Ton,
+    /// meist die Türstation selbst. Eine Laufzeit oder ein Schliessen kennt die API nicht, deshalb pro Sprechstoss neu.
+    /// </summary>
+    public async Task<TalkbackTarget?> CreateTalkbackSessionAsync(string cameraId, Action<string> problem, CancellationToken ct)
+    {
+        if (!UntrustedText.IsSafeId(cameraId))
+            throw new ArgumentException("Ungültige Kamera-ID.", nameof(cameraId));
+        using var response = await _http.PostAsync($"{BasePath}/cameras/{cameraId}/talkback-session", null, ct).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        using var doc = await JsonDocument.ParseAsync(
+            await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), cancellationToken: ct).ConfigureAwait(false);
+        var root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            problem("Antwort von Protect ist kein Objekt");
+            return null;
+        }
+        var target = TalkbackTarget.TryCreate(
+            String(root, "url"), String(root, "codec"),
+            root.TryGetProperty("samplingRate", out var rate) && rate.ValueKind == JsonValueKind.Number && rate.TryGetInt32(out var r) ? r : 0,
+            out var why);
+        if (target is null)
+            problem(why);
+        return target;
+
+        static string? String(JsonElement obj, string name) =>
+            obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
     }
 
     /// <summary>Kamera-ID → Name aus Protect. Dient auch als Lebenszeichen für Schlüssel und Erreichbarkeit.</summary>

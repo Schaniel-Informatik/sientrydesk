@@ -21,6 +21,13 @@ public sealed record CallEnded(CallInfo Call, CallEndReason Reason) : CallChange
 /// <summary>Die Tür zum Ruf wurde geöffnet. OpenedBy kommt aus dem Access-Protokoll und kann nachgereicht werden.</summary>
 public sealed record CallDoorOpened(CallInfo Call, string? OpenedBy) : CallChange(Call);
 
+public enum TalkDecision
+{
+    Allowed,
+    UnknownCall,
+    CallEnded,
+}
+
 public enum UnlockDecision
 {
     Allowed,
@@ -143,6 +150,32 @@ public sealed class CallTracker
             entry.UnlockInProgress = true;
             call = entry.Info;
             return UnlockDecision.Allowed;
+        }
+    }
+
+    /// <summary>
+    /// Gegensprechen nur während des Rufs und bis <see cref="UnlockGraceAfterEnd"/> danach, solange das Fenster noch
+    /// offen ist. Nicht nach „anderswo angenommen“ (dann spricht jemand anders) und nicht nach „abgelehnt“.
+    /// </summary>
+    public TalkDecision CanTalk(string callId, out CallInfo? call)
+    {
+        lock (_gate)
+        {
+            call = null;
+            if (_active.TryGetValue(callId, out var entry))
+            {
+                call = entry.Info;
+                return TalkDecision.Allowed;
+            }
+            entry = _recentlyEnded.FirstOrDefault(e => e.Info.CallId == callId);
+            if (entry is null)
+                return TalkDecision.UnknownCall;
+            var inGrace = entry.EndReason is CallEndReason.Cancelled or CallEndReason.Timeout or CallEndReason.Opened &&
+                          entry.EndedAt is { } ended && _time.GetUtcNow() - ended <= UnlockGraceAfterEnd;
+            if (!inGrace)
+                return TalkDecision.CallEnded;
+            call = entry.Info;
+            return TalkDecision.Allowed;
         }
     }
 
