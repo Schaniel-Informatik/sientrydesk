@@ -15,8 +15,8 @@ using SIEntryDesk.Core.Video;
 namespace SIEntryDesk.Service;
 
 /// <summary>
-/// Verbindet Access-Ereignisse, Rufzustand und die Tray-Apps. Öffnet nur nach den Regeln des CallTracker
-/// und gibt Livebilder nur während eines laufenden Rufs frei.
+/// Verbindet Access-Ereignisse, Rufzustand und die Tray-Apps. Öffnet nur nach den Regeln des CallTracker,
+/// gibt Livebilder nur während eines laufenden Rufs frei und Gegensprechen nur während des Rufs und kurz danach.
 /// </summary>
 internal sealed class CallCoordinator(
     IOptions<EntryDeskOptions> options,
@@ -47,6 +47,7 @@ internal sealed class CallCoordinator(
     private AccessApiClient? _accessApi;
     private ProtectApiClient? _protectApi;
     private StreamProxy? _proxy;
+    private TalkRelay? _talk;
     private CancellationToken _stopping;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -77,6 +78,7 @@ internal sealed class CallCoordinator(
         state.Tracker = _tracker;
         _accessApi = new AccessApiClient(host, secrets.AccessToken, pin);
         SetUpVideo(opt, secrets, host);
+        SetUpTalk(opt);
         _doors = new DoorDirectory(ServicePaths.DoorsFile);
         foreach (var (doorId, cameraId) in opt.DoorCameras)
             _doors.Seed(doorId, cameraId);
@@ -84,9 +86,9 @@ internal sealed class CallCoordinator(
         pipes.RequestHandler = HandleRequestAsync;
 
         log.LogInformation(
-            "Start {Version}: Konsole {Host}, Türen {Doors}, Livebild {Video}, ohne Klingeln {LiveView}",
+            "Start {Version}: Konsole {Host}, Türen {Doors}, Livebild {Video}, ohne Klingeln {LiveView}, Gegensprechen {Talk}",
             ServiceState.Version, host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors),
-            state.VideoEnabled ? "ein" : "aus", state.Doors.Enabled ? "ein" : "aus");
+            state.VideoEnabled ? "ein" : "aus", state.Doors.Enabled ? "ein" : "aus", state.TalkEnabled ? "ein" : "aus");
 
         try
         {
@@ -107,6 +109,7 @@ internal sealed class CallCoordinator(
         }
         finally
         {
+            _talk?.Dispose();
             if (_proxy is not null)
                 await _proxy.DisposeAsync().ConfigureAwait(false);
             _protectApi?.Dispose();
@@ -130,6 +133,23 @@ internal sealed class CallCoordinator(
         _proxy = new StreamProxy(CertificatePin.Parse(opt.EffectiveStreamPin), log, time);
         _proxy.Start();
         state.VideoEnabled = true;
+    }
+
+    private void SetUpTalk(EntryDeskOptions opt)
+    {
+        if (!opt.Talkback)
+        {
+            log.LogInformation("Gegensprechen auf diesem PC abgeschaltet");
+            return;
+        }
+        if (_protectApi is null)
+        {
+            log.LogInformation("Gegensprechen aus: Protect-Schlüssel oder ProtectPin fehlt");
+            return;
+        }
+        _talk = new TalkRelay(time, log, pipes.Send);
+        pipes.ClientDisconnected += _talk.EndClient;
+        state.TalkEnabled = true;
     }
 
     private void Fail(string problem)
@@ -259,7 +279,10 @@ internal sealed class CallCoordinator(
         try
         {
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
+            {
                 Publish(tracker.Expire());
+                _talk?.Expire();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -285,6 +308,7 @@ internal sealed class CallCoordinator(
                     log.LogInformation("Ruf beendet: {Door}, {Reason} (Ruf {Call})", e.Call.DoorName, e.Reason, e.Call.CallId);
                     pipes.Broadcast(new CallEndedMessage(e.Call.CallId, e.Reason));
                     CloseVideoLater(e.Call.CallId);
+                    EndTalk(e.Call.CallId, e.Reason);
                     break;
                 case CallDoorOpened o:
                     log.LogInformation("Tür geöffnet: {Door} von {By} (Ruf {Call})", o.Call.DoorName, o.OpenedBy ?? "?", o.Call.CallId);
@@ -294,13 +318,75 @@ internal sealed class CallCoordinator(
         }
     }
 
-    private async Task<IpcMessage?> HandleRequestAsync(IpcMessage request, string user, CancellationToken ct) => request switch
+    private async Task<IpcMessage?> HandleRequestAsync(IpcMessage request, PipeClient client, CancellationToken ct)
     {
-        UnlockRequest unlock => await UnlockAsync(unlock.CallId, user, ct).ConfigureAwait(false),
-        VideoRequest video => await VideoAsync(video.CallId, user, ct).ConfigureAwait(false),
-        LiveViewRequest live => await LiveViewAsync(live.DoorId, user, ct).ConfigureAwait(false),
-        _ => null,
-    };
+        switch (request)
+        {
+            case UnlockRequest unlock:
+                return await UnlockAsync(unlock.CallId, client.User, ct).ConfigureAwait(false);
+            case VideoRequest video:
+                return await VideoAsync(video.CallId, client.User, ct).ConfigureAwait(false);
+            case LiveViewRequest live:
+                return await LiveViewAsync(live.DoorId, client.User, ct).ConfigureAwait(false);
+            case TalkRequest { Start: true } talk:
+                return await TalkAsync(talk.CallId, client, ct).ConfigureAwait(false);
+            case TalkRequest talk:
+                if (UntrustedText.IsSafeId(talk.CallId))
+                    _talk?.Stop(talk.CallId, client.Id);
+                return null;
+            case TalkAudioMessage audio:
+                if (UntrustedText.IsSafeId(audio.CallId))
+                    _talk?.Audio(audio.CallId, client.Id, audio.Opus);
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>Sprechtaste gedrückt: nur während des Rufs bzw. der Nachfrist, nur mit bekannter Kamera.</summary>
+    private async Task<TalkResultMessage> TalkAsync(string callId, PipeClient client, CancellationToken ct)
+    {
+        if (!UntrustedText.IsSafeId(callId) || _tracker is null)
+            return new TalkResultMessage(string.Empty, false, "Ungültige Anfrage");
+        if (_talk is null || _protectApi is null)
+            return new TalkResultMessage(callId, false, options.Value.Talkback
+                ? "Gegensprechen braucht den Protect-Schlüssel"
+                : "Gegensprechen ist auf diesem PC abgeschaltet");
+        if (_tracker.CanTalk(callId, out var call) != TalkDecision.Allowed || call is null)
+            return new TalkResultMessage(callId, false, "Der Ruf ist beendet");
+        if (call.CameraId.Length == 0)
+            return new TalkResultMessage(callId, false, "Zu dieser Tür ist keine Kamera bekannt");
+        return await _talk.StartAsync(call, call.CameraId, state.DisplayName(call.CameraId, call.DoorName),
+            client.Id, client.User, _protectApi, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gegensprechen endet mit dem Ruf: sofort nach „anderswo angenommen“ oder „abgelehnt“, sonst nach der Nachfrist,
+    /// in der das Fenster noch offen ist.
+    /// </summary>
+    private void EndTalk(string callId, CallEndReason reason)
+    {
+        if (_talk is not { } talk || _tracker is null)
+            return;
+        if (reason is not (CallEndReason.Cancelled or CallEndReason.Timeout or CallEndReason.Opened))
+        {
+            talk.EndCall(callId, CallEndReasons.ToGerman(reason));
+            return;
+        }
+        var grace = _tracker.UnlockGraceAfterEnd;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(grace, time, _stopping).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            talk.EndCall(callId, "Ruf beendet");
+        });
+    }
 
     /// <summary>Türliste für das Livebild ohne Klingeln, nur Türen, die dieser PC anzeigt.</summary>
     private void PublishDoors()

@@ -37,6 +37,7 @@ Stand: Pilot, Repository privat.
 | [deploy/zugaenge/](deploy/zugaenge/) | Was ins Paket der Zugänge für Intune kommt: `set-tokens-intune.ps1`, `prepare-intune.ps1`, `tokens.example.txt` |
 | `src/` | Quellcode: `SIEntryDesk.Core` (gemeinsame Logik), `.Service` (Windows-Dienst), `.App` (Tray-App) |
 | `tests/` | Automatische Tests der gemeinsamen Logik |
+| [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Lizenzen der mitgelieferten Fremdsoftware (auch im Paket unter `Doku\`) |
 | `tools/` | Entwicklerwerkzeuge (Machbarkeitstest, DevCli für den Mac, `intune-check.ps1` für Intune über Graph) |
 | `build/` | Build-Skripte (`publish.sh` erzeugt das Windows-Paket) |
 

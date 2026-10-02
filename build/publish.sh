@@ -22,7 +22,7 @@ dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
 # deploy/ enthält nur ausgelieferte Dateien, die Anleitungen für Admins kommen aus docs/admin nach Doku/.
 cp deploy/programm/* "$out/"
 mkdir -p "$out/Doku" "$tokensOut"
-cp docs/admin/*.md "$out/Doku/"
+cp docs/admin/*.md THIRD-PARTY-NOTICES.md "$out/Doku/"
 cp deploy/zugaenge/* "$tokensOut/"
 
 # Sicherung: Die ZIP-Dateien sind für alle Anlagen gleich und können später öffentlich werden. Die sientrydesk.json

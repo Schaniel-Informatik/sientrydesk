@@ -27,11 +27,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SIEntryDesk.Core\SIEntryDesk.Core.csproj" />
+    <ProjectReference Include="..\SIEntryDesk.Audio\SIEntryDesk.Audio.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
+    <!-- Mikrofon fürs Gegensprechen (WASAPI), MIT. -->
+    <PackageReference Include="NAudio.Wasapi" Version="3.1.0" />
   </ItemGroup>
 
 </Project>

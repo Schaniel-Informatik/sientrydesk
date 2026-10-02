@@ -23,6 +23,9 @@ internal sealed class ServiceState
     /// <summary>Livebild eingerichtet (Protect-Schlüssel und Pin vorhanden).</summary>
     public bool VideoEnabled { get; set; }
 
+    /// <summary>Gegensprechen eingerichtet (auf diesem PC eingeschaltet und Protect-Schlüssel vorhanden).</summary>
+    public bool TalkEnabled { get; set; }
+
     /// <summary>Aktuelle Türliste für das Livebild ohne Klingeln.</summary>
     public DoorsMessage Doors { get; set; } = new(false, []);
 
@@ -81,5 +84,5 @@ internal sealed class ServiceState
 
     public CallStartedMessage ToMessage(CallInfo call) =>
         new(call.CallId, DisplayName(call.CameraId, call.DoorName), call.StartedAt, call.UnlockAllowed,
-            VideoEnabled && call.CameraId.Length > 0);
+            VideoEnabled && call.CameraId.Length > 0, TalkEnabled && call.CameraId.Length > 0);
 }

@@ -38,6 +38,11 @@ public partial class App : Application
 
     private bool _autoSound;
 
+    // Gegensprechen: höchstens eine Aufnahme gleichzeitig, mit Sicherheitsnetz für die Höchstdauer.
+    private TalkSender? _talkSender;
+    private string? _talkCallId;
+    private readonly DispatcherTimer _talkTimer = new();
+
     // Erinnerung vor Ablauf der Schlüssel: einmal pro Tag und Benutzer, stündlich geprüft (Datumswechsel).
     private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromHours(1) };
 
@@ -107,6 +112,12 @@ public partial class App : Application
         _alarmTimer.Tick += (_, _) => NotifyAlarm();
         _pauseTimer.Tick += (_, _) => Resume(manual: false);
         _expiryTimer.Tick += (_, _) => CheckExpiryNotice();
+        _talkTimer.Tick += (_, _) =>
+        {
+            if (_talkCallId is { } talking && _windows.TryGetValue(talking, out var window))
+                window.ReleaseTalk();
+            StopTalk(_talkCallId, notifyService: true);
+        };
         _expiryTimer.Start();
         _client = new ServiceClient(Dispatcher);
         _client.StatusChanged += status =>
@@ -122,6 +133,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        StopTalk(_talkCallId, notifyService: true);
         _cts.Cancel();
         foreach (var window in _windows.Values.Concat(_liveWindows.Values).ToList())
             window.Close();
@@ -163,7 +175,8 @@ public partial class App : Application
                 // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
                 foreach (var live in _liveWindows.Values.ToList())
                     live.Close();
-                ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring);
+                ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring,
+                    call.TalkAvailable);
                 break;
             case DoorsMessage doors:
                 _tray?.SetDoors(doors.Enabled, doors.Doors);
@@ -189,10 +202,73 @@ public partial class App : Application
             case VideoUnavailableMessage video when _windows.TryGetValue(video.CallId, out var window):
                 window.ShowVideoProblem(video.Reason);
                 break;
+            case TalkResultMessage talk when _windows.TryGetValue(talk.CallId, out var window):
+                OnTalkResult(window, talk);
+                break;
+            case TalkEndedMessage ended when _windows.TryGetValue(ended.CallId, out var window):
+                StopTalk(ended.CallId, notifyService: false);
+                window.ReleaseTalk();
+                window.ShowTalkProblem($"Sprechen beendet: {ended.Reason}");
+                break;
         }
     }
 
-    private void ShowRing(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool videoAvailable, WindowMode mode)
+    private void OnTalkResult(RingWindow window, TalkResultMessage result)
+    {
+        if (!result.Granted)
+        {
+            window.ShowTalkProblem(result.Message);
+            return;
+        }
+        // Taste schon wieder losgelassen, bevor die Freigabe kam.
+        if (!window.TalkHeld)
+        {
+            _ = _client?.SendAsync(new TalkRequest(result.CallId, false));
+            return;
+        }
+
+        StopTalk(_talkCallId, notifyService: true);
+        var callId = result.CallId;
+        var client = _client;
+        var sender = TalkSender.Start(
+            result.SampleRate,
+            packet => client?.SendAsync(new TalkAudioMessage(callId, Convert.ToBase64String(packet))) ?? Task.CompletedTask,
+            problem => Dispatcher.InvokeAsync(() =>
+            {
+                StopTalk(callId, notifyService: true);
+                window.ShowTalkProblem(problem);
+            }),
+            out var startProblem);
+        if (sender is null)
+        {
+            _ = client?.SendAsync(new TalkRequest(callId, false));
+            window.ShowTalkProblem(startProblem);
+            return;
+        }
+        _talkSender = sender;
+        _talkCallId = callId;
+        window.ShowTalking();
+        // Der Dienst beendet nach MaxSeconds ohnehin, das hier stoppt auch das Mikrofon.
+        _talkTimer.Stop();
+        _talkTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, result.MaxSeconds));
+        _talkTimer.Start();
+    }
+
+    /// <summary>Beendet die Aufnahme zu diesem Ruf und meldet es auf Wunsch dem Dienst.</summary>
+    private void StopTalk(string? callId, bool notifyService)
+    {
+        if (callId is null || _talkCallId != callId)
+            return;
+        _talkTimer.Stop();
+        _talkSender?.Dispose();
+        _talkSender = null;
+        _talkCallId = null;
+        if (notifyService)
+            _ = _client?.SendAsync(new TalkRequest(callId, false));
+    }
+
+    private void ShowRing(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, bool videoAvailable,
+        WindowMode mode, bool talkAvailable = false)
     {
         if (_windows.ContainsKey(callId))
             return;
@@ -203,10 +279,28 @@ public partial class App : Application
             if (_client is null || !await _client.SendAsync(new UnlockRequest(callId)))
                 window.ShowUnlockResult(false, "Dienst nicht erreichbar");
         };
+        if (talkAvailable)
+        {
+            window.EnableTalk();
+            window.TalkPressed += async () =>
+            {
+                window.ShowTalkConnecting();
+                if (_client is null || !await _client.SendAsync(new TalkRequest(callId, true)))
+                    window.ShowTalkProblem("Dienst nicht erreichbar");
+            };
+            window.TalkReleased += () =>
+            {
+                if (_talkCallId == callId)
+                    StopTalk(callId, notifyService: true);
+                else
+                    _ = _client?.SendAsync(new TalkRequest(callId, false));
+            };
+        }
         window.RingingChanged += UpdateRingtone;
         window.Closed += (_, _) =>
         {
             _windows.Remove(callId);
+            StopTalk(callId, notifyService: true);
             UpdateRingtone();
         };
 

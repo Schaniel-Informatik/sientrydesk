@@ -19,14 +19,17 @@ der Anlage, nicht hierher.
 | Version, Kennung der Zugänge | `HKLM\SOFTWARE\SIEntryDesk` | `Version`, bei Intune `TokenLabel`. Keine Geheimnisse |
 
 ## Voraussetzungen
-- **PC:** Windows 11, 64 Bit. Für die Installation lokaler Administrator.
+- **PC:** Windows 11, 64 Bit. Für die Installation lokaler Administrator. Für Gegensprechen ein Mikrofon, am besten
+  ein Headset, und in Windows unter Datenschutz → Mikrofon „Desktop-Apps den Zugriff erlauben“ (Standard).
 - **UniFi-OS-Konsole** mit UniFi Access und UniFi Protect.
 - **UniFi Access** mit Developer API (Version 1.20.11 oder neuer, nicht mit Identity Enterprise): Klingel-Ereignisse
   und Öffnen.
 - **UniFi Protect** mit Integration API (API-Schlüssel unter UniFi OS → Einstellungen → Control Plane →
   Integrations): Livebild und Kameranamen. Ohne geht alles ausser dem Livebild.
 - **Türstationen** (z. B. G6 Entry, G6 Pro Entry) in Protect, in Access einer Tür mit UA Hub Door zugeordnet.
-- **Netz:** Die PCs erreichen die Konsole auf TCP 12445 (Access), 443 (Protect) und 7441 (Stream). Die App braucht
+- **Netz:** Die PCs erreichen die Konsole auf TCP 12445 (Access), 443 (Protect) und 7441 (Stream). Für
+  Gegensprechen zusätzlich **UDP 7004 direkt zu den Türstationen**, nicht zur Konsole: Protect nennt die Türstation
+  als Ziel für den Ton. Dieser Ton ist unverschlüsselt, so hat Ubiquiti die Schnittstelle gebaut. Die App braucht
   keine eingehenden Verbindungen, der Installer sperrt sie in der Windows-Firewall.
 
 ## Vorbereitung in UniFi
@@ -118,10 +121,11 @@ Aus der Vorlage `sientrydesk.example.json` im Paket. Kommentare nur auf eigenen 
 | `Doors` | Türen, die dieser PC anzeigt (Tür-ID oder Name). Leer = alle |
 | `DoorCameras` | Tür-ID → Protect-Kamera-ID. Ohne Eintrag lernt der Dienst die Kamera beim ersten Klingeln |
 | `LiveView`, `LiveViewSeconds` | Livebild ohne Klingeln im Menü, Dauer 15–600 s (Standard 60) |
+| `Talkback` | Gegensprechen während eines Rufs (Standard `true`), braucht den Protect-Schlüssel |
 | `TokenExpires`, `ProtectKeyExpires` | Ablaufdaten der Zugänge, z. B. `"2027-09-30"` |
 
 Abweichungen für einen einzelnen PC: `C:\ProgramData\SIEntryDesk\sientrydesk.local.json`, z. B. `{ "LiveView": false }`
-(der Installer schreibt sie mit `-NoLiveView`).
+oder `{ "Talkback": false }` (der Installer schreibt sie mit `-NoLiveView` bzw. `-NoTalk`).
 
 Die Pins ändern sich nur, wenn die Konsole ein neues Zertifikat bekommt. Dann ist das Symbol rot, und das Protokoll
 nennt den erhaltenen Fingerabdruck. Erst prüfen, ob das Zertifikat wirklich erneuert wurde, dann den Pin anpassen.
@@ -151,6 +155,7 @@ Das Skript richtet ein:
 | Erstinstallation | `powershell -ExecutionPolicy Bypass -File .\install.ps1 -SetTokens` |
 | Update, Zugänge bleiben | `powershell -ExecutionPolicy Bypass -File .\install.ps1` |
 | Livebild ohne Klingeln auf diesem PC aus | zusätzlich `-NoLiveView` |
+| Gegensprechen auf diesem PC aus | zusätzlich `-NoTalk` |
 | Nur die Zugänge erneuern | `powershell -ExecutionPolicy Bypass -File "C:\Program Files\SIEntryDesk\set-tokens.ps1"` |
 | Entfernen | `powershell -ExecutionPolicy Bypass -File "C:\Program Files\SIEntryDesk\uninstall.ps1"`, mit `-KeepData` bleiben Konfiguration, Zugänge und Protokolle |
 

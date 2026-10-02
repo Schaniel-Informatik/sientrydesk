@@ -45,6 +45,11 @@ public partial class RingWindow : Window
     private bool _closed;
     private bool _muted = true;
     private MediaPlayer? _player;
+    private bool _talkAvailable;
+    private bool _talking;
+
+    private static readonly Brush TalkIdle = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB));
+    private static readonly Brush TalkActive = new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22));
 
     public RingWindow(string callId, string doorName, DateTimeOffset startedAt, bool unlockAllowed, WindowMode mode,
         DateTimeOffset? until = null)
@@ -99,6 +104,51 @@ public partial class RingWindow : Window
     public event Action? UnlockRequested;
     public event Action? RingingChanged;
 
+    /// <summary>Sprechtaste gedrückt bzw. losgelassen (auch beim Schliessen oder wenn das Sprechen endet).</summary>
+    public event Action? TalkPressed;
+    public event Action? TalkReleased;
+
+    /// <summary>Die Sprechtaste ist gerade gedrückt.</summary>
+    public bool TalkHeld { get; private set; }
+
+    /// <summary>Gegensprechen anbieten (Dienst: eingerichtet und Kamera der Tür bekannt).</summary>
+    public void EnableTalk()
+    {
+        if (Mode != WindowMode.Ring)
+            return;
+        _talkAvailable = true;
+        TalkButton.Visibility = Visibility.Visible;
+        TalkButton.IsEnabled = true;
+    }
+
+    public void ShowTalkConnecting() => TalkButton.Content = "Verbinde mit der Tür …";
+
+    /// <summary>Der Dienst hat das Sprechen freigegeben. Der Ton der Tür ist so lange stumm, sonst gibt es Echo.</summary>
+    public void ShowTalking()
+    {
+        _talking = true;
+        StopRinging();
+        if (_player is not null)
+            _player.Mute = true;
+        TalkButton.Content = "Sie sprechen – loslassen zum Hören";
+        TalkButton.Background = TalkActive;
+    }
+
+    public void ShowTalkIdle()
+    {
+        if (_talking && _player is not null)
+            _player.Mute = _muted;
+        _talking = false;
+        TalkButton.Content = "Sprechen – gedrückt halten";
+        TalkButton.Background = TalkIdle;
+    }
+
+    public void ShowTalkProblem(string message)
+    {
+        ShowTalkIdle();
+        SetStatus(message, Bad);
+    }
+
     public void EndCall(CallEndReason reason)
     {
         if (_ended)
@@ -109,6 +159,12 @@ public partial class RingWindow : Window
         // noch öffnen. Der Dienst prüft das ebenfalls.
         _reopenable = _unlockAllowed && !_opened && reason is CallEndReason.Cancelled or CallEndReason.Timeout;
         OpenButton.IsEnabled = _reopenable && !_unlockPending;
+        // Sprechen geht in der Nachfrist weiter, ausser jemand anders hat angenommen oder abgelehnt (prüft auch der Dienst).
+        if (_talkAvailable && reason is not (CallEndReason.Cancelled or CallEndReason.Timeout or CallEndReason.Opened))
+        {
+            ReleaseTalk();
+            TalkButton.IsEnabled = false;
+        }
         Headline.Text = "Ruf beendet";
         Headline.Foreground = Neutral;
         // Nach dem Öffnen über die API meldet Access das Ende als "Besucher hat abgebrochen" (108).
@@ -164,7 +220,8 @@ public partial class RingWindow : Window
         {
             if (_player is null)
                 return;
-            _player.Mute = _muted;
+            // Während gesprochen wird, bleibt der Ton der Tür stumm, sonst gibt es Echo.
+            _player.Mute = _muted || _talking;
             VideoText.Text = "Livebild";
             SoundButton.IsEnabled = true;
             SoundButton.Content = _muted ? "Ton an" : "Ton aus";
@@ -187,6 +244,7 @@ public partial class RingWindow : Window
     {
         _closed = true;
         _closeTimer.Stop();
+        ReleaseTalk();
         StopRinging();
         var player = _player;
         _player = null;
@@ -223,6 +281,37 @@ public partial class RingWindow : Window
     }
 
     private void OnHideClick(object sender, RoutedEventArgs e) => Close();
+
+    private void OnTalkDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (!TalkButton.IsEnabled || TalkHeld)
+            return;
+        TalkHeld = true;
+        TalkButton.CaptureMouse();
+        TalkPressed?.Invoke();
+    }
+
+    private void OnTalkUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        TalkButton.ReleaseMouseCapture();
+        ReleaseTalk();
+    }
+
+    private void OnTalkLost(object sender, System.Windows.Input.MouseEventArgs e) => ReleaseTalk();
+
+    /// <summary>Taste losgelassen, Maus weg, Fenster zu oder Sprechen beendet: genau einmal melden.</summary>
+    public void ReleaseTalk()
+    {
+        if (!TalkHeld)
+            return;
+        TalkHeld = false;
+        if (TalkButton.IsMouseCaptured)
+            TalkButton.ReleaseMouseCapture();
+        ShowTalkIdle();
+        TalkReleased?.Invoke();
+    }
 
     private void SetStatus(string text, Brush color)
     {

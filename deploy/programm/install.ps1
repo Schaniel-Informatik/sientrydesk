@@ -10,6 +10,7 @@
     - Tokens nur mit -SetTokens (fragt verdeckt) oder separat mit set-tokens.ps1. Ohne -SetTokens fragt das Skript
       nichts und eignet sich für Intune. Vorhandene Tokens bleiben bei einem Update erhalten.
     - Tray-App startet bei jeder Anmeldung, Eintrag im Startmenü, Firewall-Sperre für eingehende Verbindungen
+    - -NoLiveView bzw. -NoTalk schalten Livebild ohne Klingeln bzw. Gegensprechen nur auf diesem PC ab
 
 .EXAMPLE
     Erstinstallation von Hand:
@@ -22,7 +23,8 @@
 param(
     [string] $ConfigFile = (Join-Path $PSScriptRoot 'sientrydesk.json'),
     [switch] $SetTokens,
-    [switch] $NoLiveView
+    [switch] $NoLiveView,
+    [switch] $NoTalk
 )
 
 # Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
@@ -116,9 +118,13 @@ Write-Host '6/8 Konfiguration übernehmen'
 Copy-Item -Force $ConfigFile (Join-Path $dataDir 'sientrydesk.json')
 # Konfiguration bis 0.2.x, sonst würden alte Werte mitgelesen.
 Remove-Item -Force (Join-Path $dataDir 'config.json') -ErrorAction SilentlyContinue
-if ($NoLiveView) {
-    '{ "LiveView": false }' | Set-Content -Encoding UTF8 (Join-Path $dataDir 'sientrydesk.local.json')
-    Write-Host '    Livebild ohne Klingeln auf diesem PC abgeschaltet (sientrydesk.local.json).'
+# Abweichungen nur für diesen PC. Ohne Schalter bleibt eine vorhandene sientrydesk.local.json unverändert.
+$local = [ordered]@{}
+if ($NoLiveView) { $local['LiveView'] = $false }
+if ($NoTalk) { $local['Talkback'] = $false }
+if ($local.Count -gt 0) {
+    $local | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $dataDir 'sientrydesk.local.json')
+    Write-Host "    Auf diesem PC abgeschaltet: $(@($local.Keys) -join ', ') (sientrydesk.local.json)."
 }
 
 Write-Host '7/8 Tokens'

@@ -1,6 +1,6 @@
 # Gegensprechen (Stufe 2): Grundlagen und Entscheide
 
-Stand 2026-10-02, entschieden, noch nicht umgesetzt.
+Stand 2026-10-02, umgesetzt, an der Tür noch nicht getestet.
 
 ## Wie es technisch geht
 - **Hören** läuft bereits: Der Ton der Türstation kommt mit dem Livebild über die geprüfte RTSPS-Verbindung.
@@ -29,8 +29,25 @@ Stand 2026-10-02, entschieden, noch nicht umgesetzt.
 | 5 | **Protokoll** | ja | Jede Sprechphase mit Benutzer, PC, Tür und Dauer im Dienstprotokoll |
 
 ## Umsetzung
-- Mikrofon: NAudio (WASAPI), Opus-Kodierung: Concentus (reines C#). Beide Bibliotheken mit freier Lizenz.
-- RTP-Pakete selbst gebaut (einfacher Kopf mit Sequenznummer und Zeitstempel, 20 ms pro Paket).
-- Test nur mit jemandem an der Tür: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset.
-  Ausserdem: Was passiert, wenn gleichzeitig jemand über die Mobile-App spricht? Klingeln die Handys wirklich weiter?
-  Erreichen die PCs im Büronetz die Türstationen per UDP (bisher nur über das VPN geprüft)?
+**Wer was tut:**
+- **App:** Knopf „Sprechen“ im Klingelfenster. Solange gedrückt: Standardmikrofon für Kommunikation aufnehmen (NAudio,
+  `WasapiRecorder`), auf Mono und die Abtastrate der Türstation bringen, in 20-ms-Rahmen mit Opus kodieren
+  (`SIEntryDesk.Audio`) und als `TalkAudioMessage` an den Dienst. Ton der Tür am PC stumm, Klingelton aus.
+- **Dienst:** prüft bei jedem Drücken Ruf bzw. Nachfrist (`CallTracker.CanTalk`) und ob an diesem PC schon jemand
+  spricht (`TalkFloor`), holt eine Talkback-Sitzung bei Protect, prüft die Antwort (`TalkbackTarget`: nur Opus, nur
+  lokales Netz) und schickt die Pakete als RTP (`RtpPacketizer`) an die Türstation (`TalkRelay`). Die App erfährt das
+  Ziel nicht. Ende nach Loslassen, 60 s, Rufende plus Nachfrist, sofort nach „anderswo angenommen“/„abgelehnt“ oder
+  wenn die App sich trennt. Jede Sprechphase steht mit Benutzer, Tür, Dauer und Anzahl Pakete im Protokoll.
+
+**Technische Entscheide:**
+- **Eine Talkback-Sitzung pro Sprechstoss:** Die offizielle API (Protect 7.1) kennt weder Laufzeit noch Schliessen.
+- **Opus auf Breitband begrenzt** (Sprache bis 8 kHz, SILK): Bei 24 kHz wählt Opus sonst den Hybridmodus, der mit
+  Concentus 2.2.2 im Test nicht sauber hin und zurück kam. Für Sprache genügt Breitband.
+- **RTP:** Payload-Typ 97 und Takt 48 kHz wie ffmpeg im Machbarkeitstest, Marker am Anfang jedes Sprechstosses.
+- **Kein Kommunikationsmodus von Windows** bei der Aufnahme: Er würde andere Töne am PC leiser stellen.
+
+**Test:**
+1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
+   Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
+2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,
+   wenn gleichzeitig jemand über die Mobile-App spricht; ob die PCs im Büronetz die Türstationen per UDP erreichen.

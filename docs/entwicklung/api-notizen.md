@@ -62,7 +62,9 @@ steht dort der Name des Tokens. Für die App bietet sich an, PC und Benutzer zu 
   nur `Content-Base`. Das SDP verweist relativ auf die Spuren. Laut `Public` nimmt der Server auch `ANNOUNCE` und
   `RECORD` an.
 - **Talkback:** Antwort z. B. `{"url": "rtp://<ip>:7004", "codec": "opus", "samplingRate": 24000, "bitsPerSample": 16}`.
-  Die Adresse im Beispiel ist die des Geräts. Die Client-PCs brauchen dann UDP direkt zur Türstation.
+  Die Adresse ist die des Geräts. Die Client-PCs brauchen dann UDP direkt zur Türstation. Laut OpenAPI (Protect 7.1)
+  sind alle vier Felder Pflicht, `codec` kann auch `aac` sein (Beispiel 22050 Hz). Kein Endpunkt zum Schliessen,
+  keine Laufzeit angegeben. Unsere Türstationen melden Opus 24 kHz.
 
 ## Folgen für das Design
 - Das Fenster überall zu schliessen, wenn jemand anders abnimmt, geht nur über Access (`reason_code` 400).

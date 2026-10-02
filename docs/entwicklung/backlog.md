@@ -15,6 +15,13 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 
 ## Nächste Version (umgesetzt, noch nicht gebaut)
 - Hilfe (`--help`) mit kürzeren Zeilen, das Meldungsfenster brach sie unschön um.
+- **Gegensprechen** nach den Entscheiden vom 02.10. (Taste halten, nur beim Ruf, pro PC abschaltbar mit `-NoTalk`),
+  siehe [gegensprechen.md](gegensprechen.md). Zuerst mit `DevCli talk` vom Mac an der Tür prüfen, dann unter Windows.
+- `THIRD-PARTY-NOTICES.md` mit den Lizenzen der Fremdsoftware, liegt im Paket unter `Doku\`.
+
+## Vor der Veröffentlichung
+- Lizenzlage der mitgelieferten LibVLC-Plugins prüfen (LibVLC selbst ist LGPL, einzelne Plugins können andere Lizenzen
+  haben) und nicht benötigte Plugins weglassen.
 
 ## 0.5.3 (2026-10-02 getestet: Update über Intune, alte Zugänge, detect.ps1, Hilfe, Öffnen mit dem einen Token)
 - Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.

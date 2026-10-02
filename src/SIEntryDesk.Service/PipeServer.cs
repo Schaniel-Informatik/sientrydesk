@@ -7,6 +7,9 @@ using SIEntryDesk.Core.Ipc;
 
 namespace SIEntryDesk.Service;
 
+/// <summary>Eine verbundene App: Verbindungsnummer und Windows-Benutzer.</summary>
+internal sealed record PipeClient(int Id, string User);
+
 /// <summary>
 /// Lokale Named Pipe für die Tray-Apps der angemeldeten Benutzer. Zugriff haben nur interaktiv angemeldete
 /// Benutzer (lesen/schreiben), SYSTEM, Administratoren und der Dienst selbst. Den Benutzernamen liefert Windows,
@@ -18,12 +21,22 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     private readonly ConcurrentDictionary<int, ClientConnection> _clients = new();
     private int _nextId;
 
-    /// <summary>(Anfrage der App, Windows-Benutzer) → Antwort an diese App. Wird vom Koordinator gesetzt.</summary>
-    public Func<IpcMessage, string, CancellationToken, Task<IpcMessage?>>? RequestHandler { get; set; }
+    /// <summary>(Anfrage der App, App) → Antwort an diese App. Wird vom Koordinator gesetzt.</summary>
+    public Func<IpcMessage, PipeClient, CancellationToken, Task<IpcMessage?>>? RequestHandler { get; set; }
+
+    /// <summary>Eine App hat die Verbindung getrennt (Nummer wie in <see cref="PipeClient.Id"/>).</summary>
+    public event Action<int>? ClientDisconnected;
 
     public void Broadcast(IpcMessage message)
     {
         foreach (var client in _clients.Values)
+            client.Send(message);
+    }
+
+    /// <summary>Nachricht nur an eine App, sofern sie noch verbunden ist.</summary>
+    public void Send(int clientId, IpcMessage message)
+    {
+        if (_clients.TryGetValue(clientId, out var client))
             client.Send(message);
     }
 
@@ -80,10 +93,11 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
                 client.Send(message);
             var writer = client.RunWriterAsync(ct);
             var reader = new IpcReader(client.Pipe);
+            var who = new PipeClient(client.Id, client.User);
             while (await reader.ReadAsync(ct).ConfigureAwait(false) is { } message)
             {
                 if (RequestHandler is { } handler &&
-                    await handler(message, client.User, ct).ConfigureAwait(false) is { } reply)
+                    await handler(message, who, ct).ConfigureAwait(false) is { } reply)
                     client.Send(reply);
             }
             client.Dispose();
@@ -96,6 +110,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
         {
             _clients.TryRemove(client.Id, out _);
             client.Dispose();
+            ClientDisconnected?.Invoke(client.Id);
             log.LogInformation("App getrennt: {User}", client.User);
         }
     }

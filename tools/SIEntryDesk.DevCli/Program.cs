@@ -3,6 +3,7 @@
 //   SIED_HOST, SIED_ACCESS_TOKEN, SIED_PIN_ACCESS, optional SIED_DOORS (kommagetrennt)
 // Aufruf: dotnet run --project tools/SIEntryDesk.DevCli -- listen [minuten]
 //         dotnet run --project tools/SIEntryDesk.DevCli -- video <kamera-id> [--play]
+//         dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> [sekunden]
 //         (zusätzlich SIED_PROTECT_KEY, SIED_PIN_PROTECT, SIED_PIN_RTSPS)
 
 using System.Diagnostics;
@@ -14,6 +15,11 @@ using SIEntryDesk.Core.Protect;
 using SIEntryDesk.Core.Security;
 using SIEntryDesk.Core.Setup;
 using SIEntryDesk.Core.Video;
+using SIEntryDesk.Audio;
+using SIEntryDesk.Core.Talk;
+
+if (args is ["talk", var talkCamera, ..])
+    return await TalkTestAsync(talkCamera, args.Length > 2 && int.TryParse(args[2], out var s) ? Math.Clamp(s, 1, 10) : 3);
 
 if (args is ["video", var cameraId, ..])
     return await VideoTestAsync(cameraId, args.Contains("--play"));
@@ -23,7 +29,7 @@ if (args is ["setup-check"])
 
 if (args is not ["listen", ..])
 {
-    Console.Error.WriteLine("Aufruf: SIEntryDesk.DevCli listen [minuten] | video <kamera-id> [--play]");
+    Console.Error.WriteLine("Aufruf: SIEntryDesk.DevCli listen [minuten] | video <kamera-id> [--play] | talk <kamera-id> [sekunden] | setup-check");
     return 2;
 }
 var minutes = args.Length > 1 && double.TryParse(args[1], out var m) ? m : 5;
@@ -98,6 +104,52 @@ await stream.RunAsync(
 await expiry;
 log.LogInformation("Beendet, {Count} Lebenszeichen empfangen", heartbeats);
 return 0;
+
+// Gegensprechen ohne Windows: Talkback-Sitzung wie der Dienst, Testton mit derselben Opus- und RTP-Umsetzung wie die App.
+// Nur mit jemandem an der Tür, der sagt, ob der Ton ankommt.
+static async Task<int> TalkTestAsync(string cameraId, int seconds)
+{
+    static string Get(string name) =>
+        Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v.Trim()
+            : throw new InvalidOperationException($"Umgebungsvariable {name} fehlt");
+
+    using var protect = new ProtectApiClient(Get("SIED_HOST"), Get("SIED_PROTECT_KEY"), CertificatePin.Parse(Get("SIED_PIN_PROTECT")));
+    var problem = string.Empty;
+    var target = await protect.CreateTalkbackSessionAsync(cameraId, p => problem = p, CancellationToken.None);
+    if (target is null)
+    {
+        Console.Error.WriteLine($"Keine brauchbare Talkback-Sitzung: {problem}");
+        return 1;
+    }
+    Console.WriteLine($"Talkback: Türstation {target.Address}:{target.Port}, Opus {target.SamplingRate} Hz");
+
+    var encoder = new OpusVoiceEncoder(target.SamplingRate);
+    var rtp = new RtpPacketizer();
+    using var udp = new System.Net.Sockets.UdpClient(target.Address.AddressFamily);
+    udp.Connect(target.EndPoint);
+
+    // Zwei Töne im Wechsel (660/880 Hz, halbe Lautstärke), deutlich als Test erkennbar.
+    var frame = new float[encoder.FrameSamples];
+    var frames = seconds * 50;
+    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(20));
+    var watch = Stopwatch.StartNew();
+    long bytes = 0;
+    for (var n = 0; n < frames; n++)
+    {
+        var hz = n / 25 % 2 == 0 ? 660f : 880f;
+        for (var i = 0; i < frame.Length; i++)
+        {
+            var t = (n * frame.Length + i) / (float)target.SamplingRate;
+            frame[i] = 0.5f * MathF.Sin(2 * MathF.PI * hz * t);
+        }
+        var packet = rtp.Next(encoder.Encode(frame));
+        bytes += packet.Length;
+        udp.Send(packet);
+        await timer.WaitForNextTickAsync();
+    }
+    Console.WriteLine($"{frames} Pakete ({bytes / 1024.0:F1} KB) in {watch.Elapsed.TotalSeconds:F1} s gesendet. Ton an der Tür gehört?");
+    return 0;
+}
 
 // Holt die Stream-Adresse über die Protect-API, öffnet eine Einmal-Adresse im Proxy und prüft sie mit ffprobe.
 static async Task<int> VideoTestAsync(string cameraId, bool play)

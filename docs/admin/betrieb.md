@@ -13,7 +13,14 @@ anders ab (Mobile-App, anderer PC), schliesst es sich überall.
 
 „Ton an“ im Klingelfenster schaltet den Ton der Tür ein und den Klingelton aus. Nach dem Ende eines Rufs bleibt das
 Fenster 10 s offen. Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, lässt sich in
-dieser Zeit noch öffnen. Während einer Teams-Besprechung kann Windows andere Töne dämpfen (Sound → Weitere
+dieser Zeit noch öffnen.
+
+**Gegensprechen:** „Sprechen – gedrückt halten“ drücken und halten, sprechen, loslassen, um die Antwort zu hören.
+Solange die Taste gedrückt ist, ist der Ton der Tür am PC stumm, sonst gäbe es Echo. Nach 60 s am Stück endet das
+Sprechen von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn jemand anders angenommen oder
+abgelehnt hat. Die PCs stimmen sich nicht ab: Sprechen zwei gleichzeitig, kommen beide Stimmen an der Tür an. Wer
+spricht, hört die andere Stimme beim Loslassen über den Ton der Tür. Die Mobile-Apps klingeln weiter, bis jemand
+öffnet oder der Ruf endet. Während einer Teams-Besprechung kann Windows andere Töne dämpfen (Sound → Weitere
 Soundeinstellungen → Kommunikation).
 
 | Symbol | Bedeutung |
@@ -33,6 +40,8 @@ Soundeinstellungen → Kommunikation).
 5. **Am Handy abnehmen:** Das Fenster schliesst sich mit „Anderswo angenommen“.
 6. **Öffnen am PC**, nur mit jemandem an der Tür. Im Access-Protokoll steht „<Benutzer> via SI EntryDesk (<PC>)“.
 7. **Pause:** 15 Minuten pausieren, klingeln lassen. Es erscheint nichts, danach steht der Ruf im Menü.
+8. **Gegensprechen**, nur mit jemandem an der Tür: Sprechtaste halten, sprechen, loslassen, Antwort hören. Einmal mit
+   Lautsprechern, einmal mit Headset.
 
 ## Zugänge jährlich erneuern
 Ohne Unterbruch, weil der alte Zugang bis zum Schluss gültig bleibt. Per Intune: [intune.md](intune.md#zugänge-jährlich-erneuern).
@@ -51,6 +60,14 @@ Von Hand:
 | grau | Ausserhalb des Firmennetzes normal. Im Büro: Netz oder VPN, Ports 12445, 443, 7441 prüfen |
 | orange | Text im Menü lesen. Protect-Schlüssel prüfen oder Zugänge erneuern |
 | rot | Text im Menü und Protokoll lesen: Dienst läuft nicht, Token abgelehnt, Zertifikat passt nicht zum Pin |
+
+| Meldung beim Sprechen | Was tun |
+|---|---|
+| kein Knopf „Sprechen“ | Gegensprechen auf diesem PC abgeschaltet (`Talkback`), Protect-Schlüssel fehlt oder die Kamera der Tür ist unbekannt |
+| „Kein Zugriff aufs Mikrofon“ | Windows: Datenschutz → Mikrofon → Desktop-Apps zulassen |
+| „Kein Mikrofon gefunden“ | Mikrofon oder Headset anschliessen, in Windows als Standardgerät für Kommunikation festlegen |
+| Taste geht, an der Tür kommt nichts an | UDP 7004 vom PC zur Türstation blockiert; im Protokoll steht die Adresse der Türstation |
+| „Protect-Schlüssel abgelehnt“ / „Protect nicht erreichbar“ | wie beim Livebild |
 
 **Protokoll des Dienstes** (nur für Administratoren lesbar): `C:\ProgramData\SIEntryDesk\logs\service-JJJJMMTT.log`.
 Es enthält Türnamen, aber keine Tokens und keine Stream-Adressen. Installation über Intune:
