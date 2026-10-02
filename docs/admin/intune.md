@@ -92,6 +92,14 @@ In Intune die App **SI EntryDesk** bearbeiten: Paketdatei und Erkennungsskript e
 Dasselbe, wenn sich nur die `sientrydesk.json` ändert. *App-Version* ist nur eine Beschriftung in den Berichten,
 welche Version ein Gerät wirklich hat, steht auf dem Gerät.
 
+**Wann die Geräte das Update holen:** Erst bei der nächsten Neubewertung der App, und die kommt für eine installierte
+App bis zu **24 Stunden** nach der letzten (Global Re-evaluation Schedule). Neustart der Intune-Erweiterung oder des
+Geräts beschleunigt das nicht. Das Unternehmensportal zeigt in der Zwischenzeit schon die neue *App-Version* mit
+„Installiert“; das ist nur die Beschriftung und der alte Prüfstand. Für die Benutzer ist der Tag Verzögerung kein
+Problem. Ein Testgerät sofort aktualisieren: Sperre zurücksetzen wie unter
+[Fehlgeschlagene App sofort neu versuchen](#fehlgeschlagene-app-sofort-neu-versuchen), nur mit der App-ID von
+„SI EntryDesk“.
+
 ## Zugänge jährlich erneuern
 1. Neue Zugänge anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen)). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
    neues Paket mit `prepare-intune.ps1 -Label 2027-09` erstellen, App „SI EntryDesk Zugänge 2027-09“.
@@ -114,8 +122,9 @@ welche Version ein Gerät wirklich hat, steht auf dem Gerät.
   `C:\Program Files\SIEntryDesk\detect.ps1` als Administrator ausführen; ohne Ausgabe fehlt etwas.
 
 ### Fehlgeschlagene App sofort neu versuchen
-Nach einem Fehler versucht die Intune-Erweiterung eine Win32-App erst nach **24 Stunden** wieder (Global
-Re-evaluation Schedule). Neustart der Erweiterung oder des Geräts ändert daran nichts, auch nicht ein neues Paket.
+Nach einem Fehler, aber auch nach einer erfolgreichen Installation, bewertet die Intune-Erweiterung eine Win32-App
+erst nach **24 Stunden** wieder (Global Re-evaluation Schedule). Neustart der Erweiterung oder des Geräts ändert daran
+nichts, auch nicht ein neues Paket. Im Protokoll `AppWorkload.log` steht dann „Reevaluation interval is not expired“.
 Auf einem Testgerät lässt sich der lokale Zustand zurücksetzen, die App wird dabei nicht deinstalliert. Die App-IDs
 stehen in Intune in der Adresse der App (`…/appId/<App-ID>`), PowerShell als Administrator:
 ```powershell
