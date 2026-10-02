@@ -40,7 +40,6 @@ Von Hand:
 1. Neuen Access-Token und neuen Protect-Schlüssel anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen),
    1 Jahr) und im Passwort-Manager ablegen.
 2. Auf jedem PC: `powershell -ExecutionPolicy Bypass -File "C:\Program Files\SIEntryDesk\set-tokens.ps1"`.
-   Den zweiten Token leer lassen.
 3. In der sientrydesk.json die neuen Ablaufdaten eintragen und mit `install.ps1` verteilen.
 4. Prüfen: Symbol grün, Livebild aus dem Menü, einmal klingeln.
 5. Erst dann den alten Token und den alten Schlüssel löschen.

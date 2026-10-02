@@ -7,7 +7,6 @@
     nicht, sonst gilt pro Zeile name=wert:
       access=   Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten), Pflicht
       protect=  Protect-API-Schlüssel, leer oder weggelassen = kein Livebild
-      unlock=   optional eigener Access-Token nur zum Öffnen, normalerweise weglassen
     Speichert sie mit DPAPI über den Dienst, startet ihn neu und hinterlegt die Kennung unter
     HKLM\SOFTWARE\SIEntryDesk\TokenLabel für die Erkennungsregel in Intune.
 
@@ -52,7 +51,8 @@ function Read-TokenFile([string] $Path) {
         if ($eq -lt 1) { throw "tokens.txt, Zeile ${n}: erwartet name=wert, z. B. access=... (Vorlage tokens.example.txt)." }
         $key = $line.Substring(0, $eq).Trim().ToLowerInvariant()
         $value = $line.Substring($eq + 1).Trim()
-        if (@('access', 'unlock', 'protect') -notcontains $key) { throw "tokens.txt, Zeile ${n}: unbekannter Name, erlaubt sind access, protect und unlock." }
+        if ($key -eq 'unlock') { throw "tokens.txt, Zeile ${n}: unlock= wird nicht mehr unterstützt, ein Access-Token mit Gerät = Anzeigen und Standorte = Bearbeiten genügt." }
+        if (@('access', 'protect') -notcontains $key) { throw "tokens.txt, Zeile ${n}: unbekannter Name, erlaubt sind access und protect." }
         if ($values.ContainsKey($key)) { throw "tokens.txt, Zeile ${n}: $key kommt doppelt vor." }
         if ($value -match '[\s<>"'']') { throw "tokens.txt, Zeile ${n}: Wert von $key enthält Leerzeichen, Anführungszeichen oder <>. Nur den Wert selbst einsetzen." }
         $values[$key] = $value
@@ -83,7 +83,8 @@ if (-not $Label -or $Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Kennung 
 if (-not (Test-Path $serviceExe)) { throw 'SI EntryDesk ist nicht installiert (Abhängigkeit in Intune prüfen).' }
 
 $tokens = Read-TokenFile (Join-Path $PSScriptRoot 'tokens.txt')
-"$($tokens['access'])`n$($tokens['unlock'])`n$($tokens['protect'])" | & $serviceExe set-secrets | Out-Null
+# Zeile 2 bleibt leer (früher eigener Token zum Öffnen).
+"$($tokens['access'])`n`n$($tokens['protect'])" | & $serviceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
 $tokens.Clear()
 Remove-Variable tokens

@@ -20,20 +20,25 @@ der Anlage, nicht hierher.
 
 ## Voraussetzungen
 - **PC:** Windows 11, 64 Bit. Für die Installation lokaler Administrator.
-- **UniFi Access** mit Developer API (Version 1.20.11 oder neuer, nicht mit Identity Enterprise).
+- **UniFi-OS-Konsole** mit UniFi Access und UniFi Protect.
+- **UniFi Access** mit Developer API (Version 1.20.11 oder neuer, nicht mit Identity Enterprise): Klingel-Ereignisse
+  und Öffnen.
+- **UniFi Protect** mit Integration API (API-Schlüssel unter UniFi OS → Einstellungen → Control Plane →
+  Integrations): Livebild und Kameranamen. Ohne geht alles ausser dem Livebild.
 - **Türstationen** (z. B. G6 Entry, G6 Pro Entry) in Protect, in Access einer Tür mit UA Hub Door zugeordnet.
-- **RTSPS-Stream pro Türstation** in Protect (Kamera → Einstellungen → Erweitert, Qualität „medium“ genügt). Der
-  Einrichtungsassistent kann ihn auch anlegen. Die Stream-Adresse wirkt wie ein Zugangsschlüssel zum Kamerabild:
-  nicht weitergeben, nicht protokollieren.
 - **Netz:** Die PCs erreichen die Konsole auf TCP 12445 (Access), 443 (Protect) und 7441 (Stream). Die App braucht
   keine eingehenden Verbindungen, der Installer sperrt sie in der Windows-Firewall.
 
-## Zugänge anlegen
+## Vorbereitung in UniFi
+Einmal pro Anlage, vor der ersten Installation.
+
+### Zugänge anlegen
 | # | Wo anlegen | Name (Vorschlag) | Rechte | Wofür |
 |---|---|---|---|---|
 | 1 | Access → Einstellungen → Allgemein → **API Token** | `SIEntryDesk` | **Gerät = Anzeigen**, **Standorte = Bearbeiten**, alles andere **Keinen** | Klingel-Ereignisse und Öffnen |
 | 2 | UniFi OS → Einstellungen → Control Plane → **Integrations** | `SIEntryDesk Livebild` | Rechte des Kontos, unter dem er angelegt wird | Livebild und Kameranamen |
 
+- **Ein Access-Token für alles.** Er empfängt die Klingel-Ereignisse und öffnet die Tür.
 - **Gültigkeit 1 Jahr.** Das Ablaufdatum gehört als `TokenExpires` und `ProtectKeyExpires` in die sientrydesk.json.
   Ab 14 Tagen vorher wird das Symbol orange, und jede App meldet einmal pro Tag, bis wann erneuert werden muss.
 - **Der Access-Dialog gibt für mehrere Bereiche „Bearbeiten“ vor.** Alles ausser *Gerät* und *Standorte* auf
@@ -41,10 +46,20 @@ der Anlage, nicht hierher.
   Lockdown oder Evakuierung auszulösen. Einschränken lässt sich das bei Access nicht.
 - **Protect-Schlüssel:** Er hat die Protect-Rechte des anlegenden Kontos. Unter einem Admin-Konto darf er in
   Protect alles. Sicherer ist ein eigener lokaler Benutzer mit einer Rolle nur zum Ansehen.
-- **Nur ein Access-Token.** Ein zweiter Token nur zum Öffnen ist möglich, bringt aber keine Sicherheit, weil beide
-  auf demselben PC liegen.
 - **Aufbewahrung:** nur im Passwort-Manager, nie in Dateien, Tickets oder Chats. Gelangt ein Wert doch dorthin,
   den Zugang löschen und neu anlegen.
+
+### RTSPS-Stream pro Türstation
+Das Livebild holt der Dienst als RTSPS-Stream von der Türstation. Protect liefert ihn erst, wenn er für die Kamera
+eingeschaltet ist, und zwar für **jede Türstation einzeln**:
+- **In Protect:** Kamera der Türstation → Einstellungen → Erweitert → RTSP, Qualität **Mittel** einschalten. Höhere
+  Qualität bringt im kleinen Fenster nichts und kostet Bandbreite.
+- **Oder im Einrichtungsassistenten** ([Schritt 1](#mit-dem-einrichtungsassistenten)): Er zeigt pro Tür, ob der
+  Stream vorhanden ist, und legt ihn auf Knopfdruck an.
+
+Die Stream-Adresse enthält einen geheimen Teil und wirkt wie ein Zugangsschlüssel zum Kamerabild: nicht weitergeben,
+nicht in Dokumente, Tickets oder Chats. SI EntryDesk gibt sie nicht an die Benutzer weiter und schreibt sie nicht ins
+Protokoll. Ist sie doch nach aussen gelangt: Stream in Protect löschen und neu anlegen, dann gilt eine neue Adresse.
 
 ## Die Pakete
 Der Build liefert zwei ZIP-Dateien:
@@ -116,10 +131,9 @@ nennt den erhaltenen Fingerabdruck. Erst prüfen, ob das Zertifikat wirklich ern
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -SetTokens
 ```
-`-SetTokens` fragt verdeckt drei Werte ab:
+`-SetTokens` fragt verdeckt zwei Werte ab:
 1. den Access-Token
-2. einen eigenen Token nur zum Öffnen, normalerweise leer lassen (Enter)
-3. den Protect-Schlüssel, leer = kein Livebild
+2. den Protect-Schlüssel, leer = kein Livebild
 
 Das Skript richtet ein:
 1. prüft die `sientrydesk.json` (gültiges JSON, `Host` und `AccessPin` vorhanden)

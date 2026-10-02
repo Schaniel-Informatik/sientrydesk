@@ -5,7 +5,7 @@ namespace SIEntryDesk.Core.Tests;
 public class ConfigurationTests
 {
     private static string ExampleFile([System.Runtime.CompilerServices.CallerFilePath] string here = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "..", "deploy", "sientrydesk.example.json"));
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", "..", "deploy", "programm", "sientrydesk.example.json"));
 
     [Fact]
     public void Example_configuration_binds_as_the_service_reads_it()

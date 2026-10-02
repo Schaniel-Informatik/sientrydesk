@@ -13,6 +13,13 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
+## Nächste Version (umgesetzt, noch nicht gebaut)
+- Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.
+- Eigener Token nur zum Öffnen entfernt (Altlast aus dem Machbarkeitstest, brachte keine Sicherheit). `set-secrets`
+  behält das Format mit leerer Zeile 2, damit ältere Pakete der Zugänge passen; ein Wert dort wird abgelehnt.
+  `tokens.txt` kennt nur noch `access=` und `protect=`, `set-tokens.ps1` fragt zwei Werte ab.
+- Abfragetexte in `set-tokens.ps1` und Hinweistext im Einrichtungsassistenten nachgeführt.
+
 ## 0.5.2 (gebaut, unter Windows noch zu testen)
 - `prepare-intune.ps1` in beiden Paketen: prüft den Ordner, erzeugt `detect.ps1` bzw. prüft `tokens.txt`, ruft
   IntuneWinAppUtil auf und zeigt die Einstellungen für Intune. Das Paket der Zugänge löscht `tokens.txt` danach selbst.

@@ -4,10 +4,9 @@
     Setzt oder erneuert die Tokens von SI EntryDesk, ohne die Software neu zu installieren.
 
 .DESCRIPTION
-    Fragt die drei Werte verdeckt ab und speichert sie mit DPAPI (Maschinenschlüssel) in
+    Fragt die zwei Werte verdeckt ab und speichert sie mit DPAPI (Maschinenschlüssel) in
     %ProgramData%\SIEntryDesk\secrets.dat. Danach startet der Dienst neu.
     - Access-Token: Gerät = Anzeigen, Standorte = Bearbeiten, alles andere Keinen
-    - optional ein eigener Access-Token nur zum Öffnen, normalerweise leer lassen
     - Protect-API-Schlüssel für das Livebild (leer = kein Livebild)
 
 .EXAMPLE
@@ -30,11 +29,11 @@ function Read-Secret([string] $Prompt) {
 
 $access = Read-Secret 'Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten)'
 if (-not $access) { throw 'Ohne Access-Token geht es nicht.' }
-$unlock = Read-Secret 'Eigener Token nur zum Öffnen, normalerweise leer lassen (Enter)'
 $protect = Read-Secret 'Protect-API-Schlüssel für das Livebild, leer = kein Livebild'
-"$access`n$unlock`n$protect" | & $ServiceExe set-secrets | Out-Null
+# Zeile 2 bleibt leer (früher eigener Token zum Öffnen).
+"$access`n`n$protect" | & $ServiceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
-Remove-Variable access, unlock, protect
+Remove-Variable access, protect
 if ($code -ne 0) { throw "Tokens konnten nicht gespeichert werden (Code $code)" }
 Write-Host '    Tokens gespeichert.'
 

@@ -75,7 +75,7 @@ internal sealed class CallCoordinator(
         var pin = CertificatePin.Parse(opt.AccessPin);
         _tracker = new CallTracker(time, opt.AcceptsDoor);
         state.Tracker = _tracker;
-        _accessApi = new AccessApiClient(host, secrets.AccessUnlockToken ?? secrets.AccessToken, pin);
+        _accessApi = new AccessApiClient(host, secrets.AccessToken, pin);
         SetUpVideo(opt, secrets, host);
         _doors = new DoorDirectory(ServicePaths.DoorsFile);
         foreach (var (doorId, cameraId) in opt.DoorCameras)
@@ -84,8 +84,8 @@ internal sealed class CallCoordinator(
         pipes.RequestHandler = HandleRequestAsync;
 
         log.LogInformation(
-            "Start {Version}: Konsole {Host}, Türen {Doors}, eigener Öffnen-Token {Separate}, Livebild {Video}, ohne Klingeln {LiveView}",
-            ServiceState.Version, host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors), secrets.AccessUnlockToken is not null,
+            "Start {Version}: Konsole {Host}, Türen {Doors}, Livebild {Video}, ohne Klingeln {LiveView}",
+            ServiceState.Version, host, opt.Doors.Count == 0 ? "alle" : string.Join(", ", opt.Doors),
             state.VideoEnabled ? "ein" : "aus", state.Doors.Enabled ? "ein" : "aus");
 
         try
