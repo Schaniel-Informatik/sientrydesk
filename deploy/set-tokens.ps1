@@ -6,8 +6,8 @@
 .DESCRIPTION
     Fragt die drei Werte verdeckt ab und speichert sie mit DPAPI (Maschinenschlüssel) in
     %ProgramData%\SIEntryDesk\secrets.dat. Danach startet der Dienst neu.
-    - Access-Token zum Mithören: Gerät = Anzeigen, Standorte = Anzeigen
-    - Access-Token zum Öffnen: Standorte = Bearbeiten (leer = derselbe Token wie oben)
+    - Access-Token: Gerät = Anzeigen, Standorte = Bearbeiten, alles andere Keinen
+    - optional ein eigener Access-Token nur zum Öffnen, normalerweise leer lassen
     - Protect-API-Schlüssel für das Livebild (leer = kein Livebild)
 
 .EXAMPLE
@@ -28,9 +28,9 @@ function Read-Secret([string] $Prompt) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
 
-$access = Read-Secret 'Access-Token zum Mithören (Gerät + Standorte: Anzeigen)'
+$access = Read-Secret 'Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten)'
 if (-not $access) { throw 'Ohne Access-Token geht es nicht.' }
-$unlock = Read-Secret 'Access-Token zum Öffnen (Standorte: Bearbeiten), leer = derselbe'
+$unlock = Read-Secret 'Eigener Token nur zum Öffnen, normalerweise leer lassen (Enter)'
 $protect = Read-Secret 'Protect-API-Schlüssel für das Livebild, leer = kein Livebild'
 "$access`n$unlock`n$protect" | & $ServiceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
