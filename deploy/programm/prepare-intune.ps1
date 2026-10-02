@@ -50,7 +50,7 @@ if (Get-ChildItem $package -Recurse -Filter 'tokens.txt') {
     throw 'tokens.txt gehört nicht ins Programmpaket. Hier löschen, sie gehört nur ins Paket der Zugänge.'
 }
 $expected = 'App', 'Service', 'install.ps1', 'uninstall.ps1', 'set-tokens.ps1', 'prepare-intune.ps1', 'detect.ps1',
-            'sientrydesk.json', 'sientrydesk.example.json', 'PILOT.md'
+            'sientrydesk.json', 'sientrydesk.example.json', 'Doku'
 $extra = Get-ChildItem $package -Force | Where-Object { $expected -notcontains $_.Name }
 if ($extra) { throw "Im Paketordner liegt mehr als nötig: $($extra.Name -join ', '). Nur das entpackte Paket und sientrydesk.json." }
 

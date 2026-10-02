@@ -1,5 +1,8 @@
 # Verteilung mit Intune
 
+Voraussetzungen, Zugänge und `sientrydesk.json` wie in [installation.md](installation.md). Bedienung und Störungen in
+[betrieb.md](betrieb.md).
+
 Zwei Win32-Apps an dieselbe **Gerätegruppe** (nicht Benutzer), damit die Zugänge nur auf den vorgesehenen Geräten
 liegen und die App für jeden Benutzer dieser Geräte startet:
 
@@ -17,7 +20,7 @@ Programmpaket, und ein Software-Update berührt sie nicht.
 - **Gerätegruppe** in Entra ID, z. B. „SIEntryDesk-Geräte“. Zum Testen zuerst eine Gruppe mit einem einzigen Gerät.
 - `sientrydesk.json` der Anlage, am einfachsten mit dem Einrichtungsassistenten (`SIEntryDesk.exe --setup`).
   Eine bestehende vor dem Packen prüfen: `SIEntryDesk.exe --setup <Pfad>\sientrydesk.json`, siehe
-  [betrieb.md](betrieb.md#einrichtungsassistent).
+  [installation.md](installation.md#schritt-1-sientrydeskjson-erstellen).
 
 ## App 1: SI EntryDesk
 1. `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` in den Ordner neben `install.ps1` legen.
@@ -90,7 +93,7 @@ Dasselbe, wenn sich nur die `sientrydesk.json` ändert. *App-Version* ist nur ei
 welche Version ein Gerät wirklich hat, steht auf dem Gerät.
 
 ## Zugänge jährlich erneuern
-1. Neue Zugänge anlegen (siehe `betrieb.md`). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
+1. Neue Zugänge anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen)). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
    neues Paket mit `prepare-intune.ps1 -Label 2027-09` erstellen, App „SI EntryDesk Zugänge 2027-09“.
 2. In Intune als neue App anlegen, die „SI EntryDesk Zugänge 2026-09“ per **Ablösung** ersetzt, *ohne* Deinstallation.
 3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen, siehe

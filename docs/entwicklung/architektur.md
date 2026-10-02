@@ -1,4 +1,6 @@
-# Erste Version (Pilot)
+# Architektur und Entscheide
+
+Ursprünglich als Umfang der ersten Version (Pilot) geschrieben, seither nachgeführt.
 
 Pilot an 1–2 Windows-11-PCs. Grundlage ist der Machbarkeitstest (`machbarkeitstest.md`).
 

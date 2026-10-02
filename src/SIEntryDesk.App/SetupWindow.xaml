@@ -112,7 +112,7 @@
             </StackPanel>
             <TextBlock x:Name="SaveResult" Style="{StaticResource Result}" />
             <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
-                       Text="Danach: sientrydesk.json neben install.ps1 legen. Von Hand installieren mit install.ps1 -SetTokens. Per Intune das Programmpaket mit der sientrydesk.json und die Zugänge als eigenes Paket (SIEntryDesk-Zugaenge), siehe docs/intune.md." />
+                       Text="Danach: sientrydesk.json neben install.ps1 legen. Von Hand installieren mit install.ps1 -SetTokens. Per Intune das Programmpaket mit der sientrydesk.json und die Zugänge als eigenes Paket (SIEntryDesk-Zugaenge), siehe Doku\installation.md und Doku\intune.md im Paket." />
         </StackPanel>
     </ScrollViewer>
 </Window>

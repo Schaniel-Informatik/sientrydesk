@@ -45,7 +45,10 @@ Auf dem Handy funktioniert es gut, am PC nicht.
 - Entwickelt wird auf dem Mac. Das .NET SDK baut Windows-Apps auch dort (`EnableWindowsTargeting`),
   ausführen und testen kann man sie aber nur unter Windows. **Marcel testet auf Windows 11.**
 - Vor jedem Einrichtungsschritt prüfen, ob das Werkzeug mit nicht-interaktiver Bash funktioniert.
-- Was Admins für Einrichtung und Betrieb wissen müssen, gehört in `docs/betrieb.md`, nicht nur in den Chat.
+- Was Admins für Einrichtung und Betrieb wissen müssen, gehört in `docs/admin/` (`installation.md`, `intune.md`,
+  `betrieb.md`), nicht nur in den Chat. Der Build legt diese Dateien als `Doku\` ins Paket.
+- Ablage: `deploy/` nur ausgelieferte Dateien (`programm/`, `zugaenge/`), keine Anleitungen.
+  `docs/entwicklung/` für Unterlagen zur Weiterentwicklung (Machbarkeitstest, API, Architektur, Backlog).
 
 ## Sicherheit
 Die App kann eine Tür öffnen. Der Code wird später öffentlich, deshalb gilt von Anfang an:
