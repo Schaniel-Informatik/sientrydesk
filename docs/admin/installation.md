@@ -32,6 +32,25 @@ der Anlage, nicht hierher.
   als Ziel für den Ton. Dieser Ton ist unverschlüsselt, so hat Ubiquiti die Schnittstelle gebaut. Die App braucht
   keine eingehenden Verbindungen, der Installer sperrt sie in der Windows-Firewall.
 
+## Wer öffnen darf: der PC, nicht die Person
+**Die Personen, Rollen und Türberechtigungen aus UniFi Access gelten für SI EntryDesk nicht.** Die offizielle Access
+Developer API kennt keine Anmeldung einzelner Benutzer. Sie arbeitet mit einem API-Token, und der gilt für die ganze
+Installation: *Standorte = Bearbeiten* erlaubt, **jede Tür** zu öffnen. Einschränken lässt sich das nicht.
+
+Das heisst:
+- **Jeder, der an einem PC mit SI EntryDesk angemeldet ist, kann während eines Rufs öffnen**, egal ob er in Access
+  für diese Tür berechtigt ist oder als Empfänger von Klingelrufen (Door Attendant, Doorbell Call Receiver) eingetragen
+  ist. Die Berechtigung ergibt sich daraus, **auf welchen PCs** die App installiert ist. Das ist die eigentliche
+  Entscheidung, bei Intune über die Gerätegruppe.
+- `Doors` in der sientrydesk.json legt fest, welche Türen ein PC anzeigt und öffnet. Das erzwingt der Dienst, der
+  Token selbst könnte trotzdem alle.
+- Im Access-Protokoll steht bei jeder Öffnung „<Windows-Benutzer> via SI EntryDesk (<PC>)“. Diesen Namen meldet
+  SI EntryDesk, Access prüft ihn nicht.
+- Wer den Token selbst hat, etwa ein lokaler Administrator des PCs, kann jederzeit jede Tür öffnen, ohne Ruf.
+
+Sobald Ubiquiti eine API mit Berechtigungen pro Benutzer anbietet, kann SI EntryDesk sie übernehmen. Bis dahin ist
+die Auswahl der PCs die Zugriffskontrolle.
+
 ## Vorbereitung in UniFi
 Einmal pro Anlage, vor der ersten Installation.
 

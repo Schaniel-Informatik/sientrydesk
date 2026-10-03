@@ -77,6 +77,9 @@ Es enthält Türnamen, aber keine Tokens und keine Stream-Adressen. Installation
 [installation.md](installation.md#mit-dem-einrichtungsassistenten).
 
 ## Sicherheit und Grenzen
+- **Die Berechtigungen aus UniFi Access gelten nicht.** Wer an einem PC mit SI EntryDesk angemeldet ist, kann während
+  eines Rufs öffnen. Zugriffskontrolle ist die Auswahl der PCs, siehe
+  [installation.md](installation.md#wer-öffnen-darf-der-pc-nicht-die-person).
 - Wer auf einem PC **lokaler Administrator** ist, kann die Zugänge aus `secrets.dat` auslesen und damit alle Türen
   öffnen. Standardbenutzer können das nicht. Deshalb: keine lokalen Adminrechte für Benutzer, BitLocker, LAPS.
 - Die App öffnet nur während eines Rufs oder bis 10 s danach (nach „Besucher hat abgebrochen“ oder „Niemand hat

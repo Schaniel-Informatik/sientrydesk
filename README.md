@@ -5,6 +5,8 @@
 > and closes everywhere once someone else answers. It uses only the official UniFi Access Developer API and UniFi
 > Protect Integration API. Not affiliated with Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry
 > and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
+> Note: UniFi Access user permissions do not apply, the official API only offers site-wide tokens, so access control
+> is the choice of PCs it runs on (see SECURITY.md).
 > Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
 > Security reports: see [SECURITY.md](SECURITY.md). **Contributions welcome**, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

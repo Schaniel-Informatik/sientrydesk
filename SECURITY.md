@@ -9,6 +9,10 @@ You will get an answer within a few working days. Please give us reasonable time
 Only the latest release is supported.
 
 ## Security model (short)
+- **UniFi Access users, roles and door permissions do not apply.** The official Access Developer API only offers
+  site-wide API tokens, no per-user authorization. Anyone logged on to a PC running SI EntryDesk can open a door during
+  a ring; access control is the choice of PCs it is installed on. The name in the Access log is reported by
+  SI EntryDesk, not verified by Access. If Ubiquiti adds per-user API authorization, SI EntryDesk can adopt it.
 - The Windows service holds the UniFi credentials, encrypted with DPAPI (machine key) in
   `C:\ProgramData\SIEntryDesk\secrets.dat`, readable only by SYSTEM, Administrators and the service account.
   A **local administrator can read them**; standard users cannot. The tray app never sees credentials.
