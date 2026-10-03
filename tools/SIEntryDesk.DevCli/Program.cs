@@ -114,6 +114,8 @@ static async Task<int> TalkTestAsync(string cameraId, int seconds)
             : throw new InvalidOperationException($"Umgebungsvariable {name} fehlt");
 
     using var protect = new ProtectApiClient(Get("SIED_HOST"), Get("SIED_PROTECT_KEY"), CertificatePin.Parse(Get("SIED_PIN_PROTECT")));
+    var names = await protect.GetCameraNamesAsync(CancellationToken.None);
+    Console.WriteLine($"Kamera: {names.GetValueOrDefault(cameraId, "?")}");
     var problem = string.Empty;
     var target = await protect.CreateTalkbackSessionAsync(cameraId, p => problem = p, CancellationToken.None);
     if (target is null)

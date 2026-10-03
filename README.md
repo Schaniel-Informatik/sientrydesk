@@ -1,5 +1,13 @@
 # SI EntryDesk
 
+> **English summary.** SI EntryDesk is a Windows 11 tray app for UniFi door stations (UniFi Protect + UniFi Access):
+> when someone rings, a window with ringtone, live video, talkback and a large "Open" button pops up on selected PCs,
+> and closes everywhere once someone else answers. It uses only the official UniFi Access Developer API and UniFi
+> Protect Integration API. Not affiliated with Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry
+> and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
+> Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
+> Security reports: see [SECURITY.md](SECURITY.md).
+
 Windows-App von Schaniel Informatik für Türsprechstellen mit UniFi Protect und UniFi Access. Wenn es klingelt,
 erscheint auf den gewünschten PCs sofort ein Fenster mit Klingelton, Livebild und dem Knopf „Öffnen“. Nimmt jemand
 anders ab, schliesst es sich überall.
@@ -37,6 +45,7 @@ Stand: Pilot, Repository privat.
 | [deploy/zugaenge/](deploy/zugaenge/) | Was ins Paket der Zugänge für Intune kommt: `set-tokens-intune.ps1`, `prepare-intune.ps1`, `tokens.example.txt` |
 | `src/` | Quellcode: `SIEntryDesk.Core` (gemeinsame Logik), `.Service` (Windows-Dienst), `.App` (Tray-App) |
 | `tests/` | Automatische Tests der gemeinsamen Logik |
+| [LICENSE](LICENSE), [SECURITY.md](SECURITY.md) | MIT-Lizenz, Meldung von Schwachstellen |
 | [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Lizenzen der mitgelieferten Fremdsoftware (auch im Paket unter `Doku\`) |
 | `tools/` | Entwicklerwerkzeuge (Machbarkeitstest, DevCli für den Mac, `intune-check.ps1` für Intune über Graph) |
 | `build/` | Build-Skripte (`publish.sh` erzeugt das Windows-Paket) |

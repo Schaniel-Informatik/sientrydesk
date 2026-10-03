@@ -1,0 +1,26 @@
+# Build und Tests bei jedem Push, die beiden Pakete als Download. Läuft auf Linux, das .NET SDK baut die
+# Windows-Programme dank EnableWindowsTargeting auch dort (wie auf dem Mac).
+name: build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Tests und Pakete
+        run: bash build/publish.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SIEntryDesk-packages
+          path: artifacts/*.zip
+          if-no-files-found: error
