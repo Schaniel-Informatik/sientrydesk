@@ -33,5 +33,19 @@ if find "$out" "$tokensOut" \( -name tokens.txt -o -name sientrydesk.json \) | g
 fi
 
 (cd artifacts && zip -qr "$name.zip" "$name" && zip -qr "$tokens.zip" "$tokens")
+# Nur die ZIP-Dateien behalten, die entpackten Ordner braucht es nach dem Packen nicht mehr.
+rm -rf "$out" "$tokensOut"
+
+# Ältere Pakete als die zuletzt erfolgreich getestete Version löschen. Diese steht in artifacts/GETESTET (lokal,
+# wird nach einem bestandenen Test gesetzt). Ohne die Datei bleibt alles. Alte Versionen lassen sich aus Git neu bauen.
+if [[ -f artifacts/GETESTET ]]; then
+  tested=$(tr -d '[:space:]' < artifacts/GETESTET)
+  for zip in artifacts/SIEntryDesk-*.zip; do
+    v=$(basename "$zip" .zip | sed -e 's/^SIEntryDesk-Zugaenge-//' -e 's/^SIEntryDesk-//' -e 's/-win-x64$//')
+    if [[ "$v" != "$tested" && "$(printf '%s\n%s\n' "$v" "$tested" | sort -V | head -1)" == "$v" ]]; then
+      rm -f "$zip"
+    fi
+  done
+fi
 echo "Programm: artifacts/$name.zip ($(du -h "artifacts/$name.zip" | cut -f1))"
 echo "Zugänge:  artifacts/$tokens.zip ($(du -h "artifacts/$tokens.zip" | cut -f1))"
