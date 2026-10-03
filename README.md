@@ -6,7 +6,7 @@
 > Protect Integration API. Not affiliated with Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry
 > and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
 > Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
-> Security reports: see [SECURITY.md](SECURITY.md).
+> Security reports: see [SECURITY.md](SECURITY.md). **Contributions welcome**, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows-App von Schaniel Informatik für Türsprechstellen mit UniFi Protect und UniFi Access. Wenn es klingelt,
 erscheint auf den gewünschten PCs sofort ein Fenster mit Klingelton, Livebild und dem Knopf „Öffnen“. Nimmt jemand
@@ -54,3 +54,7 @@ Stand: Pilot, Repository privat.
 Auf dem Mac oder unter Windows mit dem .NET SDK 10: `./build/publish.sh` testet und erzeugt zwei getrennte Pakete:
 `artifacts/SIEntryDesk-<Version>-win-x64.zip` (Programm) und `artifacts/SIEntryDesk-Zugaenge-<Version>.zip` (Skript
 und Vorlage für die Zugänge per Intune).
+
+## Mitmachen
+Beiträge sind willkommen: Fehlerberichte, Tests mit anderen Türstationen, Doku und Code, auf Englisch oder Deutsch.
+Regeln, Build und offene Ideen in [CONTRIBUTING.md](CONTRIBUTING.md). Antwort in der Regel innerhalb einer Woche.

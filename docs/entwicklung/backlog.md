@@ -35,6 +35,11 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Tonausgabe), Lizenz jedes verbleibenden Plugins prüfen (Sonderfall avcodec), in THIRD-PARTY-NOTICES.md eintragen.
   Marcel testet das Livebild an beiden Türen mit Ton, beim Klingeln und ohne Klingeln.
 
+## Ideen
+- **Englisch für die App** (Oberfläche, Meldungen, Hilfe), damit das Projekt auch ausserhalb des deutschen
+  Sprachraums nutzbar ist. Auch in CONTRIBUTING.md als Idee genannt.
+- Mikrofonauswahl in der App.
+
 ## Vor der Veröffentlichung
 - LibVLC-Plugins: kommt mit 0.6.0, siehe oben.
 
