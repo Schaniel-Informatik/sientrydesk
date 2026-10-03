@@ -69,5 +69,5 @@ Die App kann eine Tür öffnen. Der Code wird später öffentlich, deshalb gilt 
   Tokens oder Screenshots mit solchen Angaben. Konfiguration nur lokal, im Repo nur ein Beispiel mit Platzhaltern.
 - **Vor jedem Push** den Diff auf sensible Inhalte prüfen und Marcels Freigabe einholen.
 - Git-Identität: Marcels normale Identität, nicht die kundenspezifische aus einem Kundenordner.
-- Öffentliche Releases später signieren (z. B. Microsoft Trusted Signing), sonst warnt SmartScreen.
+- Keine Code-Signierung (Entscheid 2026-10-03): SmartScreen warnt bei Downloads, das README erklärt es.
   Für die Verteilung über Intune ist keine Signatur nötig.
