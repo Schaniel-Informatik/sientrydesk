@@ -19,6 +19,19 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   siehe [gegensprechen.md](gegensprechen.md). Zuerst mit `DevCli talk` vom Mac an der Tür prüfen, dann unter Windows.
 - `THIRD-PARTY-NOTICES.md` mit den Lizenzen der Fremdsoftware, liegt im Paket unter `Doku\`.
 
+## Für 0.6.0 beschlossen, noch nicht umgesetzt (2026-10-03)
+- **`SIEntryDesk.exe --check`** für die Fehlersuche auf einem PC, ohne Eingaben und ohne Adminrechte. Fenster mit Liste
+  grün/orange/rot und je einem Satz, was zu tun ist, Knöpfe „Erneut prüfen“ und „Ergebnis kopieren“ (ohne
+  Geheimnisse), dazu „Prüfen …“ im Menü des Symbols.
+  - App prüft: Dienst installiert und gestartet, Verbindung zum Dienst, gleiche Version, Autostart, Mikrofon und
+    Zugriff, Tonausgabe.
+  - Dienst prüft mit seinen gespeicherten Zugängen: Konfiguration, Zugänge lesbar, Access erreichbar und Pin, Token
+    und Rechte (Ereignisse, Türen, Öffnen), Klingel-Ereignisse verbunden, Protect erreichbar, Pin und Schlüssel,
+    Stream pro Tür und Port 7441, Ablaufdaten.
+  - Nicht prüfbar: ob der Ton beim Gegensprechen an der Tür ankommt.
+  - `--setup` bleibt für das Erstellen und Prüfen einer Konfiguration vor dem Verteilen.
+  - **Marcel testet `--check` mit 0.6.0**, auch absichtlich mit Fehlern (Dienst gestoppt, falscher Pin, Mikrofon aus).
+
 ## Vor der Veröffentlichung
 - Lizenzlage der mitgelieferten LibVLC-Plugins prüfen (LibVLC selbst ist LGPL, einzelne Plugins können andere Lizenzen
   haben) und nicht benötigte Plugins weglassen.
