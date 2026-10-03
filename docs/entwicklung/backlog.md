@@ -31,10 +31,12 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   - Nicht prüfbar: ob der Ton beim Gegensprechen an der Tür ankommt.
   - `--setup` bleibt für das Erstellen und Prüfen einer Konfiguration vor dem Verteilen.
   - **Marcel testet `--check` mit 0.6.0**, auch absichtlich mit Fehlern (Dienst gestoppt, falscher Pin, Mikrofon aus).
+- **LibVLC-Plugins kürzen:** nur die Plugins mitliefern, die das Livebild lädt (RTSP, H.264/H.265, AAC/Opus, Bild- und
+  Tonausgabe), Lizenz jedes verbleibenden Plugins prüfen (Sonderfall avcodec), in THIRD-PARTY-NOTICES.md eintragen.
+  Marcel testet das Livebild an beiden Türen mit Ton, beim Klingeln und ohne Klingeln.
 
 ## Vor der Veröffentlichung
-- Lizenzlage der mitgelieferten LibVLC-Plugins prüfen (LibVLC selbst ist LGPL, einzelne Plugins können andere Lizenzen
-  haben) und nicht benötigte Plugins weglassen.
+- LibVLC-Plugins: kommt mit 0.6.0, siehe oben.
 
 ## 0.5.3 (2026-10-02 getestet: Update über Intune, alte Zugänge, detect.ps1, Hilfe, Öffnen mit dem einen Token)
 - Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.
