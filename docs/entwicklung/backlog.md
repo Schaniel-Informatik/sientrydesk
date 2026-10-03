@@ -42,6 +42,8 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 
 ## Vor der Veröffentlichung
 - LibVLC-Plugins: kommt mit 0.6.0, siehe oben.
+- Auf GitHub beim Umstellen auf öffentlich: *Settings → Code security* „Private vulnerability reporting“ einschalten
+  (gibt es nur für öffentliche Repositories), SECURITY.md verweist darauf.
 
 ## 0.5.3 (2026-10-02 getestet: Update über Intune, alte Zugänge, detect.ps1, Hilfe, Öffnen mit dem einen Token)
 - Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.
