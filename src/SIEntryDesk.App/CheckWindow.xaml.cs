@@ -22,7 +22,9 @@ public partial class CheckWindow : Window
     private static readonly Brush InfoBrush = new SolidColorBrush(Color.FromRgb(0x77, 0x77, 0x77));
 
     private readonly CancellationTokenSource _cts = new();
-    private List<CheckItem> _items = [];
+    private readonly List<CheckItem> _local = [];
+    private readonly List<CheckItem> _service = [];
+    private bool _servicePending;
     private DateTimeOffset _at;
 
     public CheckWindow()
@@ -30,6 +32,8 @@ public partial class CheckWindow : Window
         InitializeComponent();
         Loaded += async (_, _) => await RunAsync();
     }
+
+    private IEnumerable<CheckItem> Items => _local.Concat(_service);
 
     protected override void OnClosed(EventArgs e)
     {
@@ -42,12 +46,13 @@ public partial class CheckWindow : Window
     private void OnCopy(object sender, RoutedEventArgs e)
     {
         var header = $"SI EntryDesk {TrayIcon.AppVersion}, {Environment.MachineName}, {Environment.UserName}";
-        Clipboard.SetText(CheckReport.ToText(_items, header, _at));
+        Clipboard.SetText(CheckReport.ToText(Items, header, _at));
         CopyButton.Content = "Kopiert";
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
+    /// <summary>PC und Anlage gleichzeitig, jeder Punkt erscheint, sobald er fertig ist.</summary>
     private async Task RunAsync()
     {
         RunButton.IsEnabled = false;
@@ -55,16 +60,23 @@ public partial class CheckWindow : Window
         CopyButton.Content = "Ergebnis kopieren";
         Summary.Text = "Prüft …";
         Summary.Foreground = InfoBrush;
-        Results.Children.Clear();
+        _local.Clear();
+        _service.Clear();
+        _servicePending = true;
+        Render();
 
-        _items = await Task.Run(LocalChecks.Run);
-        Show(_items);
-        _items.AddRange(await AskServiceAsync());
+        var service = AskServiceAsync();
+        foreach (var check in LocalChecks.All)
+        {
+            _local.Add(await Task.Run(check));
+            Render();
+        }
+        await service;
+        _servicePending = false;
         _at = DateTimeOffset.Now;
-        Show(_items);
+        Render();
 
-        var overall = CheckReport.Overall(_items);
-        (Summary.Text, Summary.Foreground) = overall switch
+        (Summary.Text, Summary.Foreground) = CheckReport.Overall(Items) switch
         {
             CheckLevel.Fail => ("Es gibt Fehler, siehe rote Punkte", FailBrush),
             CheckLevel.Warn => ("Funktioniert, mit Hinweisen", WarnBrush),
@@ -75,9 +87,8 @@ public partial class CheckWindow : Window
     }
 
     /// <summary>Eigene Verbindung zum Dienst, unabhängig von der Tray-App, und die Prüfung der Anlage.</summary>
-    private async Task<List<CheckItem>> AskServiceAsync()
+    private async Task AskServiceAsync()
     {
-        var items = new List<CheckItem>();
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
         var client = new ServiceClient(Dispatcher);
         var connected = new TaskCompletionSource<StatusMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -96,20 +107,20 @@ public partial class CheckWindow : Window
         try
         {
             var status = await connected.Task.WaitAsync(ConnectTimeout, cts.Token);
-            items.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Ok, "steht"));
-            items.Add(status.ServiceVersion == TrayIcon.AppVersion
+            _service.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Ok, "steht"));
+            _service.Add(status.ServiceVersion == TrayIcon.AppVersion
                 ? LocalChecks.Item("Version", CheckLevel.Ok, TrayIcon.AppVersion)
                 : LocalChecks.Item("Version", CheckLevel.Warn, $"App {TrayIcon.AppVersion}, Dienst {status.ServiceVersion}. Neu installieren"));
-            Show(_items.Concat(items));
+            Render();
 
             if (!await client.SendAsync(new CheckRequest()))
                 throw new TimeoutException();
             var check = await result.Task.WaitAsync(ResultTimeout, cts.Token);
-            items.AddRange(check.Items);
+            _service.AddRange(check.Items);
         }
         catch (TimeoutException)
         {
-            items.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Fail,
+            _service.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Fail,
                 connected.Task.IsCompleted ? "Dienst antwortet nicht auf die Prüfung" : "keine Verbindung, der Dienst läuft nicht oder blockiert"));
         }
         catch (OperationCanceledException)
@@ -119,7 +130,18 @@ public partial class CheckWindow : Window
         {
             cts.Cancel();
         }
-        return items;
+    }
+
+    private void Render()
+    {
+        Show(Items);
+        if (_servicePending)
+            Results.Children.Add(new TextBlock
+            {
+                Text = $"{CheckReport.Installation}: wird geprüft …",
+                Foreground = InfoBrush,
+                Margin = new Thickness(0, 12, 0, 0),
+            });
     }
 
     private void Show(IEnumerable<CheckItem> items)

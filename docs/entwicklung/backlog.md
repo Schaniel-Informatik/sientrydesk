@@ -17,6 +17,10 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).
 - `prepare-intune.cmd` zum Doppelklicken in beiden Paketen, Auswahldialog für sientrydesk.json und IntuneWinAppUtil,
   Frage nach der Kennung der Zugänge. Zusammenfassung nennt Abhängigkeiten und Ablösung.
+- „Prüfen …“ öffnet das Fenster sofort in der laufenden App, Punkte erscheinen einzeln, PC und Anlage gleichzeitig
+  (Rückmeldung 05.10.: zu lange, bis man etwas sieht).
+- Später anschauen: Reihenfolge der Installation (Programm vor Zugänge) bei einer Neuinstallation per Intune,
+  Verlauf auf dem Test-Notebook vom 05.10.
 
 ## 0.6.0 (gebaut, unter Windows zu testen)
 - **Gegensprechen** nach den Entscheiden vom 02.10., siehe [gegensprechen.md](gegensprechen.md). Opus/RTP an beiden

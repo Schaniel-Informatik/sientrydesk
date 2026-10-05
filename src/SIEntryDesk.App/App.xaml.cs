@@ -116,6 +116,7 @@ public partial class App : Application
             return;
         }
 
+        LocalChecks.InTrayApp = true;
         // LibVLC im Hintergrund laden, damit das erste Klingeln nicht darauf wartet.
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
@@ -177,11 +178,20 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Prüfung als eigener Prozess, wie SIEntryDesk.exe --check.</summary>
+    private CheckWindow? _checkWindow;
+
+    /// <summary>Prüfung aus dem Menü: gleich in dieser App, damit das Fenster sofort erscheint.</summary>
     private void StartCheck()
     {
-        if (Environment.ProcessPath is { } exe)
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--check") { UseShellExecute = false });
+        if (_checkWindow is not null)
+        {
+            _checkWindow.Activate();
+            return;
+        }
+        _checkWindow = new CheckWindow();
+        _checkWindow.Closed += (_, _) => _checkWindow = null;
+        _checkWindow.Show();
+        _checkWindow.Activate();
     }
 
     private void OnMessage(IpcMessage message)
