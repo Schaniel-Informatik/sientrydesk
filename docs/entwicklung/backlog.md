@@ -13,7 +13,10 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## 0.6.1 (gebaut, unter Windows zu testen)
+## Nächste Version
+- Prüfen nennt das Datum der sientrydesk.json, mit der der Dienst läuft (er liest sie nur beim Start).
+
+## 0.6.1 (05.10. getestet und freigegeben, wird verteilt)
 - Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).
 - `prepare-intune.cmd` zum Doppelklicken in beiden Paketen, Auswahldialog für sientrydesk.json und IntuneWinAppUtil,
   Frage nach der Kennung der Zugänge. Zusammenfassung nennt Abhängigkeiten und Ablösung.
