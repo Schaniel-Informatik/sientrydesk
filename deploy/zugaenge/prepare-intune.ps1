@@ -15,10 +15,11 @@
     unter Downloads.
 
 .EXAMPLE
+    Doppelklick auf prepare-intune.cmd (fragt nach der Kennung), oder:
     powershell -ExecutionPolicy Bypass -File .\prepare-intune.ps1 -Label 2026-09
 #>
 param(
-    [Parameter(Mandatory = $true)] [string] $Label,
+    [string] $Label,
     [string] $IntuneWinAppUtil
 )
 
@@ -39,16 +40,38 @@ function Find-IntuneWinAppUtil([string] $Given) {
             Select-Object -First 1
         if ($candidate) { return $candidate.FullName }
     }
+    $picked = Select-File 'IntuneWinAppUtil.exe auswählen' 'IntuneWinAppUtil.exe|IntuneWinAppUtil.exe'
+    if ($picked) { return $picked }
     throw ('IntuneWinAppUtil.exe nicht gefunden. Von https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool ' +
            'herunterladen und neben diesen Ordner legen, oder mit -IntuneWinAppUtil <Pfad> angeben.')
 }
 
-if ($Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Kennung ungültig, z. B. -Label 2026-09' }
+# Dateiauswahl, wenn das Skript per Doppelklick (prepare-intune.cmd) läuft. Ohne Fenster (z. B. über SSH) null.
+function Select-File([string] $Title, [string] $Filter) {
+    if (-not [Environment]::UserInteractive) { return $null }
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.OpenFileDialog
+        $dialog.Title = $Title
+        $dialog.Filter = $Filter
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.FileName }
+    } catch {
+    }
+    return $null
+}
+
+
+if (-not $Label) {
+    $suggested = Get-Date -Format 'yyyy-MM'
+    $answer = Read-Host "Kennung der Zugänge (Jahr-Monat, Enter = $suggested)"
+    $Label = if ($answer) { $answer.Trim() } else { $suggested }
+}
+if ($Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Kennung ungültig, z. B. 2026-09' }
 
 Write-Host '1/4 tokens.txt prüfen'
 $tool = Find-IntuneWinAppUtil $IntuneWinAppUtil
 if (-not (Test-Path $tokensFile)) { throw 'tokens.txt fehlt. tokens.example.txt als tokens.txt kopieren und ausfüllen.' }
-$expected = 'set-tokens-intune.ps1', 'tokens.txt', 'tokens.example.txt', 'prepare-intune.ps1'
+$expected = 'set-tokens-intune.ps1', 'tokens.txt', 'tokens.example.txt', 'prepare-intune.ps1', 'prepare-intune.cmd'
 $extra = Get-ChildItem $folder -Force | Where-Object { $expected -notcontains $_.Name }
 if ($extra) { throw "Im Ordner liegt mehr als nötig: $($extra.Name -join ', '). Nur das entpackte Paket der Zugänge und tokens.txt." }
 & (Join-Path $folder 'set-tokens-intune.ps1') -Check
@@ -81,6 +104,7 @@ Write-Host '4/4 Einstellungen für Intune (Apps > Windows > Erstellen > Windows-
     "    Anforderungen          64 Bit, Windows 11"
     "    Erkennungsregel        Manuell, Registrierung: HKEY_LOCAL_MACHINE\SOFTWARE\SIEntryDesk, Wertname TokenLabel,"
     "                           Zeichenfolgenvergleich, Ist gleich $Label, 32-Bit-App auf 64-Bit-Clients: Nein"
-    "    Abhängigkeit           SI EntryDesk, automatisch installieren"
+    "    Abhängigkeiten         SI EntryDesk, automatisch installieren (in dieser App, nicht in der Programm-App)"
+    "    Ablösung               keine. Bei der jährlichen Erneuerung löst die neue App die alte ab, ohne Deinstallation"
     "    Zuweisung              Erforderlich, dieselbe Gerätegruppe"
 ) | Write-Host

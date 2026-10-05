@@ -13,6 +13,11 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
+## Nächste Version (umgesetzt, noch nicht gebaut)
+- Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).
+- `prepare-intune.cmd` zum Doppelklicken in beiden Paketen, Auswahldialog für sientrydesk.json und IntuneWinAppUtil,
+  Frage nach der Kennung der Zugänge. Zusammenfassung nennt Abhängigkeiten und Ablösung.
+
 ## 0.6.0 (gebaut, unter Windows zu testen)
 - **Gegensprechen** nach den Entscheiden vom 02.10., siehe [gegensprechen.md](gegensprechen.md). Opus/RTP an beiden
   Türstationen vom Mac aus bestätigt (05.10.).

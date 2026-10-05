@@ -15,6 +15,7 @@
     im Suchpfad, neben dem Paketordner und unter Downloads.
 
 .EXAMPLE
+    Doppelklick auf prepare-intune.cmd, oder:
     powershell -ExecutionPolicy Bypass -File .\prepare-intune.ps1
 #>
 param(
@@ -37,9 +38,26 @@ function Find-IntuneWinAppUtil([string] $Given) {
             Select-Object -First 1
         if ($candidate) { return $candidate.FullName }
     }
+    $picked = Select-File 'IntuneWinAppUtil.exe auswählen' 'IntuneWinAppUtil.exe|IntuneWinAppUtil.exe'
+    if ($picked) { return $picked }
     throw ('IntuneWinAppUtil.exe nicht gefunden. Von https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool ' +
            'herunterladen und neben den Paketordner legen, oder mit -IntuneWinAppUtil <Pfad> angeben.')
 }
+
+# Dateiauswahl, wenn das Skript per Doppelklick (prepare-intune.cmd) läuft. Ohne Fenster (z. B. über SSH) null.
+function Select-File([string] $Title, [string] $Filter) {
+    if (-not [Environment]::UserInteractive) { return $null }
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.OpenFileDialog
+        $dialog.Title = $Title
+        $dialog.Filter = $Filter
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { return $dialog.FileName }
+    } catch {
+    }
+    return $null
+}
+
 
 Write-Host '1/4 Paket prüfen'
 $tool = Find-IntuneWinAppUtil $IntuneWinAppUtil
@@ -49,13 +67,18 @@ if ($missing) { throw "Im Paketordner fehlt: $($missing -join ', ')" }
 if (Get-ChildItem $package -Recurse -Filter 'tokens.txt') {
     throw 'tokens.txt gehört nicht ins Programmpaket. Hier löschen, sie gehört nur ins Paket der Zugänge.'
 }
-$expected = 'App', 'Service', 'install.ps1', 'uninstall.ps1', 'set-tokens.ps1', 'prepare-intune.ps1', 'detect.ps1',
+$expected = 'App', 'Service', 'install.ps1', 'uninstall.ps1', 'set-tokens.ps1', 'prepare-intune.ps1', 'prepare-intune.cmd', 'detect.ps1',
             'sientrydesk.json', 'sientrydesk.example.json', 'Doku'
 $extra = Get-ChildItem $package -Force | Where-Object { $expected -notcontains $_.Name }
 if ($extra) { throw "Im Paketordner liegt mehr als nötig: $($extra.Name -join ', '). Nur das entpackte Paket und sientrydesk.json." }
 
 $configFile = Join-Path $package 'sientrydesk.json'
-if (-not (Test-Path $configFile)) { throw 'sientrydesk.json fehlt neben install.ps1.' }
+if (-not (Test-Path $configFile)) {
+    $picked = Select-File 'sientrydesk.json der Anlage auswählen' 'sientrydesk.json|sientrydesk.json|JSON|*.json'
+    if (-not $picked) { throw 'sientrydesk.json fehlt neben install.ps1.' }
+    Copy-Item $picked $configFile
+    Write-Host "    sientrydesk.json übernommen aus $picked"
+}
 # Windows PowerShell 5.1 liest kein JSON mit Kommentaren, ganze Kommentarzeilen werden für die Prüfung entfernt.
 $configText = (Get-Content -Raw -Encoding UTF8 $configFile) -replace '(?m)^\s*//.*$', ''
 try { $config = $configText | ConvertFrom-Json }
@@ -121,5 +144,7 @@ Write-Host '4/4 Einstellungen für Intune (Apps > Windows > Erstellen > Windows-
     "    Anforderungen          64 Bit, Windows 11"
     "    Erkennungsregel        Benutzerdefiniertes Skript: $(Join-Path $out 'detect.ps1')"
     "                           als 32-Bit-Prozess: Nein, Signaturprüfung erzwingen: Nein"
+    "    Abhängigkeiten         keine"
+    "    Ablösung               keine. Update: in der bestehenden App Paketdatei und Erkennungsskript ersetzen"
     "    Zuweisung              Erforderlich, Gerätegruppe"
 ) | Write-Host

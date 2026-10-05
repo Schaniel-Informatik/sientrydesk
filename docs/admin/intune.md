@@ -24,11 +24,8 @@ Programmpaket, und ein Software-Update berührt sie nicht.
 
 ## App 1: SI EntryDesk
 1. `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` in den Ordner neben `install.ps1` legen.
-2. Im entpackten Ordner:
-   ```
-   powershell -ExecutionPolicy Bypass -File .\prepare-intune.ps1
-   ```
-   Es prüft den Ordner (Programmdateien vollständig, `sientrydesk.json` gültig, keine `tokens.txt`, nichts
+2. Im entpackten Ordner **Doppelklick auf `prepare-intune.cmd`**. Fehlt die `sientrydesk.json` oder findet es
+   `IntuneWinAppUtil.exe` nicht, fragt es mit einem Dialog danach. Es prüft den Ordner (Programmdateien vollständig, `sientrydesk.json` gültig, keine `tokens.txt`, nichts
    Überzähliges), erzeugt `detect.ps1` und legt neben dem Paketordner `Intune-SIEntryDesk-<Version>` an, darin
    `SIEntryDesk-<Version>.intunewin` und `detect.ps1`. Am Schluss zeigt es die Einstellungen für Intune.
 3. Intune → Apps → Windows → Erstellen → **Windows-App (Win32)**, die `.intunewin` hochladen:
@@ -64,10 +61,7 @@ der Befehl bleibt deshalb einfach `powershell.exe …`.
    access=<Access-Token>
    protect=<Protect-Schlüssel>
    ```
-3. Im selben Ordner, mit der Kennung der Zugänge (Jahr-Monat):
-   ```
-   powershell -ExecutionPolicy Bypass -File .\prepare-intune.ps1 -Label 2026-09
-   ```
+3. Im selben Ordner **Doppelklick auf `prepare-intune.cmd`** und die Kennung der Zugänge (Jahr-Monat) bestätigen.
    Es prüft `tokens.txt` (Fehler mit Zeilennummer, nie mit Inhalt), erstellt neben dem Ordner
    `Intune-SIEntryDesk-Zugaenge-2026-09` mit der `.intunewin`, **löscht `tokens.txt`** und zeigt die Einstellungen.
 4. In Intune als Win32-App hinzufügen, Name z. B. „SI EntryDesk Zugänge 2026-09“:
