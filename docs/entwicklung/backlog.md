@@ -13,7 +13,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## Nächste Version (umgesetzt, noch nicht gebaut)
+## 0.6.1 (gebaut, unter Windows zu testen)
 - Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).
 - `prepare-intune.cmd` zum Doppelklicken in beiden Paketen, Auswahldialog für sientrydesk.json und IntuneWinAppUtil,
   Frage nach der Kennung der Zugänge. Zusammenfassung nennt Abhängigkeiten und Ablösung.
@@ -25,7 +25,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Später anschauen: Reihenfolge der Installation (Programm vor Zugänge) bei einer Neuinstallation per Intune,
   Verlauf auf dem Test-Notebook vom 05.10.
 
-## 0.6.0 (gebaut, unter Windows zu testen)
+## 0.6.0 (05.10. getestet: Gegensprechen mit Headset verständlich, --check mit gestopptem Dienst und falscher Kamera-ID; offen: Livebild mit den gekürzten Plugins, Mikrofon gesperrt, falscher Pin)
 - **Gegensprechen** nach den Entscheiden vom 02.10., siehe [gegensprechen.md](gegensprechen.md). Opus/RTP an beiden
   Türstationen vom Mac aus bestätigt (05.10.).
 - **`SIEntryDesk.exe --check`** und „Prüfen …“ im Menü: App prüft den PC, Dienst die Anlage mit seinen Zugängen.
