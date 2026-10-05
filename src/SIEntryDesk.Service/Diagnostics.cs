@@ -183,22 +183,12 @@ internal sealed class Diagnostics(
             var version = await protect.GetVersionAsync(ct).ConfigureAwait(false);
             items.Add(Item("Protect-Schlüssel", CheckLevel.Ok, $"gültig, Protect {version}"));
 
+            var cameras = await protect.GetCameraNamesAsync(ct).ConfigureAwait(false);
             var known = (doors()?.All() ?? []).Where(d => opt.AcceptsDoor(d.DoorId, d.DoorName)).ToList();
             if (known.Count == 0)
                 items.Add(Item("Livebild", CheckLevel.Warn, "noch keine Tür bekannt. DoorCameras in der sientrydesk.json oder einmal klingeln"));
             foreach (var door in known)
-            {
-                var name = $"Livebild {state.DisplayName(door.CameraId, door.DoorName)}";
-                if (door.CameraId.Length == 0)
-                {
-                    items.Add(Item(name, CheckLevel.Warn, "Kamera unbekannt, wird beim ersten Klingeln gelernt"));
-                    continue;
-                }
-                var streams = await protect.GetStreamsAsync(door.CameraId, ct).ConfigureAwait(false);
-                items.Add(streams.Count > 0
-                    ? Item(name, CheckLevel.Ok, $"RTSPS-Stream vorhanden ({string.Join(", ", streams.Keys)})")
-                    : Item(name, CheckLevel.Fail, "kein RTSPS-Stream. In Protect bei der Kamera einschalten (Qualität Mittel)"));
-            }
+                items.Add(await DoorStreamAsync(protect, door, cameras, ct).ConfigureAwait(false));
         }
         catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
         {
@@ -210,6 +200,30 @@ internal sealed class Diagnostics(
             if (ct.IsCancellationRequested)
                 throw;
             items.Add(Item("Protect-Schlüssel", CheckLevel.Fail, "Protect antwortet nicht"));
+        }
+    }
+
+    /// <summary>Eine Tür für sich, damit eine falsche Kamera-ID nicht die übrigen Türen verdeckt.</summary>
+    private async Task<CheckItem> DoorStreamAsync(
+        ProtectApiClient protect, KnownDoor door, IReadOnlyDictionary<string, string> cameras, CancellationToken ct)
+    {
+        var doorName = door.DoorName.Length > 0 ? door.DoorName : "Tür";
+        if (door.CameraId.Length == 0)
+            return Item($"Livebild {doorName}", CheckLevel.Warn, "Kamera unbekannt, wird beim ersten Klingeln gelernt");
+        if (!cameras.TryGetValue(door.CameraId, out var cameraName))
+            return Item($"Livebild {doorName}", CheckLevel.Fail,
+                $"Kamera {door.CameraId} gibt es in Protect nicht. DoorCameras in der sientrydesk.json prüfen");
+        var name = $"Livebild {cameraName}";
+        try
+        {
+            var streams = await protect.GetStreamsAsync(door.CameraId, ct).ConfigureAwait(false);
+            return streams.Count > 0
+                ? Item(name, CheckLevel.Ok, $"RTSPS-Stream vorhanden ({string.Join(", ", streams.Keys)})")
+                : Item(name, CheckLevel.Fail, "kein RTSPS-Stream. In Protect bei der Kamera einschalten (Qualität Mittel)");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is not (System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden))
+        {
+            return Item(name, CheckLevel.Fail, $"Stream nicht lesbar (Protect meldet {(int?)ex.StatusCode})");
         }
     }
 

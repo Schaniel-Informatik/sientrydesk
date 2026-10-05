@@ -19,6 +19,9 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Frage nach der Kennung der Zugänge. Zusammenfassung nennt Abhängigkeiten und Ablösung.
 - „Prüfen …“ öffnet das Fenster sofort in der laufenden App, Punkte erscheinen einzeln, PC und Anlage gleichzeitig
   (Rückmeldung 05.10.: zu lange, bis man etwas sieht).
+- Prüfen: jede Tür einzeln; Kamera aus DoorCameras, die es in Protect nicht gibt, wird klar benannt statt „Protect
+  antwortet nicht“ (Test 05.10.). Der Dienst meldet unbekannte Kameras aus DoorCameras auch im Betrieb (Symbol orange).
+- Prüfen: Zustand des Dienstes auf Deutsch.
 - Später anschauen: Reihenfolge der Installation (Programm vor Zugänge) bei einer Neuinstallation per Intune,
   Verlauf auf dem Test-Notebook vom 05.10.
 

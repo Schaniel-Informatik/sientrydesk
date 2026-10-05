@@ -261,7 +261,13 @@ internal sealed class CallCoordinator(
                           names.Any(n => !state.CameraNames.TryGetValue(n.Key, out var old) || old != n.Value);
             foreach (var (id, name) in names)
                 state.CameraNames[id] = name;
-            _videoProblem = null;
+            // Ein Tippfehler in DoorCameras soll auffallen, bevor jemand klingelt.
+            var unknown = options.Value.DoorCameras.Count(d => !names.ContainsKey(d.Value));
+            _videoProblem = unknown == 0
+                ? null
+                : $"Livebild: {unknown} Kamera(s) aus DoorCameras gibt es in Protect nicht, sientrydesk.json prüfen";
+            if (unknown > 0)
+                log.LogWarning("{Problem}", _videoProblem);
             if (changed)
                 PublishDoors();
         }
