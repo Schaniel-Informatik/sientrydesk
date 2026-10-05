@@ -83,6 +83,12 @@ Installation im Zwischenspeicher der Intune-Erweiterung. Wer in Intune Apps verw
 ein eigenes Paket austauschen, aber nicht auslesen. Die Kennung (`2026-09`) ist kein Geheimnis.
 
 ## Software-Update
+**Wichtig: keine neue Programm-App mit Ablösung anlegen.** Die App „SI EntryDesk Zugänge“ hängt über die feste ID an
+genau einer Programm-App. Wird diese von einer neuen App abgelöst, installiert Intune die Zugänge nicht mehr:
+„App cannot be installed due to a supersedence relationship conflict“ (0x87D300DB), der PC bleibt ohne Zugänge rot.
+Ist es doch passiert: in der Zugänge-App die Abhängigkeit auf die neue Programm-App umhängen, auf betroffenen Geräten
+die 24-Stunden-Sperre zurücksetzen (siehe unten) und die alten Programm-Apps löschen.
+
 Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, `prepare-intune.ps1` ausführen.
 In Intune die App **SI EntryDesk** bearbeiten: Paketdatei und Erkennungsskript ersetzen, *App-Version* nachführen.
 Dasselbe, wenn sich nur die `sientrydesk.json` ändert. *App-Version* ist nur eine Beschriftung in den Berichten,

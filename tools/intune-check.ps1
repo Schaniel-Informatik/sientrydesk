@@ -15,7 +15,7 @@ Connect-MgGraph -Scopes 'DeviceManagementApps.Read.All','DeviceManagementManaged
 $beta = 'https://graph.microsoft.com/beta'
 function Get-Graph($uri) { Invoke-MgGraphRequest -Method GET -Uri $uri }
 function Get-All($uri) { $r = Get-Graph $uri; $r.value; while ($r.'@odata.nextLink') { $r = Get-Graph $r.'@odata.nextLink'; $r.value } }
-$apps = Get-All "$beta/deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')" | Where-Object { $_.displayName -like '*EntryDesk*' }
+$apps = Get-All "$beta/deviceAppManagement/mobileApps?`$filter=isof('microsoft.graph.win32LobApp')" | Where-Object { $_.displayName -match 'Entry ?Desk' }
 if (-not $apps) { 'Keine Apps mit EntryDesk im Namen.'; return }
 foreach ($summary in $apps) {
     $a = Get-Graph "$beta/deviceAppManagement/mobileApps/$($summary.id)"
