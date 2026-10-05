@@ -2,7 +2,8 @@
 # Baut die Pakete für Windows (x64) auf dem Mac: Tests, dann Dienst und App als eigenständige .exe.
 # Zwei getrennte Pakete, damit Zugänge nie ins Programmpaket geraten:
 #   SIEntryDesk-<Version>-win-x64.zip   Programm und Installationsskripte (Intune-App „SI EntryDesk“)
-#   SIEntryDesk-Zugaenge-<Version>.zip  nur das Skript und die Vorlage für die Zugänge (Intune-App „SI EntryDesk Zugänge“)
+#   SIEntryDesk-Zugaenge-<Version>.zip  Skript und Vorlage für die Zugänge (Intune-App „SI EntryDesk Zugänge“),
+#                                       eigene Version aus build/zugaenge.txt
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
@@ -10,7 +11,15 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
 name="SIEntryDesk-$version-win-x64"
 out="artifacts/$name"
-tokens="SIEntryDesk-Zugaenge-$version"
+# Zugänge mit eigener Version (build/zugaenge.txt), nur neu, wenn sich deploy/zugaenge wirklich geändert hat.
+read -r tokensVersion tokensHash < <(grep -v '^#' build/zugaenge.txt | grep -v '^$' | tail -1)
+currentHash=$(cd deploy/zugaenge && find . -type f ! -name '.*' -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -c1-64)
+if [[ "$currentHash" != "$tokensHash" ]]; then
+  echo "ABBRUCH: deploy/zugaenge hat sich geändert, Zugänge-Version $tokensVersion aber nicht." >&2
+  echo "Version erhöhen und in build/zugaenge.txt anfügen: <neue Version> $currentHash" >&2
+  exit 1
+fi
+tokens="SIEntryDesk-Zugaenge-$tokensVersion"
 tokensOut="artifacts/$tokens"
 rm -rf "$out" "artifacts/$name.zip" "$tokensOut" "artifacts/$tokens.zip"
 
@@ -33,6 +42,11 @@ if find "$out" "$tokensOut" \( -name tokens.txt -o -name sientrydesk.json \) | g
 fi
 
 (cd artifacts && zip -qr "$name.zip" "$name" && zip -qr "$tokens.zip" "$tokens")
+# Von den Zugängen nur die aktuelle Version behalten.
+for zip in artifacts/SIEntryDesk-Zugaenge-*.zip; do
+  [[ "$zip" == "artifacts/$tokens.zip" ]] || rm -f "$zip"
+done
+
 # Nur die ZIP-Dateien behalten, die entpackten Ordner braucht es nach dem Packen nicht mehr.
 rm -rf "$out" "$tokensOut"
 
@@ -40,7 +54,7 @@ rm -rf "$out" "$tokensOut"
 # wird nach einem bestandenen Test gesetzt). Ohne die Datei bleibt alles. Alte Versionen lassen sich aus Git neu bauen.
 if [[ -f artifacts/GETESTET ]]; then
   tested=$(tr -d '[:space:]' < artifacts/GETESTET)
-  for zip in artifacts/SIEntryDesk-*.zip; do
+  for zip in artifacts/SIEntryDesk-[0-9]*.zip; do
     v=$(basename "$zip" .zip | sed -e 's/^SIEntryDesk-Zugaenge-//' -e 's/^SIEntryDesk-//' -e 's/-win-x64$//')
     if [[ "$v" != "$tested" && "$(printf '%s\n%s\n' "$v" "$tested" | sort -V | head -1)" == "$v" ]]; then
       rm -f "$zip"

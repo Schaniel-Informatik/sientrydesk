@@ -89,7 +89,7 @@ Der Build liefert zwei ZIP-Dateien:
 | Datei | Inhalt | Wofür |
 |---|---|---|
 | `SIEntryDesk-<Version>-win-x64.zip` | `App\`, `Service\`, `install.ps1`, `uninstall.ps1`, `set-tokens.ps1`, `prepare-intune.ps1`, `sientrydesk.example.json`, `Doku\` | Installation von Hand und Intune-App „SI EntryDesk“ |
-| `SIEntryDesk-Zugaenge-<Version>.zip` | `set-tokens-intune.ps1`, `prepare-intune.ps1`, `tokens.example.txt` | nur für die Intune-App „SI EntryDesk Zugänge“ |
+| `SIEntryDesk-Zugaenge-<Version>.zip` | `set-tokens-intune.ps1`, `prepare-intune.ps1`, `prepare-intune.cmd`, `tokens.example.txt` | nur für die Intune-App „SI EntryDesk Zugänge“, eigene Version, ändert sich selten |
 
 Für die Installation von Hand braucht es nur das Programmpaket.
 

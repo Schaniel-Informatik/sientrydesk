@@ -9,9 +9,11 @@ liegen und die App für jeden Benutzer dieser Geräte startet:
 | Intune-App | Aus der Datei | Dazu kommt | Wird erneuert |
 |---|---|---|---|
 | **SI EntryDesk** | `SIEntryDesk-<Version>-win-x64.zip` | `sientrydesk.json` der Anlage | bei jedem Software-Update |
-| **SI EntryDesk Zugänge** | `SIEntryDesk-Zugaenge-<Version>.zip` | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
+| **SI EntryDesk Zugänge** | `SIEntryDesk-Zugaenge-<Version>.zip` (eigene Version, z. B. 1.0) | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
 
-Zwei ZIP-Dateien, zwei Ordner, je ein Vorbereitungsskript (`prepare-intune.ps1`). So stehen die Zugänge nie im
+Zwei ZIP-Dateien, zwei Ordner, je ein Vorbereitungsskript (`prepare-intune.ps1`). Das Paket der Zugänge hat eine eigene Version
+und ändert sich selten. Ein verteiltes Paket der Zugänge passt auch zu neuen Programmversionen, es wird nur bei der
+jährlichen Erneuerung neu erstellt oder wenn die Release-Notes es verlangen. So stehen die Zugänge nie im
 Programmpaket, und ein Software-Update berührt sie nicht.
 
 ## Vorbereitung
