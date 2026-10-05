@@ -1,4 +1,4 @@
 # Paket der Zugänge (deploy/zugaenge): eigene Version, unabhängig vom Programm, weil es sich selten ändert und ein
 # verteiltes Paket zu neuen Programmversionen passt. Ändert sich deploy/zugaenge, bricht publish.sh ab und nennt den
 # neuen Hash: dann Version erhöhen und eine Zeile "<Version> <Hash>" anfügen. Die letzte Zeile gilt.
-1.0 e294947e97623716b3aeae942686d7589e2cbf6f94706039a944236138d4bde9
+1.0 d7c6aa327eeec3b7e2ba85ce2024a0ac9df1d380f430d8a9b5da170b2d9f875b

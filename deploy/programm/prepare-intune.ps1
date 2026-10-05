@@ -90,7 +90,10 @@ $fileVersion = (Get-Item (Join-Path $package 'App\SIEntryDesk.exe')).VersionInfo
 if (-not $fileVersion) { throw 'Version von SIEntryDesk.exe nicht lesbar.' }
 $version = [version] $fileVersion
 $shortVersion = $version.ToString(3)
-$hash = (Get-FileHash -Algorithm SHA256 $configFile).Hash
+# Mit .NET statt Get-FileHash: Das Cmdlet fehlt in Windows PowerShell, wenn es aus PowerShell 7 heraus gestartet wird.
+$sha = [System.Security.Cryptography.SHA256]::Create()
+try { $hash = ($sha.ComputeHash([System.IO.File]::ReadAllBytes($configFile)) | ForEach-Object { $_.ToString('X2') }) -join '' }
+finally { $sha.Dispose() }
 Write-Host "    Version $shortVersion, Konsole $($config.Host)"
 
 Write-Host '2/4 Erkennungsskript detect.ps1'
@@ -112,7 +115,9 @@ try {
     if (-not (Get-Service -Name 'SIEntryDesk' -ErrorAction SilentlyContinue)) { exit 0 }
     if (-not (Test-Path -LiteralPath `$exe) -or -not (Test-Path -LiteralPath `$config)) { exit 0 }
     if ([version] (Get-Item -LiteralPath `$exe).VersionInfo.FileVersion -lt `$version) { exit 0 }
-    if ((Get-FileHash -LiteralPath `$config -Algorithm SHA256).Hash -ne `$configHash) { exit 0 }
+    `$sha = [System.Security.Cryptography.SHA256]::Create()
+    `$actual = (`$sha.ComputeHash([System.IO.File]::ReadAllBytes(`$config)) | ForEach-Object { `$_.ToString('X2') }) -join ''
+    if (`$actual -ne `$configHash) { exit 0 }
 } catch {
     exit 0
 }
