@@ -23,13 +23,22 @@ internal static class LocalChecks
                 return Item("Dienst", CheckLevel.Fail, "nicht installiert. install.ps1 ausführen bzw. Intune-App zuweisen");
             return service.Status == ServiceControllerStatus.Running
                 ? Item("Dienst", CheckLevel.Ok, "läuft")
-                : Item("Dienst", CheckLevel.Fail, $"{service.Status}. Als Administrator: Start-Service SIEntryDesk, Protokoll unter C:\\ProgramData\\SIEntryDesk\\logs");
+                : Item("Dienst", CheckLevel.Fail, $"{German(service.Status)}. Als Administrator: Start-Service SIEntryDesk, Protokoll unter C:\\ProgramData\\SIEntryDesk\\logs");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             return Item("Dienst", CheckLevel.Warn, "Zustand nicht lesbar");
         }
     }
+
+    private static string German(ServiceControllerStatus status) => status switch
+    {
+        ServiceControllerStatus.Stopped => "gestoppt",
+        ServiceControllerStatus.StartPending => "startet gerade",
+        ServiceControllerStatus.StopPending => "wird gerade gestoppt",
+        ServiceControllerStatus.Paused => "angehalten",
+        _ => status.ToString(),
+    };
 
     private static CheckItem Autostart()
     {
