@@ -1,6 +1,6 @@
 # Gegensprechen (Stufe 2): Grundlagen und Entscheide
 
-Stand 2026-10-05, umgesetzt. Opus/RTP-Umsetzung an beiden Türstationen bestätigt, Windows-Test steht aus.
+Stand 2026-10-05, umgesetzt. Opus/RTP an beiden Türstationen bestätigt, mit W11 und Headset verständlich.
 
 ## Wie es technisch geht
 - **Hören** läuft bereits: Der Ton der Türstation kommt mit dem Livebild über die geprüfte RTSPS-Verbindung.
@@ -52,6 +52,7 @@ Stand 2026-10-05, umgesetzt. Opus/RTP-Umsetzung an beiden Türstationen bestäti
 - 2026-10-05, W11-PC mit 0.6.0, erster Versuch: Eine laufende Teams-Besprechung ging beim Sprechen von selbst auf
   „Anruf halten“ (gut). An der Tür nichts gehört, Wiederholung mit genauerer Beobachtung. Wunsch: Sprechen schaltet
   „Ton an“ ein, damit man die Antwort hört (umgesetzt für 0.6.1).
+- 2026-10-05, zweiter Versuch mit Headset: an der Tür verständlich, Verzögerung eine gute Sekunde.
 1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,
