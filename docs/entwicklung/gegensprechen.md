@@ -1,6 +1,6 @@
 # Gegensprechen (Stufe 2): Grundlagen und Entscheide
 
-Stand 2026-10-02, umgesetzt, an der Tür noch nicht getestet.
+Stand 2026-10-05, umgesetzt. Opus/RTP-Umsetzung an der Tür bestätigt (G6 Pro Entry), Windows-Test steht aus.
 
 ## Wie es technisch geht
 - **Hören** läuft bereits: Der Ton der Türstation kommt mit dem Livebild über die geprüfte RTSPS-Verbindung.
@@ -47,6 +47,7 @@ Stand 2026-10-02, umgesetzt, an der Tür noch nicht getestet.
 - **Kein Kommunikationsmodus von Windows** bei der Aufnahme: Er würde andere Töne am PC leiser stellen.
 
 **Test:**
+- 2026-10-05: `DevCli talk` an der G6 Pro Entry, 3 s Wechselton, Opus 24 kHz Breitband: an der Tür gut gehört.
 1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,
