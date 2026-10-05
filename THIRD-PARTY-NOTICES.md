@@ -13,6 +13,11 @@ SI EntryDesk enthält folgende Komponenten anderer Hersteller, unverändert und 
 LibVLC und LibVLCSharp werden dynamisch geladen und nicht verändert. Den Quelltext gibt es bei VideoLAN unter den
 genannten Adressen, die Lizenz unter https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 
+Von LibVLC werden nur die für das Livebild nötigen Plugins mitgeliefert (RTSP, H.264/H.265, AAC/Opus, Bild- und
+Tonausgabe unter Windows, Farbraumwandlung). Ihre Quelltexte im Zweig 3.0.x stehen alle unter LGPL-2.1-or-later
+(geprüft 2026-10-05). Enthaltene Bibliotheken: FFmpeg (libavcodec, libswscale, ohne GPL-Teile gebaut, LGPL),
+LIVE555 Streaming Media (LGPL), Opus und der Speex-Resampler (BSD).
+
 ## Concentus / Opus
 
 ```

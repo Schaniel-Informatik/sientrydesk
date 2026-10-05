@@ -166,7 +166,10 @@ public partial class App : Application
             // Pfad ausdrücklich, weil die App als einzelne .exe veröffentlicht wird.
             LibVLCSharp.Shared.Core.Initialize(Path.Combine(AppContext.BaseDirectory, "libvlc", "win-x64"));
             // --rtsp-tcp: Der Dienst nimmt nur RTP über die RTSP-Verbindung an, UDP-Versuche kosten nur Zeit.
-            return new LibVLC("--rtsp-tcp", "--no-osd", "--no-video-title-show", "--no-snapshot-preview", "--quiet");
+            // --verbose=2 nur, damit das Protokoll die geladenen Module nennt, geschrieben werden davon wenige Zeilen.
+            var libVlc = new LibVLC("--rtsp-tcp", "--no-osd", "--no-video-title-show", "--no-snapshot-preview", "--verbose=2");
+            VlcLog.Attach(libVlc);
+            return libVlc;
         }
         catch (Exception ex) when (ex is VLCException or DllNotFoundException or IOException)
         {

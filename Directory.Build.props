@@ -10,6 +10,6 @@
     <Company>Schaniel Informatik</Company>
     <Product>SI EntryDesk</Product>
     <Copyright>© 2026 Schaniel Informatik</Copyright>
-    <Version>0.6.0-dev</Version>
+    <Version>0.6.0</Version>
   </PropertyGroup>
 </Project>

@@ -10,13 +10,24 @@
     <RootNamespace>SIEntryDesk.App</RootNamespace>
     <AssemblyName>SIEntryDesk</AssemblyName>
     <ApplicationIcon>Assets\SIEntryDesk.ico</ApplicationIcon>
-    <!-- LibVLC nur für x64, ohne Lua-Skripte (nicht benötigt). -->
+    <!-- LibVLC nur für x64. -->
     <VlcWindowsX86Enabled>false</VlcWindowsX86Enabled>
     <VlcWindowsArm64Enabled>false</VlcWindowsArm64Enabled>
   </PropertyGroup>
 
+  <!-- Nur die LibVLC-Plugins, die das Livebild braucht (RTSP über den Dienst, H.264/H.265, AAC/Opus, Bild- und
+       Tonausgabe unter Windows). Alle unter LGPL wie LibVLC, geprüft am Quelltext 3.0.x, siehe THIRD-PARTY-NOTICES.md.
+       Fehlt eines, steht im vlc.log der App „no … module matched“. -->
   <ItemGroup>
-    <VlcWindowsX64ExcludeFiles Include="lua\%2A%2A" />
+    <VlcWindowsX64IncludeFiles Include="libvlc.dll;libvlccore.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\access\liblive555_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\codec\libavcodec_plugin.dll;plugins\codec\libopus_plugin.dll;plugins\codec\libd3d11va_plugin.dll;plugins\codec\libdxva2_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\demux\libes_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\packetizer\libpacketizer_h264_plugin.dll;plugins\packetizer\libpacketizer_hevc_plugin.dll;plugins\packetizer\libpacketizer_mpeg4audio_plugin.dll;plugins\packetizer\libpacketizer_copy_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\audio_output\libmmdevice_plugin.dll;plugins\audio_output\libwasapi_plugin.dll;plugins\audio_output\libdirectsound_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\video_output\libdirect3d11_plugin.dll;plugins\video_output\libdirect3d9_plugin.dll;plugins\video_output\libdrawable_plugin.dll;plugins\video_output\libwingdi_plugin.dll" />
+    <VlcWindowsX64IncludeFiles Include="plugins\d3d11\%2A%2A;plugins\d3d9\%2A%2A;plugins\video_chroma\%2A%2A;plugins\audio_mixer\%2A%2A" />
+    <VlcWindowsX64IncludeFiles Include="plugins\audio_filter\libspeex_resampler_plugin.dll;plugins\audio_filter\libugly_resampler_plugin.dll;plugins\audio_filter\libtrivial_channel_mixer_plugin.dll;plugins\audio_filter\libsimple_channel_mixer_plugin.dll;plugins\audio_filter\libaudio_format_plugin.dll" />
   </ItemGroup>
 
   <!-- WinForms nur für das Tray-Symbol, sonst gibt es Namenskonflikte mit WPF. -->

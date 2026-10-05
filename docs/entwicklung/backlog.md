@@ -13,32 +13,15 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Anleitung: ein Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten). Protect-Schlüssel unter Marcels Konto
   (Variante A, Risiko zur Kenntnis genommen).
 
-## Nächste Version (umgesetzt, noch nicht gebaut)
-- Hilfe (`--help`) mit kürzeren Zeilen, das Meldungsfenster brach sie unschön um.
-- **Gegensprechen** nach den Entscheiden vom 02.10. (Taste halten, nur beim Ruf, pro PC abschaltbar mit `-NoTalk`),
-  siehe [gegensprechen.md](gegensprechen.md). Zuerst mit `DevCli talk` vom Mac an der Tür prüfen, dann unter Windows.
-- `THIRD-PARTY-NOTICES.md` mit den Lizenzen der Fremdsoftware, liegt im Paket unter `Doku\`.
-
-## Für 0.6.0 beschlossen, noch nicht umgesetzt (2026-10-03)
-- **`SIEntryDesk.exe --check`** für die Fehlersuche auf einem PC, ohne Eingaben und ohne Adminrechte. Fenster mit Liste
-  grün/orange/rot und je einem Satz, was zu tun ist, Knöpfe „Erneut prüfen“ und „Ergebnis kopieren“ (ohne
-  Geheimnisse), dazu „Prüfen …“ im Menü des Symbols.
-  - App prüft: Dienst installiert und gestartet, Verbindung zum Dienst, gleiche Version, Autostart, Mikrofon und
-    Zugriff, Tonausgabe.
-  - Dienst prüft mit seinen gespeicherten Zugängen: Konfiguration, Zugänge lesbar, Access erreichbar und Pin, Token
-    und Rechte (Ereignisse, Türen, Öffnen), Klingel-Ereignisse verbunden, Protect erreichbar, Pin und Schlüssel,
-    Stream pro Tür und Port 7441, Ablaufdaten.
-  - Nicht prüfbar: ob der Ton beim Gegensprechen an der Tür ankommt.
-  - `--setup` bleibt für das Erstellen und Prüfen einer Konfiguration vor dem Verteilen.
-  - **Marcel testet `--check` mit 0.6.0**, auch absichtlich mit Fehlern (Dienst gestoppt, falscher Pin, Mikrofon aus).
-- **LibVLC-Plugins kürzen:** nur die Plugins mitliefern, die das Livebild lädt (RTSP, H.264/H.265, AAC/Opus, Bild- und
-  Tonausgabe), Lizenz jedes verbleibenden Plugins prüfen (Sonderfall avcodec), in THIRD-PARTY-NOTICES.md eintragen.
-  Marcel testet das Livebild an beiden Türen mit Ton, beim Klingeln und ohne Klingeln.
-
-## Ideen
-- **Englisch für die App** (Oberfläche, Meldungen, Hilfe), damit das Projekt auch ausserhalb des deutschen
-  Sprachraums nutzbar ist. Auch in CONTRIBUTING.md als Idee genannt.
-- Mikrofonauswahl in der App.
+## 0.6.0 (gebaut, unter Windows zu testen)
+- **Gegensprechen** nach den Entscheiden vom 02.10., siehe [gegensprechen.md](gegensprechen.md). Opus/RTP an beiden
+  Türstationen vom Mac aus bestätigt (05.10.).
+- **`SIEntryDesk.exe --check`** und „Prüfen …“ im Menü: App prüft den PC, Dienst die Anlage mit seinen Zugängen.
+- **LibVLC nur mit den nötigen Plugins** (47 statt 321, alle LGPL), Protokoll des Videoplayers `vlc.log`.
+- Hilfe mit kürzeren Zeilen, `THIRD-PARTY-NOTICES.md` im Paket, Release-Entwurf auf GitHub per Versionsmarke.
+- **Marcel testet** auf einem physischen PC mit Headset: Gegensprechen an beiden Türen (Lautsprecher und Headset,
+  gleichzeitig Mobile-App), Livebild an beiden Türen mit Ton beim Klingeln und ohne, **`--check`** im Normalfall und mit
+  absichtlichen Fehlern (Dienst gestoppt, falscher Pin in sientrydesk.local.json, Mikrofon in Windows gesperrt).
 
 ## Vor der Veröffentlichung
 - LibVLC-Plugins: kommt mit 0.6.0, siehe oben.

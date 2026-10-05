@@ -55,6 +55,13 @@ Von Hand:
 6. Im Betriebshandbuch der Anlage vermerken.
 
 ## Störungen
+**Zuerst prüfen:** Rechtsklick auf das Symbol → „Prüfen …“ oder `SIEntryDesk.exe --check`. Das Fenster zeigt je
+Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Tonausgabe, Mikrofon,
+Verbindung zum Dienst und Version auf dem PC; Konfiguration, Zugänge, Access und Protect (erreichbar, Zertifikat, Token
+und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür, Gegensprechen und Ablaufdaten für die Anlage. Es braucht
+keine Adminrechte und keine Eingaben. „Ergebnis kopieren“ legt den Text ohne Geheimnisse in die Zwischenablage, für
+ein Ticket oder eine Mail. Ob der Ton beim Gegensprechen an der Tür ankommt, kann die Prüfung nicht feststellen.
+
 | Symbol | Was tun |
 |---|---|
 | grau | Ausserhalb des Firmennetzes normal. Im Büro: Netz oder VPN, Ports 12445, 443, 7441 prüfen |
@@ -68,6 +75,9 @@ Von Hand:
 | „Kein Mikrofon gefunden“ | Mikrofon oder Headset anschliessen, in Windows als Standardgerät für Kommunikation festlegen |
 | Taste geht, an der Tür kommt nichts an | UDP 7004 vom PC zur Türstation blockiert; im Protokoll steht die Adresse der Türstation |
 | „Protect-Schlüssel abgelehnt“ / „Protect nicht erreichbar“ | wie beim Livebild |
+
+**Livebild schwarz oder stumm:** Das Protokoll des Videoplayers liegt beim Benutzer unter
+`%LOCALAPPDATA%\SIEntryDesk\vlc.log`. „no … module matched“ heisst, dass ein Teil des Players fehlt.
 
 **Protokoll des Dienstes** (nur für Administratoren lesbar): `C:\ProgramData\SIEntryDesk\logs\service-JJJJMMTT.log`.
 Es enthält Türnamen, aber keine Tokens und keine Stream-Adressen. Installation über Intune:

@@ -109,6 +109,8 @@ Problem. Ein Testgerät sofort aktualisieren: Sperre zurücksetzen wie unter
 4. Wenn alle Geräte die neue Kennung melden: die alten Zugänge in UniFi löschen.
 
 ## Kontrolle
+- Auf dem Gerät als Benutzer: `C:\Program Files\SIEntryDesk\App\SIEntryDesk.exe --check` oder Rechtsklick auf
+  das Symbol → „Prüfen …“. Zeigt alle Voraussetzungen grün, orange oder rot.
 - Intune → App → Geräteinstallationsstatus. Der Bericht hinkt nach, oft um eine Stunde und mehr.
 - Sofort prüfen lassen statt warten: auf dem Gerät als Administrator
   `Restart-Service IntuneManagementExtension`. Die Intune-Erweiterung prüft dann ihre Apps gleich neu.

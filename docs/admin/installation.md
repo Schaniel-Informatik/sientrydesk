@@ -198,5 +198,6 @@ eigenen Konto und braucht die Zugänge unabhängig davon, wer angemeldet ist.
 Gespeichert wird immer über den Dienst (`SIEntryDesk.Service.exe set-secrets`), egal ob mit `install.ps1 -SetTokens`,
 `set-tokens.ps1` oder per Intune mit `set-tokens-intune.ps1`.
 
-## Hilfe
-`SIEntryDesk.exe --help` und `SIEntryDesk.Service.exe --help` zeigen alle Aufrufe.
+## Prüfen und Hilfe
+Nach der Installation: `SIEntryDesk.exe --check` oder Rechtsklick auf das Symbol → „Prüfen …“, siehe
+[betrieb.md](betrieb.md#störungen). `SIEntryDesk.exe --help` und `SIEntryDesk.Service.exe --help` zeigen alle Aufrufe.
