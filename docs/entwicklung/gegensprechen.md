@@ -49,6 +49,9 @@ Stand 2026-10-05, umgesetzt. Opus/RTP-Umsetzung an beiden Türstationen bestäti
 **Test:**
 - 2026-10-05: `DevCli talk` an der G6 Pro Entry, 3 s Wechselton, Opus 24 kHz Breitband: an der Tür gut gehört.
 - 2026-10-05: dasselbe an der G6 Entry: gehört.
+- 2026-10-05, W11-PC mit 0.6.0, erster Versuch: Eine laufende Teams-Besprechung ging beim Sprechen von selbst auf
+  „Anruf halten“ (gut). An der Tür nichts gehört, Wiederholung mit genauerer Beobachtung. Wunsch: Sprechen schaltet
+  „Ton an“ ein, damit man die Antwort hört (umgesetzt für 0.6.1).
 1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,

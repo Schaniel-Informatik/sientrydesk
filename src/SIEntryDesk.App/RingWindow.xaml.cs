@@ -123,11 +123,15 @@ public partial class RingWindow : Window
 
     public void ShowTalkConnecting() => TalkButton.Content = "Verbinde mit der Tür …";
 
-    /// <summary>Der Dienst hat das Sprechen freigegeben. Der Ton der Tür ist so lange stumm, sonst gibt es Echo.</summary>
+    /// <summary>Der Dienst hat das Sprechen freigegeben. Der Ton der Tür ist so lange stumm, sonst gibt es Echo. Danach
+    /// will man die Antwort hören, deshalb ist „Ton an“ ab jetzt eingeschaltet.</summary>
     public void ShowTalking()
     {
         _talking = true;
         StopRinging();
+        _muted = false;
+        if (SoundButton.IsEnabled)
+            SoundButton.Content = "Ton aus";
         if (_player is not null)
             _player.Mute = true;
         TalkButton.Content = "Sie sprechen – loslassen zum Hören";
