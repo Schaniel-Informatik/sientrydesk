@@ -66,6 +66,10 @@ public partial class App : Application
             Die installierte Datei ist nur als
             Administrator lesbar.
 
+        SIEntryDesk.exe --check
+            Prüft diesen PC und die Verbindung
+            zur Anlage, grün/orange/rot.
+
         SIEntryDesk.exe --help
             Diese Hilfe.
 
@@ -81,6 +85,15 @@ public partial class App : Application
         {
             MessageBox.Show(HelpText, "SI EntryDesk", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
+            return;
+        }
+
+        // Prüfung für die Fehlersuche, unabhängig von einer laufenden Tray-App.
+        if (e.Args.Any(a => string.Equals(a, "--check", StringComparison.OrdinalIgnoreCase)))
+        {
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            MainWindow = new CheckWindow();
+            MainWindow.Show();
             return;
         }
 
@@ -107,7 +120,8 @@ public partial class App : Application
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
         _autoSound = LoadAutoSound();
-        _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound, Shutdown));
+        _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound,
+            StartCheck, Shutdown));
         _tray.SetAutoSound(_autoSound);
         _alarmTimer.Tick += (_, _) => NotifyAlarm();
         _pauseTimer.Tick += (_, _) => Resume(manual: false);
@@ -158,6 +172,13 @@ public partial class App : Application
         {
             return null;
         }
+    }
+
+    /// <summary>Prüfung als eigener Prozess, wie SIEntryDesk.exe --check.</summary>
+    private void StartCheck()
+    {
+        if (Environment.ProcessPath is { } exe)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--check") { UseShellExecute = false });
     }
 
     private void OnMessage(IpcMessage message)

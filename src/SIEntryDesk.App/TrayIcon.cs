@@ -14,6 +14,7 @@ internal sealed record TrayActions(
     Action<TimeSpan> Pause,
     Action Resume,
     Action<bool> AutoSoundChanged,
+    Action Check,
     Action Exit);
 
 /// <summary>
@@ -178,6 +179,7 @@ internal sealed class TrayIcon : IDisposable
         };
         menu.Items.Add(autoSound);
         menu.Items.Add("Testklingeln (nur dieser PC)", null, (_, _) => _actions.TestRing());
+        menu.Items.Add("Prüfen …", null, (_, _) => _actions.Check());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => _actions.Exit());
     }

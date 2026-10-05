@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using SIEntryDesk.Core.Calls;
+using SIEntryDesk.Core.Diagnostics;
 
 namespace SIEntryDesk.Core.Ipc;
 
@@ -25,6 +26,8 @@ namespace SIEntryDesk.Core.Ipc;
 [JsonDerivedType(typeof(TalkResultMessage), "talkResult")]
 [JsonDerivedType(typeof(TalkAudioMessage), "talkAudio")]
 [JsonDerivedType(typeof(TalkEndedMessage), "talkEnded")]
+[JsonDerivedType(typeof(CheckRequest), "check")]
+[JsonDerivedType(typeof(CheckResultMessage), "checkResult")]
 public abstract record IpcMessage;
 
 /// <summary>Zustand des Dienstes aus Sicht der Anzeige.</summary>
@@ -109,3 +112,9 @@ public sealed record TalkAudioMessage(string CallId, string Opus) : IpcMessage;
 
 /// <summary>Dienst → App: Sprechen beendet, ohne dass die Taste losgelassen wurde (Höchstdauer, Rufende, Fehler).</summary>
 public sealed record TalkEndedMessage(string CallId, string Reason) : IpcMessage;
+
+/// <summary>App → Dienst: Prüfung mit den gespeicherten Zugängen (SIEntryDesk.exe --check).</summary>
+public sealed record CheckRequest : IpcMessage;
+
+/// <summary>Dienst → App: Ergebnis der Prüfung, ohne Geheimnisse.</summary>
+public sealed record CheckResultMessage(CheckItem[] Items) : IpcMessage;

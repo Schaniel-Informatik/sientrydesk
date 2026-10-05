@@ -48,11 +48,15 @@ internal sealed class CallCoordinator(
     private ProtectApiClient? _protectApi;
     private StreamProxy? _proxy;
     private TalkRelay? _talk;
+    private Diagnostics? _diagnostics;
     private CancellationToken _stopping;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _stopping = ct;
+        // Die Prüfung (--check) muss auch antworten, wenn der Start an Konfiguration oder Zugängen scheitert.
+        _diagnostics = new Diagnostics(options, state, () => _doors, log);
+        pipes.RequestHandler = HandleRequestAsync;
         var opt = options.Value;
         if (opt.Validate() is { } problem)
         {
@@ -83,7 +87,6 @@ internal sealed class CallCoordinator(
         foreach (var (doorId, cameraId) in opt.DoorCameras)
             _doors.Seed(doorId, cameraId);
         PublishDoors();
-        pipes.RequestHandler = HandleRequestAsync;
 
         log.LogInformation(
             "Start {Version}: Konsole {Host}, Türen {Doors}, Livebild {Video}, ohne Klingeln {LiveView}, Gegensprechen {Talk}",
@@ -334,6 +337,8 @@ internal sealed class CallCoordinator(
                 if (UntrustedText.IsSafeId(talk.CallId))
                     _talk?.Stop(talk.CallId, client.Id);
                 return null;
+            case CheckRequest:
+                return _diagnostics is null ? null : await _diagnostics.RunAsync(client.User, ct).ConfigureAwait(false);
             case TalkAudioMessage audio:
                 if (UntrustedText.IsSafeId(audio.CallId))
                     _talk?.Audio(audio.CallId, client.Id, audio.Opus);

@@ -35,6 +35,8 @@
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
     <!-- Mikrofon fürs Gegensprechen (WASAPI), MIT. -->
     <PackageReference Include="NAudio.Wasapi" Version="3.1.0" />
+    <!-- Zustand des Dienstes für die Prüfung (check), MIT. -->
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
   </ItemGroup>
 
 </Project>

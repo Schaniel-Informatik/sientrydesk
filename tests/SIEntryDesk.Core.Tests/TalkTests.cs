@@ -190,3 +190,32 @@ public class TalkTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new OpusVoiceEncoder(22050));
     }
 }
+
+public class CheckReportTests
+{
+    [Fact]
+    public void Report_lists_areas_with_marks_and_overall_result()
+    {
+        Diagnostics.CheckItem[] items =
+        [
+            new(Diagnostics.CheckReport.ThisPc, "Dienst", Diagnostics.CheckLevel.Ok, "läuft"),
+            new(Diagnostics.CheckReport.Installation, "Access-Token", Diagnostics.CheckLevel.Fail, "abgelehnt"),
+            new(Diagnostics.CheckReport.Installation, "Ablaufdaten", Diagnostics.CheckLevel.Warn, "bald"),
+        ];
+        var text = Diagnostics.CheckReport.ToText(items, "SI EntryDesk 0.6.0, PC-1", DateTimeOffset.UnixEpoch);
+        Assert.Contains("Ergebnis: Fehler", text);
+        Assert.Contains("Dieser PC\n  ✓ Dienst: läuft", text.Replace("\r", ""));
+        Assert.Contains("  ✗ Access-Token: abgelehnt", text);
+        Assert.Equal(Diagnostics.CheckLevel.Ok, Diagnostics.CheckReport.Overall([items[0], items[0] with { Level = Diagnostics.CheckLevel.Info }]));
+    }
+
+    [Fact]
+    public void Check_result_survives_the_pipe()
+    {
+        var message = new Ipc.CheckResultMessage([new("Anlage", "Konfiguration", Diagnostics.CheckLevel.Ok, "Konsole x")]);
+        var bytes = Ipc.IpcProtocol.Serialize(message);
+        var back = Assert.IsType<Ipc.CheckResultMessage>(Ipc.IpcProtocol.Deserialize(bytes.AsSpan(0, bytes.Length - 1)));
+        Assert.Equal(message.Items, back.Items);
+        Assert.IsType<Ipc.CheckRequest>(Ipc.IpcProtocol.Deserialize(Ipc.IpcProtocol.Serialize(new Ipc.CheckRequest()).AsSpan()[..^1]));
+    }
+}
