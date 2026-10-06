@@ -15,6 +15,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 
 ## Nächste Version
 - Prüfen nennt das Datum der sientrydesk.json, mit der der Dienst läuft (er liest sie nur beim Start).
+- **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
 ## 0.6.1 (05.10. getestet und freigegeben, wird verteilt)
 - Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).
