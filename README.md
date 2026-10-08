@@ -17,7 +17,8 @@ anders ab, schliesst es sich überall.
 **Not affiliated with Ubiquiti.** Nutzt ausschliesslich die offiziellen Schnittstellen (Access Developer API,
 Protect Integration API).
 
-Stand: Pilot, Repository privat.
+Stand: Pilot, seit Oktober 2026 an einer Anlage im Einsatz (Version 0.6.1, verteilt über Intune). Downloads unter
+[Releases](https://github.com/Schaniel-Informatik/sientrydesk/releases).
 
 ## Wo was steht
 **Für Admins** (`docs/admin/`, kommt auch als `Doku\` ins Paket):
