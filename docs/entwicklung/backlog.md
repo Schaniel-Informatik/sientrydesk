@@ -40,10 +40,10 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   gleichzeitig Mobile-App), Livebild an beiden Türen mit Ton beim Klingeln und ohne, **`--check`** im Normalfall und mit
   absichtlichen Fehlern (Dienst gestoppt, falscher Pin in sientrydesk.local.json, Mikrofon in Windows gesperrt).
 
-## Vor der Veröffentlichung
-- LibVLC-Plugins: kommt mit 0.6.0, siehe oben.
-- Auf GitHub beim Umstellen auf öffentlich: *Settings → Code security* „Private vulnerability reporting“ einschalten
-  (gibt es nur für öffentliche Repositories), SECURITY.md verweist darauf.
+## Veröffentlicht (08.10.2026)
+- Repository öffentlich, Release 0.6.1 veröffentlicht. Eingeschaltet: Private vulnerability reporting,
+  Secret scanning mit Push-Schutz, Dependabot-Warnungen, Workflows aus Forks nur nach Freigabe, Regeln gegen
+  Force-Push und Löschen für `main` und die Tags `v*`.
 
 ## 0.5.3 (2026-10-02 getestet: Update über Intune, alte Zugänge, detect.ps1, Hilfe, Öffnen mit dem einen Token)
 - Ablage neu: `deploy/programm`, `deploy/zugaenge`, `docs/admin` (als `Doku\` im Paket), `docs/entwicklung`.
