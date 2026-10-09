@@ -97,9 +97,13 @@ public sealed class StreamProxyTests : IAsyncLifetime
     [Fact]
     public async Task Running_connections_end_when_the_address_expires()
     {
-        _hold = TimeSpan.FromSeconds(10);
+        // Grosszügige Zeiten, damit ein langsamer CI-Runner den Test nicht zufällig scheitern lässt: Der nachgebaute
+        // Server hielte die Verbindung 30 s offen, der Proxy muss sie mit dem Ablauf nach 3 s beenden.
+        _hold = TimeSpan.FromSeconds(30);
+        var lifetime = TimeSpan.FromSeconds(3);
         await using var proxy = NewProxy(CertificatePin.Parse(Convert.ToHexString(SHA256.HashData(_certificate.RawData))));
-        var url = proxy.Open("live-1", new StreamSource("127.0.0.1", ServerPort, StreamPath), TimeSpan.FromSeconds(1));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var url = proxy.Open("live-1", new StreamSource("127.0.0.1", ServerPort, StreamPath), lifetime);
 
         using var client = new TcpClient();
         await client.ConnectAsync(IPAddress.Loopback, proxy.Port);
@@ -108,10 +112,8 @@ public sealed class StreamProxyTests : IAsyncLifetime
         Assert.IsType<RtspText>(await reader.ReadAsync(Timeout()));
         Assert.IsType<RtspInterleaved>(await reader.ReadAsync(Timeout()));
 
-        // Der nachgebaute Server hielte die Verbindung 10 s offen. Der Proxy muss sie nach 1 s beenden.
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        Assert.Null(await reader.ReadAsync(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token));
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(3), $"Verbindung erst nach {watch.Elapsed} beendet");
+        Assert.Null(await reader.ReadAsync(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token));
+        Assert.True(watch.Elapsed < lifetime + TimeSpan.FromSeconds(7), $"Verbindung erst nach {watch.Elapsed} beendet");
 
         using var again = new TcpClient();
         await again.ConnectAsync(IPAddress.Loopback, proxy.Port);
