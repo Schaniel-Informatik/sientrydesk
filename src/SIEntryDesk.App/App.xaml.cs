@@ -362,7 +362,6 @@ public partial class App : Application
             .OrderBy(d => d.Name, StringComparer.CurrentCulture)
             .ToList();
         _tray?.SetRingDoors(doors);
-        UpdateTray();
     }
 
     /// <summary>Sprechtaste gedrückt: Mikrofon sofort öffnen (Vorlauf), dann beim Dienst die Sitzung anfordern.</summary>
@@ -582,11 +581,6 @@ public partial class App : Application
         if (_tray is null)
             return;
         var state = TrayStatus.Evaluate(_status?.Connected ?? true, _status?.Service, _pausedUntil, DateTimeOffset.Now);
-        // Abweichungen bei „Klingeln“ sichtbar machen, damit klar ist, warum es an einer Tür nicht klingelt.
-        if (state.Color is TrayColor.Green or TrayColor.Orange &&
-            RingSettings.Summary(_serviceDoors.Concat(_seenDoors.Select(d => new DoorEntry(d.Key, d.Value)))
-                .DistinctBy(d => d.DoorId).Select(d => (d.Name, _ringPrefs.Get(d.DoorId)))) is { } summary)
-            state = state with { Text = $"{state.Text}. {summary}" };
         _tray.Update(state, _status?.Service?.ServiceVersion);
         _tray.SetPause(IsPaused ? _pausedUntil : null, MissedText());
 

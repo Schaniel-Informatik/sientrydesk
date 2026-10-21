@@ -24,8 +24,9 @@ internal sealed record TrayActions(
 internal sealed record RingDoor(string DoorId, string Name, RingMode Mode);
 
 /// <summary>
-/// Symbol im Infobereich. Linksklick: kurzes Menü mit Status, Türen und Pause. Rechtsklick: alles, dazu Version,
-/// Einstellungen (Klingeln pro Tür, Ton), Testklingeln und Beenden. Die Menüs werden bei jedem Öffnen aus dem aktuellen
+/// Symbol im Infobereich. Linksklick: kurzes Menü mit Status, Türen fürs Livebild (mit ihrer Einstellung), Pause und
+/// „Einstellungen …“. Rechtsklick (oder „Einstellungen …“): Version, Status, jede Tür mit ihrer Einstellung „Klingeln“ zum
+/// Ändern, Pause, Ton, Testklingeln, Prüfen und Beenden. Die Menüs werden bei jedem Öffnen aus dem aktuellen
 /// Zustand gebaut. Während ein Ruf verzögert wird, blinkt das Symbol, und das Menü bietet „Jetzt anzeigen“.
 /// </summary>
 internal sealed class TrayIcon : IDisposable
@@ -93,13 +94,23 @@ internal sealed class TrayIcon : IDisposable
 
     private void UpdateTooltip()
     {
-        // Der Tooltip des Tray-Symbols ist auf 127 Zeichen begrenzt.
-        var tooltip = _pending is null ? $"SI EntryDesk: {_state.Text}" : $"SI EntryDesk: {_pending}";
+        // Der Tooltip des Tray-Symbols ist auf 127 Zeichen begrenzt. Abweichungen bei „Klingeln“ stehen darin, damit
+        // klar ist, warum es an einer Tür nicht klingelt. Im Menü stehen sie bei der Tür.
+        var summary = _state.Color is TrayColor.Green or TrayColor.Orange
+            ? RingSettings.Summary(_ringDoors.Select(d => (d.Name, d.Mode)))
+            : null;
+        var tooltip = _pending is not null ? $"SI EntryDesk: {_pending}"
+            : summary is null ? $"SI EntryDesk: {_state.Text}"
+            : $"SI EntryDesk: {_state.Text}. {summary}";
         _icon.Text = tooltip.Length > 127 ? tooltip[..127] : tooltip;
     }
 
     /// <summary>Türen für das Untermenü „Klingeln“.</summary>
-    public void SetRingDoors(IReadOnlyList<RingDoor> doors) => _ringDoors = doors;
+    public void SetRingDoors(IReadOnlyList<RingDoor> doors)
+    {
+        _ringDoors = doors;
+        UpdateTooltip();
+    }
 
     /// <summary>Verzögerter Ruf: Symbol blinkt, Text am Symbol und „Jetzt anzeigen“ im Menü. Null beendet das Blinken.</summary>
     public void SetPending(string? text)
@@ -155,15 +166,20 @@ internal sealed class TrayIcon : IDisposable
     /// NotifyIcon zeigt von sich aus nur beim Rechtsklick ein Menü. Für den Linksklick wird kurz das kurze Menü
     /// eingesetzt und über die interne Methode geöffnet, damit es sich beim Klick daneben wieder schliesst.
     /// </summary>
-    private void ShowQuickMenu()
+    private void ShowQuickMenu() => ShowMenu(_quickMenu);
+
+    /// <summary>„Einstellungen …“ im kurzen Menü: dasselbe wie ein Rechtsklick.</summary>
+    private void ShowFullMenu() => ShowMenu(_fullMenu);
+
+    private void ShowMenu(Forms.ContextMenuStrip menu)
     {
         var show = typeof(Forms.NotifyIcon).GetMethod("ShowContextMenu", BindingFlags.Instance | BindingFlags.NonPublic);
         if (show is null)
         {
-            _quickMenu.Show(Forms.Cursor.Position);
+            menu.Show(Forms.Cursor.Position);
             return;
         }
-        _icon.ContextMenuStrip = _quickMenu;
+        _icon.ContextMenuStrip = menu;
         try
         {
             show.Invoke(_icon, null);
@@ -189,18 +205,10 @@ internal sealed class TrayIcon : IDisposable
             menu.Items.Add(new Forms.ToolStripMenuItem($"Jetzt anzeigen: {_pending.Replace("&", "&&", StringComparison.Ordinal)}", null,
                 (_, _) => _actions.ShowPendingNow()) { Font = new Font(menu.Font, FontStyle.Bold) });
 
-        if (_doorsEnabled)
-        {
-            menu.Items.Add(new Forms.ToolStripSeparator());
-            if (_doors.Count == 0)
-                menu.Items.Add(new Forms.ToolStripMenuItem("Livebild: erscheint nach dem ersten Klingeln") { Enabled = false });
-            foreach (var door in _doors)
-            {
-                var doorId = door.DoorId;
-                // "&" wäre im Menü ein Tastenkürzel.
-                menu.Items.Add(door.Name.Replace("&", "&&", StringComparison.Ordinal), null, (_, _) => _actions.LiveView(doorId));
-            }
-        }
+        if (full)
+            AddRingDoors(menu);
+        else if (_doorsEnabled)
+            AddLiveViewDoors(menu);
 
         menu.Items.Add(new Forms.ToolStripSeparator());
         if (_pausedUntil is { } until && until > DateTimeOffset.Now)
@@ -219,10 +227,14 @@ internal sealed class TrayIcon : IDisposable
             menu.Items.Add(new Forms.ToolStripMenuItem(_missed) { Enabled = false });
 
         if (!full)
+        {
+            // Für alle, die den Rechtsklick nicht kennen: öffnet dasselbe Menü.
+            menu.Items.Add("Einstellungen …", null, (_, _) =>
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(ShowFullMenu));
             return;
+        }
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(RingMenu());
-        var autoSound = new Forms.ToolStripMenuItem("Ton der Tür automatisch einschalten") { Checked = _autoSound, CheckOnClick = true };
+        var autoSound = new Forms.ToolStripMenuItem(_ringDoors.Count > 1 ? "Ton der Türen automatisch einschalten" : "Ton der Tür automatisch einschalten") { Checked = _autoSound, CheckOnClick = true };
         autoSound.CheckedChanged += (_, _) =>
         {
             _autoSound = autoSound.Checked;
@@ -235,26 +247,43 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add("Beenden", null, (_, _) => _actions.Exit());
     }
 
-    /// <summary>„Klingeln“: pro Tür sofort, nach 10 s oder aus, für diesen Benutzer.</summary>
-    private Forms.ToolStripMenuItem RingMenu()
+    /// <summary>Linksklick: Türen für das Livebild ohne Klingeln, mit ihrer Einstellung „Klingeln“ wie beim Rechtsklick.
+    /// Ein Klick öffnet das Livebild, die Einstellung ändert man über „Einstellungen …“ bzw. den Rechtsklick.</summary>
+    private void AddLiveViewDoors(Forms.ContextMenuStrip menu)
     {
-        var ring = new Forms.ToolStripMenuItem("Klingeln");
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        if (_doors.Count == 0)
+            menu.Items.Add(new Forms.ToolStripMenuItem("Livebild: erscheint nach dem ersten Klingeln") { Enabled = false });
+        foreach (var door in _doors)
+        {
+            var doorId = door.DoorId;
+            var mode = _ringDoors.FirstOrDefault(d => d.DoorId == doorId)?.Mode ?? RingMode.Immediate;
+            menu.Items.Add(MenuText($"{door.Name}: {RingSettings.Label(mode)}"), null, (_, _) => _actions.LiveView(doorId));
+        }
+    }
+
+    /// <summary>Rechtsklick: jede Tür mit ihrer Einstellung „Klingeln“ (sofort, nach 10 s, aus) für diesen Benutzer.
+    /// Hier nur die Einstellung, das Livebild gibt es im Menü per Linksklick.</summary>
+    private void AddRingDoors(Forms.ContextMenuStrip menu)
+    {
+        menu.Items.Add(new Forms.ToolStripSeparator());
         if (_ringDoors.Count == 0)
-            ring.DropDownItems.Add(new Forms.ToolStripMenuItem("Türen erscheinen nach dem ersten Klingeln") { Enabled = false });
+            menu.Items.Add(new Forms.ToolStripMenuItem("Türen erscheinen nach dem ersten Klingeln") { Enabled = false });
         foreach (var door in _ringDoors)
         {
-            var label = $"{door.Name}: {RingSettings.Label(door.Mode)}".Replace("&", "&&", StringComparison.Ordinal);
-            var item = new Forms.ToolStripMenuItem(label);
+            var item = new Forms.ToolStripMenuItem(MenuText($"{door.Name}: {RingSettings.Label(door.Mode)}"));
             foreach (var mode in Enum.GetValues<RingMode>())
             {
                 var choice = mode;
                 item.DropDownItems.Add(new Forms.ToolStripMenuItem(RingSettings.Label(mode), null,
                     (_, _) => _actions.RingModeChanged(door, choice)) { Checked = door.Mode == mode });
             }
-            ring.DropDownItems.Add(item);
+            menu.Items.Add(item);
         }
-        return ring;
     }
+
+    /// <summary>"&" wäre im Menü ein Tastenkürzel.</summary>
+    private static string MenuText(string text) => text.Replace("&", "&&", StringComparison.Ordinal);
 
     private static Color ColorOf(TrayColor state) => state switch
     {

@@ -16,7 +16,12 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 ## Nächste Version
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
-## 0.7.0 (21.10. gebaut, unter Windows zu testen)
+## 0.7.1 (gebaut, unter Windows zu testen)
+- Klingeln pro Tür direkt im Rechtsklick-Menü (Rückmeldung zum Test von 0.7.0): kein Untermenü „Klingeln“ mehr, jede
+  Tür mit ihrer Einstellung („Tür: nach 10 s“) und dem Pfeil zur Auswahl. Dort nur die Einstellung. Linksklick: Türen ebenso „Tür: Einstellung“, Klick öffnet das Livebild; neuer Punkt
+  „Einstellungen …“ nach „Klingel pausieren“ öffnet das Rechtsklick-Menü. Statuszeile wieder nur „Bereit“, Abweichungen im Text am Symbol.
+
+## 0.7.0 (21.10. gebaut und verteilt, Test läuft)
 - **Klingeln pro Tür** (Rechtsklick → Klingeln): pro Benutzer und Tür sofort / nach 10 s / aus, gespeichert unter
   HKCU\Software\SIEntryDesk\RingDoors. Nach 10 s: Symbol blinkt gelb, „Jetzt anzeigen“ im Menü, anderswo angenommen
   → nichts. Aus: nichts, nicht als verpasst. Abweichungen im Text am Symbol. Testklingeln blinkt, wenn eine Tür auf

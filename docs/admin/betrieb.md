@@ -5,21 +5,22 @@ Zugänge, Störungen. Installation in [installation.md](installation.md), Vertei
 
 ## Bedienung
 Klingel-Symbol unten rechts, eventuell unter dem Pfeil ^ in der Taskleiste.
-- **Linksklick:** Status, die Türen für das Livebild und „Klingel pausieren“ (15 / 30 / 60 / 120 Minuten).
-- **Rechtsklick:** dazu Version, „Klingeln“ pro Tür, „Ton der Tür automatisch einschalten“, Testklingeln, Prüfen,
-  Beenden.
+- **Linksklick:** Status, die Türen mit ihrer Einstellung fürs Klingeln (Klick öffnet das Livebild), „Klingel
+  pausieren“ (15 / 30 / 60 / 120 Minuten) und „Einstellungen …“, das dasselbe Menü wie der Rechtsklick öffnet.
+- **Rechtsklick:** Version, Status, jede Tür mit ihrer Einstellung fürs Klingeln, „Klingel pausieren“, „Ton der Tür(en) automatisch einschalten“, Testklingeln, Prüfen, Beenden.
 
 Beim Klingeln erscheint ein Fenster über allen anderen, mit Klingelton, Livebild und Knopf „Öffnen“. Nimmt jemand
 anders ab (Mobile-App, anderer PC), schliesst es sich überall.
 
-**Klingeln pro Tür** (Rechtsklick → Klingeln, gilt für den angemeldeten Benutzer): je Tür „sofort“ (Standard),
-„nach 10 s“ oder „aus“. Bei „nach 10 s“ blinkt zuerst das Symbol, nach 10 s erscheinen Fenster und Klingelton. Nimmt
-in dieser Zeit jemand anders ab oder bricht der Besucher ab, erscheint nichts. Mit Klick aufs Symbol → „Jetzt anzeigen“
-kommt das Fenster sofort. Bei „aus“ erscheint für diese Tür nichts, das Livebild ohne Klingeln bleibt im Menü. Rufe, die
-so nicht gezeigt wurden, gelten nicht als verpasst. Weicht eine Tür ab, steht das im Text am Symbol, z. B.
-„Bereit. Tür 2: aus“. Beispiel: Am Empfang klingelt die Haupttür sofort, eine Nebentür nach 10 s. Das ist eine
-Bequemlichkeit, keine Sperre. Soll eine Tür auf einem PC gar nicht verfügbar sein (auch nicht zum Öffnen), gehört sie
-in `Doors` der sientrydesk.json ([installation.md](installation.md)).
+**Klingeln pro Tür** (Rechtsklick oder Linksklick → Einstellungen …, dann Tür → Auswahl; gilt für den angemeldeten
+Benutzer): je Tür „sofort“ (Standard), „nach 10 s“ oder „aus“. Die Einstellung steht im Menü bei der Tür, z. B.
+„Tür 2: aus“. Bei „nach 10 s“ blinkt zuerst das Symbol, nach 10 s erscheinen Fenster und Klingelton. Nimmt in dieser Zeit
+jemand anders ab oder bricht der Besucher ab, erscheint nichts. Mit Klick aufs Symbol → „Jetzt anzeigen“ kommt das
+Fenster sofort. Bei „aus“ erscheint für diese Tür nichts, das Livebild ohne Klingeln bleibt im Menü. Rufe, die so
+nicht gezeigt wurden, gelten nicht als verpasst. Abweichungen stehen auch im Text am Symbol (Maus darauf). Beispiel:
+Am Empfang klingelt die Haupttür sofort, eine Nebentür nach 10 s. Das ist eine Bequemlichkeit, keine Sperre. Soll eine
+Tür auf einem PC gar nicht verfügbar sein (auch nicht zum Öffnen), gehört sie in `Doors` der sientrydesk.json
+([installation.md](installation.md)).
 
 „Ton an“ im Klingelfenster schaltet den Ton der Tür ein und den Klingelton aus. Nach dem Ende eines Rufs bleibt das
 Fenster 10 s offen. Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, lässt sich in
