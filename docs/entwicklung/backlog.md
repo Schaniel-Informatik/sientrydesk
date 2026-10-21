@@ -14,11 +14,22 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   (Variante A, Risiko zur Kenntnis genommen).
 
 ## Nächste Version
-- Prüfen nennt das Datum der sientrydesk.json, mit der der Dienst läuft (er liest sie nur beim Start).
-- Prüfen bei nicht erreichbarer Konsole schneller und klarer: Die drei Ports (12445, 443, 7441) gleichzeitig statt nacheinander prüfen (heute bis 3 × 8 s, nur „Anlage: wird geprüft …“ sichtbar). Ist keiner erreichbar, eine Zeile „Konsole nicht erreichbar“ statt Folgefehlern. Während der Prüfung zeigen, was gerade läuft.
-- **Klingeln pro Tür** (Wunsch aus der Anwendung, entschieden 09.10.): Einstellung pro Benutzer im Menü, Untermenü „Klingeln“ mit jeder Tür und drei Stufen: „sofort“ (Standard, auch für neue Türen), „nach 10 s“, „aus“. Gespeichert pro Benutzer über die Tür-ID (wie „Ton der Tür automatisch“). Nach 10 s: Während der Verzögerung blinkt das Symbol in der Taskleiste, danach Fenster und Klingelton wie heute; wird in dieser Zeit anderswo angenommen oder bricht der Besucher ab, erscheint nichts. Aus: kein Fenster, kein Ton, kein Blinken. In beiden Fällen steht ein so nicht gezeigter Ruf nicht als verpasst im Menü. Das Livebild ohne Klingeln bleibt für alle Türen im Menü. Abweichungen im Text am Symbol sichtbar (z. B. „Bereit. <Tür>: aus“). Testklingeln folgt der Einstellung. Bequemlichkeit, keine Sperre: hart sperren weiterhin `Doors` in der sientrydesk.json (auch Öffnen). Nur App, keine Änderung an Dienst, Konfiguration oder Verteilung. Hintergrund: Die Weiterleitung nach x s in Access gilt nur für Mobile-App und Access-Geräte, die API meldet die Stufe nicht.
-- **Sprechen flüssiger** (Rückmeldung aus der Anwendung, entschieden 21.10.): Die Verzögerung macht das Gegensprechen holprig, Anfang und Ende gehen verloren. (1) **Vorlauf:** Mikrofon schon beim Drücken öffnen, nicht erst nach der Freigabe; bis zur Talkback-Sitzung Gesprochenes zwischenspeichern (bis etwa 2 s) und danach senden. Taste zeigt sofort „Sie sprechen“. (2) **Nachlauf 0,6 s:** Nach dem Loslassen noch 0,6 s aufnehmen, dann stoppen; das Stoppsignal erst senden, wenn alle Tonpakete beim Dienst sind (heute können sie sich überholen, der Dienst schliesst die Sitzung vor den letzten Paketen). Nachlauf auch bei einem erneuten Drücken sauber abbrechen. Die rund 1 s Verzögerung der Antwort (Ton über das Livebild von Protect, Player schon auf 0,3 s Puffer) bleibt; Hinweis in betrieb.md: nach dem Loslassen kurz warten. Test an der Tür mit jemandem dort.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
+
+## 0.7.0 (21.10. gebaut, unter Windows zu testen)
+- **Klingeln pro Tür** (Rechtsklick → Klingeln): pro Benutzer und Tür sofort / nach 10 s / aus, gespeichert unter
+  HKCU\Software\SIEntryDesk\RingDoors. Nach 10 s: Symbol blinkt gelb, „Jetzt anzeigen“ im Menü, anderswo angenommen
+  → nichts. Aus: nichts, nicht als verpasst. Abweichungen im Text am Symbol. Testklingeln blinkt, wenn eine Tür auf
+  „nach 10 s“ steht. Der Dienst meldet dafür die Tür-ID im Klingeln und die Türliste auch ohne Livebild.
+- **Sprechen flüssiger:** Mikrofon öffnet beim Drücken, bis zur Freigabe bis 2 s Vorlauf; Nachlauf 0,6 s nach dem
+  Loslassen; Ende erst nach dem letzten Paket an den Dienst; Senden im 20-ms-Takt (auch der Vorlauf). Im Nachlauf
+  wieder drücken spricht in derselben Sitzung weiter. Ton der Tür erst nach dem Nachlauf wieder an.
+- **Prüfen:** Datum der sientrydesk.json (und .local.json), mit der der Dienst läuft, orange wenn die Datei seither
+  geändert wurde. Ports gleichzeitig, ohne Konsole eine Zeile „Konsole: nicht erreichbar“ nach höchstens etwa 8 s.
+  Sekundenzähler bei „Anlage: wird geprüft …“.
+- **Marcel testet:** Klingeln pro Tür (sofort, nach 10 s mit Blinken und „Jetzt anzeigen“, anderswo angenommen
+  während der 10 s, aus); Sprechen an der Tür: sofort losreden, kurz nach dem letzten Wort loslassen, im Nachlauf
+  wieder drücken; Prüfen mit geänderter sientrydesk.json ohne Neustart des Dienstes und ohne Netz.
 
 ## 0.6.1 (05.10. getestet und freigegeben, wird verteilt)
 - Sprechen schaltet „Ton an“ ein (Wunsch aus dem Test vom 05.10.).

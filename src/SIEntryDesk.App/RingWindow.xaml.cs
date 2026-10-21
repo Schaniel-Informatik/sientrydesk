@@ -121,10 +121,9 @@ public partial class RingWindow : Window
         TalkButton.IsEnabled = true;
     }
 
-    public void ShowTalkConnecting() => TalkButton.Content = "Verbinde mit der Tür …";
-
-    /// <summary>Der Dienst hat das Sprechen freigegeben. Der Ton der Tür ist so lange stumm, sonst gibt es Echo. Danach
-    /// will man die Antwort hören, deshalb ist „Ton an“ ab jetzt eingeschaltet.</summary>
+    /// <summary>Sprechtaste gedrückt: Das Mikrofon läuft sofort, bis zur Freigabe wird zwischengespeichert. Der Ton der Tür
+    /// ist so lange stumm, sonst gibt es Echo. Danach will man die Antwort hören, deshalb ist „Ton an“ ab jetzt
+    /// eingeschaltet.</summary>
     public void ShowTalking()
     {
         _talking = true;
@@ -138,17 +137,27 @@ public partial class RingWindow : Window
         TalkButton.Background = TalkActive;
     }
 
+    /// <summary>Sprechen ganz zu Ende (nach dem Nachlauf, bei Fehlern): Ton der Tür wieder wie eingestellt.</summary>
     public void ShowTalkIdle()
     {
+        if (TalkHeld)
+            return;
         if (_talking && _player is not null)
             _player.Mute = _muted;
         _talking = false;
+        ShowTalkButtonIdle();
+    }
+
+    private void ShowTalkButtonIdle()
+    {
         TalkButton.Content = "Sprechen – gedrückt halten";
         TalkButton.Background = TalkIdle;
     }
 
+    /// <summary>Sprechen geht nicht oder ist abgebrochen: auch eine noch gedrückte Taste gilt als losgelassen.</summary>
     public void ShowTalkProblem(string message)
     {
+        ReleaseTalk();
         ShowTalkIdle();
         SetStatus(message, Bad);
     }
@@ -305,7 +314,8 @@ public partial class RingWindow : Window
 
     private void OnTalkLost(object sender, System.Windows.Input.MouseEventArgs e) => ReleaseTalk();
 
-    /// <summary>Taste losgelassen, Maus weg, Fenster zu oder Sprechen beendet: genau einmal melden.</summary>
+    /// <summary>Taste losgelassen, Maus weg, Fenster zu oder Sprechen beendet: genau einmal melden. Der Ton der Tür bleibt
+    /// stumm, bis der Nachlauf vorbei ist (<see cref="ShowTalkIdle"/>), sonst nähme das Mikrofon ihn noch auf.</summary>
     public void ReleaseTalk()
     {
         if (!TalkHeld)
@@ -313,7 +323,7 @@ public partial class RingWindow : Window
         TalkHeld = false;
         if (TalkButton.IsMouseCaptured)
             TalkButton.ReleaseMouseCapture();
-        ShowTalkIdle();
+        ShowTalkButtonIdle();
         TalkReleased?.Invoke();
     }
 

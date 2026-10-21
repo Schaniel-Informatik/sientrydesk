@@ -93,7 +93,7 @@ internal static class LocalChecks
         {
             return Item("Mikrofon", CheckLevel.Warn, "nicht lesbar");
         }
-        using var sender = TalkSender.Start(24000, _ => Task.CompletedTask, _ => { }, out var problem);
+        using var sender = TalkSender.Open(_ => { }, out var problem);
         return sender is null
             ? Item("Mikrofon", CheckLevel.Warn, problem)
             : Item("Mikrofon", CheckLevel.Ok, $"{name}, Zugriff erlaubt");

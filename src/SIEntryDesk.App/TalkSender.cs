@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using NAudio.CoreAudioApi;
@@ -11,39 +12,50 @@ namespace SIEntryDesk.App;
 /// Nimmt das Standardmikrofon für Kommunikation auf (Entscheid 2026-10-02: keine Auswahl in der App), macht daraus
 /// Opus-Pakete von 20 ms in der Abtastrate der Türstation und gibt sie der Reihe nach weiter, solange gesprochen wird.
 /// </summary>
+/// <remarks>
+/// Ablauf (0.7.0, „Sprechen flüssiger“): <see cref="Open"/> beim Drücken, damit kein Wort verloren geht, bis der Dienst
+/// die Talkback-Sitzung hat. Bis dahin wird höchstens <see cref="PreRollLimit"/> zwischengespeichert. <see cref="Begin"/>
+/// mit der Freigabe sendet den Vorlauf und danach laufend. <see cref="Finish"/> beim Loslassen nimmt noch den Nachlauf
+/// auf und meldet das Ende erst nach dem letzten Paket, damit der Dienst die Sitzung nicht vor dem letzten Wort schliesst.
+/// Gesendet wird im Takt von 20 ms pro Paket, auch der Vorlauf, damit die Türstation keinen Schwall auf einmal bekommt.
+/// </remarks>
 internal sealed class TalkSender : IDisposable
 {
+    public static readonly TimeSpan PreRollLimit = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan Tail = TimeSpan.FromMilliseconds(600);
+
+    private readonly object _gate = new();
     private readonly WasapiRecorder _recorder;
-    private readonly VoiceFramer _framer;
-    private readonly OpusVoiceEncoder _encoder;
-    private readonly Channel<byte[]> _queue = Channel.CreateBounded<byte[]>(
-        new BoundedChannelOptions(25) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
-    private readonly Task _pump;
+    private readonly WaveFormat _format;
     private readonly Action<string> _onError;
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Channel<object> _queue = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
+    private readonly Queue<float[]> _preRoll = new();
+    private int _preRollSamples;
+    private VoiceFramer? _framer;
+    private OpusVoiceEncoder? _encoder;
+    private System.Threading.Timer? _tailTimer;
+    private bool _recording = true;
+    private Func<Task>? _afterLast;
+    private Action? _finished;
     private int _disposed;
 
-    private TalkSender(WasapiRecorder recorder, int sampleRate, Func<byte[], Task> send, Action<string> onError)
+    private TalkSender(WasapiRecorder recorder, Action<string> onError)
     {
         _recorder = recorder;
+        _format = recorder.WaveFormat;
         _onError = onError;
-        var format = recorder.WaveFormat;
-        _framer = new VoiceFramer(format.SampleRate, format.Channels, sampleRate);
-        _encoder = new OpusVoiceEncoder(sampleRate);
         _recorder.DataAvailable += OnData;
         _recorder.RecordingStopped += (_, e) =>
         {
             if (e.Exception is not null && Volatile.Read(ref _disposed) == 0)
                 _onError("Mikrofon unterbrochen");
         };
-        _pump = Task.Run(async () =>
-        {
-            await foreach (var packet in _queue.Reader.ReadAllAsync().ConfigureAwait(false))
-                await send(packet).ConfigureAwait(false);
-        });
     }
 
-    /// <summary>Startet die Aufnahme. Bei fehlendem Mikrofon oder gesperrtem Zugriff null und eine Meldung.</summary>
-    public static TalkSender? Start(int sampleRate, Func<byte[], Task> send, Action<string> onError, out string problem)
+    /// <summary>Öffnet das Mikrofon und speichert zwischen, bis <see cref="Begin"/> kommt. Bei fehlendem Mikrofon oder
+    /// gesperrtem Zugriff null und eine Meldung.</summary>
+    public static TalkSender? Open(Action<string> onError, out string problem)
     {
         WasapiRecorder? recorder = null;
         try
@@ -68,7 +80,7 @@ internal sealed class TalkSender : IDisposable
                 recorder.Dispose();
                 return null;
             }
-            var sender = new TalkSender(recorder, sampleRate, send, onError);
+            var sender = new TalkSender(recorder, onError);
             recorder.StartRecording();
             problem = string.Empty;
             return sender;
@@ -84,6 +96,113 @@ internal sealed class TalkSender : IDisposable
             recorder?.Dispose();
             problem = "Mikrofon lässt sich nicht öffnen";
             return null;
+        }
+    }
+
+    /// <summary>Freigabe vom Dienst: Vorlauf kodieren und senden, danach laufend. War die Taste schon losgelassen und der
+    /// Nachlauf vorbei, wird nur der Vorlauf gesendet und danach das Ende gemeldet.</summary>
+    public void Begin(int sampleRate, Func<byte[], Task> send)
+    {
+        lock (_gate)
+        {
+            if (_framer is not null || Volatile.Read(ref _disposed) != 0)
+                return;
+            _framer = new VoiceFramer(_format.SampleRate, _format.Channels, sampleRate);
+            _encoder = new OpusVoiceEncoder(sampleRate);
+            while (_preRoll.TryDequeue(out var samples))
+                Encode(samples);
+            _preRollSamples = 0;
+            if (!_recording)
+                Complete();
+        }
+        _ = PumpAsync(send, _stop.Token);
+    }
+
+    /// <summary>Taste losgelassen: noch <see cref="Tail"/> aufnehmen, dann stoppen. <paramref name="afterLast"/> läuft nach
+    /// dem letzten gesendeten Paket (nur nach <see cref="Begin"/>), <paramref name="finished"/> danach bzw. sofort, wenn
+    /// nichts zu senden ist.</summary>
+    public void Finish(Func<Task> afterLast, Action finished)
+    {
+        lock (_gate)
+        {
+            if (!_recording || _tailTimer is not null)
+                return;
+            _afterLast = afterLast;
+            _finished = finished;
+            _tailTimer = new System.Threading.Timer(_ => EndRecording(), null, Tail, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    /// <summary>Taste im Nachlauf wieder gedrückt: weiter aufnehmen, als wäre nie losgelassen worden. False, wenn die
+    /// Aufnahme schon zu Ende ist.</summary>
+    public bool Resume()
+    {
+        lock (_gate)
+        {
+            if (!_recording || _tailTimer is null)
+                return false;
+            _tailTimer.Dispose();
+            _tailTimer = null;
+            _afterLast = null;
+            _finished = null;
+            return true;
+        }
+    }
+
+    private void EndRecording()
+    {
+        lock (_gate)
+        {
+            if (!_recording || _tailTimer is null)
+                return;
+            _tailTimer.Dispose();
+            _tailTimer = null;
+            _recording = false;
+            StopRecorder();
+            if (_framer is not null)
+                Complete();
+        }
+    }
+
+    /// <summary>Nach dem letzten Paket: Ende melden, dann fertig. Ohne Freigabe gibt es nichts zu senden.</summary>
+    private void Complete()
+    {
+        if (_afterLast is { } afterLast)
+            _queue.Writer.TryWrite(afterLast);
+        if (_finished is { } finished)
+            _queue.Writer.TryWrite(finished);
+        _queue.Writer.TryComplete();
+    }
+
+    /// <summary>Sendet im Takt von 20 ms pro Paket. Liegt mehr bereit (Vorlauf), wartet jedes Paket auf seinen Takt.</summary>
+    private async Task PumpAsync(Func<byte[], Task> send, CancellationToken ct)
+    {
+        var clock = Stopwatch.StartNew();
+        long sent = 0;
+        try
+        {
+            await foreach (var item in _queue.Reader.ReadAllAsync(ct).ConfigureAwait(false))
+            {
+                switch (item)
+                {
+                    case byte[] packet:
+                        var wait = TimeSpan.FromMilliseconds(sent * VoiceFramer.FrameMilliseconds) - clock.Elapsed;
+                        if (wait > TimeSpan.Zero)
+                            await Task.Delay(wait, ct).ConfigureAwait(false);
+                        await send(packet).ConfigureAwait(false);
+                        sent++;
+                        break;
+                    case Func<Task> afterLast:
+                        await afterLast().ConfigureAwait(false);
+                        break;
+                    case Action finished:
+                        finished();
+                        break;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 
@@ -108,12 +227,30 @@ internal sealed class TalkSender : IDisposable
     {
         if (Volatile.Read(ref _disposed) != 0 || data.IsEmpty)
             return;
-        var samples = ToFloat(_recorder.WaveFormat, data);
+        var samples = ToFloat(_format, data);
         // Windows meldet Stille (z. B. stummgeschaltetes Mikrofon) per Flag, der Inhalt ist dann ungültig.
         if (flags.HasFlag(AudioClientBufferFlags.Silent))
             Array.Clear(samples);
-        _framer.Push(samples, frame => _queue.Writer.TryWrite(_encoder.Encode(frame)));
+        lock (_gate)
+        {
+            if (!_recording)
+                return;
+            if (_framer is not null)
+            {
+                Encode(samples);
+                return;
+            }
+            // Vorlauf: bis zur Freigabe sammeln, das Älteste verwerfen, wenn sie zu lange dauert.
+            _preRoll.Enqueue(samples);
+            _preRollSamples += samples.Length;
+            var limit = (int)(PreRollLimit.TotalSeconds * _format.SampleRate * _format.Channels);
+            while (_preRollSamples > limit && _preRoll.TryDequeue(out var dropped))
+                _preRollSamples -= dropped.Length;
+        }
     }
+
+    private void Encode(float[] samples) =>
+        _framer!.Push(samples, frame => _queue.Writer.TryWrite(_encoder!.Encode(frame)));
 
     private static float[] ToFloat(WaveFormat format, ReadOnlySpan<byte> data)
     {
@@ -137,10 +274,8 @@ internal sealed class TalkSender : IDisposable
         return result;
     }
 
-    public void Dispose()
+    private void StopRecorder()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-            return;
         _recorder.DataAvailable -= OnData;
         try
         {
@@ -149,7 +284,23 @@ internal sealed class TalkSender : IDisposable
         catch (Exception ex) when (ex is COMException or InvalidOperationException)
         {
         }
+    }
+
+    /// <summary>Sofort beenden, ohne Nachlauf und ohne Ende zu melden (Höchstdauer, Fenster zu, Fehler).</summary>
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+        lock (_gate)
+        {
+            _tailTimer?.Dispose();
+            _tailTimer = null;
+            if (_recording)
+                StopRecorder();
+            _recording = false;
+        }
         _recorder.Dispose();
+        _stop.Cancel();
         _queue.Writer.TryComplete();
     }
 }

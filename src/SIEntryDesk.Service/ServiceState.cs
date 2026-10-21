@@ -20,13 +20,23 @@ internal sealed class ServiceState
 
     public CallTracker? Tracker { get; set; }
 
+    /// <summary>Stand der Konfigurationsdateien beim Start. Der Dienst liest sie nur dann, die Prüfung zeigt deshalb, mit
+    /// welcher Fassung er läuft und ob seither eine neuere da ist.</summary>
+    public IReadOnlyDictionary<string, DateTime?> ConfigLoaded { get; } = new Dictionary<string, DateTime?>
+    {
+        [ServicePaths.ConfigFile] = LastWrite(ServicePaths.ConfigFile),
+        [ServicePaths.LocalConfigFile] = LastWrite(ServicePaths.LocalConfigFile),
+    };
+
+    public static DateTime? LastWrite(string path) => File.Exists(path) ? File.GetLastWriteTime(path) : null;
+
     /// <summary>Livebild eingerichtet (Protect-Schlüssel und Pin vorhanden).</summary>
     public bool VideoEnabled { get; set; }
 
     /// <summary>Gegensprechen eingerichtet (auf diesem PC eingeschaltet und Protect-Schlüssel vorhanden).</summary>
     public bool TalkEnabled { get; set; }
 
-    /// <summary>Aktuelle Türliste für das Livebild ohne Klingeln.</summary>
+    /// <summary>Aktuelle Türliste für das Livebild ohne Klingeln und die Einstellung „Klingeln“ in der App.</summary>
     public DoorsMessage Doors { get; set; } = new(false, []);
 
     /// <summary>Protect-Kamera-ID → Name, für die Anzeige statt der Access-Türnamen.</summary>
@@ -84,5 +94,5 @@ internal sealed class ServiceState
 
     public CallStartedMessage ToMessage(CallInfo call) =>
         new(call.CallId, DisplayName(call.CameraId, call.DoorName), call.StartedAt, call.UnlockAllowed,
-            VideoEnabled && call.CameraId.Length > 0, TalkEnabled && call.CameraId.Length > 0);
+            VideoEnabled && call.CameraId.Length > 0, TalkEnabled && call.CameraId.Length > 0, call.DoorId);
 }

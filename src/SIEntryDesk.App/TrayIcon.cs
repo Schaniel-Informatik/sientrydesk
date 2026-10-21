@@ -3,6 +3,7 @@ using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using SIEntryDesk.Core;
+using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
 using Forms = System.Windows.Forms;
 
@@ -15,11 +16,17 @@ internal sealed record TrayActions(
     Action Resume,
     Action<bool> AutoSoundChanged,
     Action Check,
-    Action Exit);
+    Action Exit,
+    Action<RingDoor, RingMode> RingModeChanged,
+    Action ShowPendingNow);
+
+/// <summary>Eine Tür im Untermenü „Klingeln“ mit der Einstellung dieses Benutzers.</summary>
+internal sealed record RingDoor(string DoorId, string Name, RingMode Mode);
 
 /// <summary>
 /// Symbol im Infobereich. Linksklick: kurzes Menü mit Status, Türen und Pause. Rechtsklick: alles, dazu Version,
-/// Einstellungen, Testklingeln und Beenden. Die Menüs werden bei jedem Öffnen aus dem aktuellen Zustand gebaut.
+/// Einstellungen (Klingeln pro Tür, Ton), Testklingeln und Beenden. Die Menüs werden bei jedem Öffnen aus dem aktuellen
+/// Zustand gebaut. Während ein Ruf verzögert wird, blinkt das Symbol, und das Menü bietet „Jetzt anzeigen“.
 /// </summary>
 internal sealed class TrayIcon : IDisposable
 {
@@ -34,6 +41,9 @@ internal sealed class TrayIcon : IDisposable
     private readonly Forms.ContextMenuStrip _quickMenu = new();
     private readonly Forms.ContextMenuStrip _fullMenu = new();
     private readonly Dictionary<TrayColor, Icon> _icons;
+    private readonly Icon _ringIcon;
+    private readonly Forms.Timer _blink = new() { Interval = 500 };
+    private bool _blinkOn;
     private readonly TrayActions _actions;
 
     private TrayState _state = new(TrayColor.Grey, "Verbinde …", false);
@@ -43,11 +53,14 @@ internal sealed class TrayIcon : IDisposable
     private DateTimeOffset? _pausedUntil;
     private string? _missed;
     private bool _autoSound;
+    private IReadOnlyList<RingDoor> _ringDoors = [];
+    private string? _pending;
 
     public TrayIcon(TrayActions actions)
     {
         _actions = actions;
-        _icons = Enum.GetValues<TrayColor>().ToDictionary(c => c, CreateIcon);
+        _icons = Enum.GetValues<TrayColor>().ToDictionary(c => c, c => CreateIcon(ColorOf(c), pause: c == TrayColor.Blue));
+        _ringIcon = CreateIcon(Color.FromArgb(255, 200, 0), pause: false);
         _quickMenu.Opening += (_, _) => Build(_quickMenu, full: false);
         _fullMenu.Opening += (_, _) => Build(_fullMenu, full: true);
         _icon = new Forms.NotifyIcon
@@ -56,6 +69,11 @@ internal sealed class TrayIcon : IDisposable
             Text = "SI EntryDesk",
             ContextMenuStrip = _fullMenu,
             Visible = true,
+        };
+        _blink.Tick += (_, _) =>
+        {
+            _blinkOn = !_blinkOn;
+            _icon.Icon = _blinkOn ? _ringIcon : _icons[_state.Color];
         };
         _icon.MouseClick += (_, e) =>
         {
@@ -68,10 +86,38 @@ internal sealed class TrayIcon : IDisposable
     {
         _state = state;
         _serviceVersion = serviceVersion;
-        _icon.Icon = _icons[state.Color];
+        if (!_blink.Enabled)
+            _icon.Icon = _icons[state.Color];
+        UpdateTooltip();
+    }
+
+    private void UpdateTooltip()
+    {
         // Der Tooltip des Tray-Symbols ist auf 127 Zeichen begrenzt.
-        var tooltip = $"SI EntryDesk: {state.Text}";
+        var tooltip = _pending is null ? $"SI EntryDesk: {_state.Text}" : $"SI EntryDesk: {_pending}";
         _icon.Text = tooltip.Length > 127 ? tooltip[..127] : tooltip;
+    }
+
+    /// <summary>Türen für das Untermenü „Klingeln“.</summary>
+    public void SetRingDoors(IReadOnlyList<RingDoor> doors) => _ringDoors = doors;
+
+    /// <summary>Verzögerter Ruf: Symbol blinkt, Text am Symbol und „Jetzt anzeigen“ im Menü. Null beendet das Blinken.</summary>
+    public void SetPending(string? text)
+    {
+        _pending = text;
+        if (text is null)
+        {
+            _blink.Stop();
+            _blinkOn = false;
+            _icon.Icon = _icons[_state.Color];
+        }
+        else if (!_blink.Enabled)
+        {
+            _blinkOn = true;
+            _icon.Icon = _ringIcon;
+            _blink.Start();
+        }
+        UpdateTooltip();
     }
 
     public void SetDoors(bool enabled, IReadOnlyList<DoorEntry> doors)
@@ -93,11 +139,12 @@ internal sealed class TrayIcon : IDisposable
 
     public void Dispose()
     {
+        _blink.Dispose();
         _icon.Visible = false;
         _icon.Dispose();
         _quickMenu.Dispose();
         _fullMenu.Dispose();
-        foreach (var icon in _icons.Values)
+        foreach (var icon in _icons.Values.Append(_ringIcon))
         {
             DestroyIcon(icon.Handle);
             icon.Dispose();
@@ -138,6 +185,9 @@ internal sealed class TrayIcon : IDisposable
             menu.Items.Add(new Forms.ToolStripMenuItem(version) { Enabled = false });
         }
         menu.Items.Add(new Forms.ToolStripMenuItem(_state.Text) { Enabled = false });
+        if (_pending is not null)
+            menu.Items.Add(new Forms.ToolStripMenuItem($"Jetzt anzeigen: {_pending.Replace("&", "&&", StringComparison.Ordinal)}", null,
+                (_, _) => _actions.ShowPendingNow()) { Font = new Font(menu.Font, FontStyle.Bold) });
 
         if (_doorsEnabled)
         {
@@ -171,6 +221,7 @@ internal sealed class TrayIcon : IDisposable
         if (!full)
             return;
         menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add(RingMenu());
         var autoSound = new Forms.ToolStripMenuItem("Ton der Tür automatisch einschalten") { Checked = _autoSound, CheckOnClick = true };
         autoSound.CheckedChanged += (_, _) =>
         {
@@ -184,18 +235,40 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add("Beenden", null, (_, _) => _actions.Exit());
     }
 
+    /// <summary>„Klingeln“: pro Tür sofort, nach 10 s oder aus, für diesen Benutzer.</summary>
+    private Forms.ToolStripMenuItem RingMenu()
+    {
+        var ring = new Forms.ToolStripMenuItem("Klingeln");
+        if (_ringDoors.Count == 0)
+            ring.DropDownItems.Add(new Forms.ToolStripMenuItem("Türen erscheinen nach dem ersten Klingeln") { Enabled = false });
+        foreach (var door in _ringDoors)
+        {
+            var label = $"{door.Name}: {RingSettings.Label(door.Mode)}".Replace("&", "&&", StringComparison.Ordinal);
+            var item = new Forms.ToolStripMenuItem(label);
+            foreach (var mode in Enum.GetValues<RingMode>())
+            {
+                var choice = mode;
+                item.DropDownItems.Add(new Forms.ToolStripMenuItem(RingSettings.Label(mode), null,
+                    (_, _) => _actions.RingModeChanged(door, choice)) { Checked = door.Mode == mode });
+            }
+            ring.DropDownItems.Add(item);
+        }
+        return ring;
+    }
+
+    private static Color ColorOf(TrayColor state) => state switch
+    {
+        TrayColor.Green => Color.FromArgb(40, 200, 90),
+        TrayColor.Orange => Color.FromArgb(255, 150, 20),
+        TrayColor.Red => Color.FromArgb(220, 45, 45),
+        TrayColor.Blue => Color.FromArgb(50, 120, 220),
+        _ => Color.FromArgb(140, 140, 140),
+    };
+
     /// <summary>Kreis in der Zustandsfarbe mit der Klingel aus dem Programm-Icon, bei Pause mit Pausenzeichen.
     /// Gleiche Geometrie wie build/make_icon.py, in 16er-Einheiten.</summary>
-    private static Icon CreateIcon(TrayColor state)
+    private static Icon CreateIcon(Color color, bool pause)
     {
-        var color = state switch
-        {
-            TrayColor.Green => Color.FromArgb(40, 200, 90),
-            TrayColor.Orange => Color.FromArgb(255, 150, 20),
-            TrayColor.Red => Color.FromArgb(220, 45, 45),
-            TrayColor.Blue => Color.FromArgb(50, 120, 220),
-            _ => Color.FromArgb(140, 140, 140),
-        };
         var size = Math.Max(16, Forms.SystemInformation.SmallIconSize.Width);
         var u = size / 16f;
         using var bitmap = new Bitmap(size, size);
@@ -206,7 +279,7 @@ internal sealed class TrayIcon : IDisposable
             using var fill = new SolidBrush(color);
             g.FillEllipse(fill, 0.2f * u, 0.2f * u, 15.6f * u, 15.6f * u);
             using var white = new SolidBrush(Color.White);
-            if (state == TrayColor.Blue)
+            if (pause)
             {
                 g.FillRectangle(white, 5f * u, 4.5f * u, 2.2f * u, 7f * u);
                 g.FillRectangle(white, 8.8f * u, 4.5f * u, 2.2f * u, 7f * u);

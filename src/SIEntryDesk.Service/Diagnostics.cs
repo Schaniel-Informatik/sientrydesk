@@ -61,6 +61,7 @@ internal sealed class Diagnostics(
         }
         var host = opt.Host.Trim();
         items.Add(Item("Konfiguration", CheckLevel.Ok, $"Konsole {host}"));
+        items.AddRange(ConfigFiles());
 
         // Zugänge
         Secrets? secrets = null;
@@ -78,18 +79,36 @@ internal sealed class Diagnostics(
             items.Add(Item("Zugänge", CheckLevel.Fail, "fehlen oder nicht lesbar. set-tokens.ps1 bzw. Paket Zugänge erneut ausführen"));
         }
 
-        // Access
+        // Alle Ports gleichzeitig: Ist die Konsole nicht erreichbar, dauert die Prüfung so höchstens einmal PortTimeout.
         var accessPin = CertificatePin.Parse(opt.AccessPin);
-        var accessOk = await PortAsync(items, "Access (Port 12445)", host, AccessApiClient.Port, accessPin, ct).ConfigureAwait(false);
-        if (accessOk && secrets is not null)
+        var video = opt.VideoConfigured && opt.ValidateVideo() is null;
+        var protectPin = video ? CertificatePin.Parse(opt.ProtectPin) : null;
+        var accessPort = PortAsync("Access (Port 12445)", host, AccessApiClient.Port, accessPin, ct);
+        var protectPort = video ? PortAsync("Protect (Port 443)", host, 443, protectPin!, ct) : null;
+        var streamPort = video ? PortAsync("Videostream (Port 7441)", host, 7441, CertificatePin.Parse(opt.EffectiveStreamPin), ct) : null;
+        var ports = new[] { accessPort, protectPort, streamPort }.OfType<Task<PortResult>>().ToArray();
+        await Task.WhenAll(ports).ConfigureAwait(false);
+        var unreachable = ports.All(p => p.Result.Unreachable);
+        if (unreachable)
+        {
+            var numbers = video ? "12445, 443, 7441" : "12445";
+            items.Add(Item("Konsole", CheckLevel.Fail, $"{host} nicht erreichbar (Port {numbers}). Firmennetz oder VPN, Firewall prüfen"));
+        }
+
+        // Access
+        if (!unreachable)
+            items.Add(accessPort.Result.Item);
+        if (accessPort.Result.Ok && secrets is not null)
             await AccessTokenAsync(items, host, secrets.AccessToken, accessPin, ct).ConfigureAwait(false);
 
-        items.Add(state.Health switch
-        {
-            LinkHealth.Ready => Item("Klingel-Ereignisse", CheckLevel.Ok, "verbunden, dieser PC klingelt"),
-            LinkHealth.Starting => Item("Klingel-Ereignisse", CheckLevel.Warn, "Dienst verbindet sich noch, in einer Minute erneut prüfen"),
-            _ => Item("Klingel-Ereignisse", CheckLevel.Fail, state.Status().Problem),
-        });
+        // Bei nicht erreichbarer Konsole sagt die Zeile „Konsole“ schon alles.
+        if (!(unreachable && state.Health == LinkHealth.Unreachable))
+            items.Add(state.Health switch
+            {
+                LinkHealth.Ready => Item("Klingel-Ereignisse", CheckLevel.Ok, "verbunden, dieser PC klingelt"),
+                LinkHealth.Starting => Item("Klingel-Ereignisse", CheckLevel.Warn, "Dienst verbindet sich noch, in einer Minute erneut prüfen"),
+                _ => Item("Klingel-Ereignisse", CheckLevel.Fail, state.Status().Problem),
+            });
 
         // Protect: Livebild und Gegensprechen
         if (!opt.VideoConfigured)
@@ -100,13 +119,12 @@ internal sealed class Diagnostics(
         {
             items.Add(Item("Livebild", CheckLevel.Fail, videoProblem));
         }
-        else
+        else if (!unreachable)
         {
-            var protectPin = CertificatePin.Parse(opt.ProtectPin);
-            var protectOk = await PortAsync(items, "Protect (Port 443)", host, 443, protectPin, ct).ConfigureAwait(false);
-            await PortAsync(items, "Videostream (Port 7441)", host, 7441, CertificatePin.Parse(opt.EffectiveStreamPin), ct).ConfigureAwait(false);
-            if (protectOk && secrets?.ProtectKey is { } key)
-                await ProtectAsync(items, host, key, protectPin, opt, ct).ConfigureAwait(false);
+            items.Add(protectPort!.Result.Item);
+            items.Add(streamPort!.Result.Item);
+            if (protectPort.Result.Ok && secrets?.ProtectKey is { } key)
+                await ProtectAsync(items, host, key, protectPin!, opt, ct).ConfigureAwait(false);
         }
 
         items.Add(!opt.Talkback
@@ -119,31 +137,51 @@ internal sealed class Diagnostics(
         return items;
     }
 
+    private sealed record PortResult(CheckItem Item, bool Ok, bool Unreachable);
+
     /// <summary>Erreichbarkeit und Fingerabdruck. Ein anderes Zertifikat heisst: neues Zertifikat oder falsche Konsole.</summary>
-    private static async Task<bool> PortAsync(
-        List<CheckItem> items, string name, string host, int port, CertificatePin pin, CancellationToken ct)
+    private static async Task<PortResult> PortAsync(string name, string host, int port, CertificatePin pin, CancellationToken ct)
     {
         try
         {
             var fingerprint = await CertificateProbe.FetchFingerprintAsync(host, port, PortTimeout, ct).ConfigureAwait(false);
             if (CertificatePin.Parse(fingerprint).ToString() == pin.ToString())
-            {
-                items.Add(Item(name, CheckLevel.Ok, "erreichbar, Zertifikat passt zum Pin"));
-                return true;
-            }
-            items.Add(Item(name, CheckLevel.Fail,
-                $"Zertifikat passt nicht zum Pin (erhalten {fingerprint}). Neues Zertifikat auf der Konsole? Dann Pin anpassen"));
-            return false;
+                return new PortResult(Item(name, CheckLevel.Ok, "erreichbar, Zertifikat passt zum Pin"), true, false);
+            return new PortResult(Item(name, CheckLevel.Fail,
+                $"Zertifikat passt nicht zum Pin (erhalten {fingerprint}). Neues Zertifikat auf der Konsole? Dann Pin anpassen"),
+                false, false);
         }
         catch (Exception ex) when (ex is SocketException or IOException or OperationCanceledException
                                        or AuthenticationException or InvalidOperationException)
         {
             if (ct.IsCancellationRequested)
                 throw;
-            items.Add(Item(name, CheckLevel.Fail, "nicht erreichbar. Firmennetz oder VPN, Firewall prüfen"));
-            return false;
+            return new PortResult(Item(name, CheckLevel.Fail, "nicht erreichbar. Firmennetz oder VPN, Firewall prüfen"), false, true);
         }
     }
+
+    /// <summary>Mit welcher Fassung der Konfiguration der Dienst läuft. Er liest sie nur beim Start, eine neuere Datei
+    /// gilt erst nach einem Neustart des Dienstes.</summary>
+    private IEnumerable<CheckItem> ConfigFiles()
+    {
+        foreach (var (path, loaded) in state.ConfigLoaded)
+        {
+            var name = Path.GetFileName(path);
+            var current = ServiceState.LastWrite(path);
+            if (loaded is null && current is null)
+                continue;
+            if (loaded == current)
+                yield return Item(name, CheckLevel.Ok, $"vom {Stamp(loaded!.Value)}, gilt seit dem Start des Dienstes");
+            else if (loaded is null)
+                yield return Item(name, CheckLevel.Warn, $"seit dem Start des Dienstes neu ({Stamp(current!.Value)}). Gilt erst nach einem Neustart des Dienstes oder des PCs");
+            else if (current is null)
+                yield return Item(name, CheckLevel.Warn, $"seit dem Start des Dienstes gelöscht, er läuft noch mit der Fassung vom {Stamp(loaded.Value)}. Dienst neu starten");
+            else
+                yield return Item(name, CheckLevel.Warn, $"am {Stamp(current.Value)} geändert, der Dienst läuft noch mit der Fassung vom {Stamp(loaded.Value)}. Dienst oder PC neu starten");
+        }
+    }
+
+    private static string Stamp(DateTime time) => time.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
 
     private static async Task AccessTokenAsync(
         List<CheckItem> items, string host, string token, CertificatePin pin, CancellationToken ct)

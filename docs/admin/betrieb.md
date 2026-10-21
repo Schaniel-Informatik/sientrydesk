@@ -6,18 +6,30 @@ Zugänge, Störungen. Installation in [installation.md](installation.md), Vertei
 ## Bedienung
 Klingel-Symbol unten rechts, eventuell unter dem Pfeil ^ in der Taskleiste.
 - **Linksklick:** Status, die Türen für das Livebild und „Klingel pausieren“ (15 / 30 / 60 / 120 Minuten).
-- **Rechtsklick:** dazu Version, „Ton der Tür automatisch einschalten“, Testklingeln, Beenden.
+- **Rechtsklick:** dazu Version, „Klingeln“ pro Tür, „Ton der Tür automatisch einschalten“, Testklingeln, Prüfen,
+  Beenden.
 
 Beim Klingeln erscheint ein Fenster über allen anderen, mit Klingelton, Livebild und Knopf „Öffnen“. Nimmt jemand
 anders ab (Mobile-App, anderer PC), schliesst es sich überall.
+
+**Klingeln pro Tür** (Rechtsklick → Klingeln, gilt für den angemeldeten Benutzer): je Tür „sofort“ (Standard),
+„nach 10 s“ oder „aus“. Bei „nach 10 s“ blinkt zuerst das Symbol, nach 10 s erscheinen Fenster und Klingelton. Nimmt
+in dieser Zeit jemand anders ab oder bricht der Besucher ab, erscheint nichts. Mit Klick aufs Symbol → „Jetzt anzeigen“
+kommt das Fenster sofort. Bei „aus“ erscheint für diese Tür nichts, das Livebild ohne Klingeln bleibt im Menü. Rufe, die
+so nicht gezeigt wurden, gelten nicht als verpasst. Weicht eine Tür ab, steht das im Text am Symbol, z. B.
+„Bereit. Tür 2: aus“. Beispiel: Am Empfang klingelt die Haupttür sofort, eine Nebentür nach 10 s. Das ist eine
+Bequemlichkeit, keine Sperre. Soll eine Tür auf einem PC gar nicht verfügbar sein (auch nicht zum Öffnen), gehört sie
+in `Doors` der sientrydesk.json ([installation.md](installation.md)).
 
 „Ton an“ im Klingelfenster schaltet den Ton der Tür ein und den Klingelton aus. Nach dem Ende eines Rufs bleibt das
 Fenster 10 s offen. Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, lässt sich in
 dieser Zeit noch öffnen.
 
 **Gegensprechen:** „Sprechen – gedrückt halten“ drücken und halten, sprechen, loslassen, um die Antwort zu hören.
-Solange die Taste gedrückt ist, ist der Ton der Tür am PC stumm, sonst gäbe es Echo. Nach 60 s am Stück endet das
-Sprechen von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn jemand anders angenommen oder
+Man kann sofort beim Drücken losreden, nichts geht verloren, bis die Verbindung zur Tür steht. Nach dem Loslassen nimmt
+das Mikrofon noch 0,6 s auf, damit das letzte Wort nicht abgeschnitten wird. Die Antwort kommt etwa 1 s verzögert,
+also nach dem Loslassen kurz warten. Solange gesprochen wird, ist der Ton der Tür am PC stumm, sonst gäbe es Echo.
+Nach 60 s am Stück endet das Sprechen von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn jemand anders angenommen oder
 abgelehnt hat. Die PCs stimmen sich nicht ab: Sprechen zwei gleichzeitig, kommen beide Stimmen an der Tür an. Wer
 spricht, hört die andere Stimme beim Loslassen über den Ton der Tür. Die Mobile-Apps klingeln weiter, bis jemand
 öffnet oder der Ruf endet. Während einer Teams-Besprechung kann Windows andere Töne dämpfen (Sound → Weitere
@@ -33,7 +45,8 @@ Soundeinstellungen → Kommunikation).
 
 ## Testen nach der Installation
 1. **Symbol grün.**
-2. **Testklingeln** (Rechtsklick): nur auf diesem PC, ohne Livebild, Öffnen gesperrt.
+2. **Testklingeln** (Rechtsklick): nur auf diesem PC, ohne Livebild, Öffnen gesperrt. Steht eine Tür auf „nach 10 s“,
+   blinkt zuerst das Symbol.
 3. **Livebild ohne Klingeln:** Linksklick → Tür wählen. Ohne `DoorCameras` in der Konfiguration erscheint eine Tür
    erst nach ihrem ersten Klingeln.
 4. **Echtes Klingeln:** Fenster, Klingelton, nach 1–2 s das Livebild.
@@ -57,8 +70,11 @@ Von Hand:
 ## Störungen
 **Zuerst prüfen:** Rechtsklick auf das Symbol → „Prüfen …“ oder `SIEntryDesk.exe --check`. Das Fenster zeigt je
 Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Tonausgabe, Mikrofon,
-Verbindung zum Dienst und Version auf dem PC; Konfiguration, Zugänge, Access und Protect (erreichbar, Zertifikat, Token
-und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür, Gegensprechen und Ablaufdaten für die Anlage. Es braucht
+Verbindung zum Dienst und Version auf dem PC; Konfiguration (mit Datum der sientrydesk.json, mit der der Dienst läuft),
+Zugänge, Access und Protect (erreichbar, Zertifikat, Token und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür,
+Gegensprechen und Ablaufdaten für die Anlage. Der Dienst liest die sientrydesk.json nur beim Start. Ist sie seither
+geändert worden, wird die Zeile orange: Dienst oder PC neu starten. Ist die Konsole nicht erreichbar, steht nach
+höchstens etwa 10 s eine Zeile „Konsole: nicht erreichbar“. Es braucht
 keine Adminrechte und keine Eingaben. „Ergebnis kopieren“ legt den Text ohne Geheimnisse in die Zwischenablage, für
 ein Ticket oder eine Mail. Ob der Ton beim Gegensprechen an der Tür ankommt, kann die Prüfung nicht feststellen.
 

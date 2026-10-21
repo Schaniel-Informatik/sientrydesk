@@ -15,6 +15,7 @@ public class IpcProtocolTests
         new UnlockRequest("req-1"),
         new UnlockResultMessage("req-1", false, "Ruf bereits beendet"),
         new CallStartedMessage("req-2", "Tür 2", new DateTimeOffset(2026, 9, 28, 15, 0, 0, TimeSpan.Zero), true, VideoAvailable: true),
+        new CallStartedMessage("req-3", "Tür 3", new DateTimeOffset(2026, 9, 28, 15, 0, 0, TimeSpan.Zero), true, DoorId: "door-3"),
         new VideoRequest("req-2"),
         new VideoReadyMessage("req-2", "rtsp://127.0.0.1:5000/abcdefghijklmnopqrstuvwxyz012345"),
         new VideoUnavailableMessage("req-2", "Livebild in Protect nicht freigegeben"),
@@ -25,6 +26,14 @@ public class IpcProtocolTests
             new DateTimeOffset(2026, 9, 28, 18, 2, 0, TimeSpan.Zero)),
         new LiveViewUnavailableMessage("door-1", "Livebild ist auf diesem PC abgeschaltet"),
     ];
+
+    [Fact]
+    public void Ring_from_a_service_before_0_7_has_no_door_id()
+    {
+        var json = """{"type":"callStarted","callId":"req-1","doorName":"Tür 1","startedAt":"2026-09-28T14:00:00+00:00","unlockAllowed":true}""";
+        var message = Assert.IsType<CallStartedMessage>(IpcProtocol.Deserialize(Encoding.UTF8.GetBytes(json)));
+        Assert.Equal(string.Empty, message.DoorId);
+    }
 
     [Theory]
     [MemberData(nameof(Messages))]

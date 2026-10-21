@@ -38,9 +38,23 @@ public partial class App : Application
 
     private bool _autoSound;
 
-    // Gegensprechen: höchstens eine Aufnahme gleichzeitig, mit Sicherheitsnetz für die Höchstdauer.
-    private TalkSender? _talkSender;
-    private string? _talkCallId;
+    // Klingeln pro Tür: Einstellung dieses Benutzers, Türen vom Dienst und aus Rufen dieser Sitzung, verzögerte Rufe.
+    private RingPreferences _ringPrefs = null!;
+    private IReadOnlyList<DoorEntry> _serviceDoors = [];
+    private readonly Dictionary<string, string> _seenDoors = new(StringComparer.Ordinal);
+    private sealed record PendingRing(string DoorName, DispatcherTimer Timer, Action Show);
+    private readonly Dictionary<string, PendingRing> _pending = new(StringComparer.Ordinal);
+
+    // Gegensprechen: höchstens eine Aufnahme gleichzeitig, mit Sicherheitsnetz für die Höchstdauer. Granted: Der Dienst
+    // hat die Sitzung, die Aufnahme sendet. Bis dahin speichert sie zwischen.
+    private sealed class ActiveTalk(TalkSender sender, string callId, RingWindow window)
+    {
+        public TalkSender Sender { get; } = sender;
+        public string CallId { get; } = callId;
+        public RingWindow Window { get; } = window;
+        public bool Granted { get; set; }
+    }
+    private ActiveTalk? _talk;
     private readonly DispatcherTimer _talkTimer = new();
 
     // Erinnerung vor Ablauf der Schlüssel: einmal pro Tag und Benutzer, stündlich geprüft (Datumswechsel).
@@ -121,17 +135,20 @@ public partial class App : Application
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
         _autoSound = LoadAutoSound();
+        _ringPrefs = new RingPreferences();
         _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound,
-            StartCheck, Shutdown));
+            StartCheck, Shutdown, SetRingMode, ShowPendingNow));
         _tray.SetAutoSound(_autoSound);
+        UpdateRingDoors();
         _alarmTimer.Tick += (_, _) => NotifyAlarm();
         _pauseTimer.Tick += (_, _) => Resume(manual: false);
         _expiryTimer.Tick += (_, _) => CheckExpiryNotice();
         _talkTimer.Tick += (_, _) =>
         {
-            if (_talkCallId is { } talking && _windows.TryGetValue(talking, out var window))
-                window.ReleaseTalk();
-            StopTalk(_talkCallId, notifyService: true);
+            if (_talk is not { } talk)
+                return;
+            StopTalk(talk.CallId, notifyService: true);
+            talk.Window.ShowTalkProblem("Sprechen beendet: Höchstdauer erreicht");
         };
         _expiryTimer.Start();
         _client = new ServiceClient(Dispatcher);
@@ -148,7 +165,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        StopTalk(_talkCallId, notifyService: true);
+        StopTalk(_talk?.CallId, notifyService: true);
         _cts.Cancel();
         foreach (var window in _windows.Values.Concat(_liveWindows.Values).ToList())
             window.Close();
@@ -198,28 +215,23 @@ public partial class App : Application
     {
         switch (message)
         {
-            case CallStartedMessage call when IsPaused:
-                // Während der Pause kein Fenster und kein Ton, nur mitzählen.
-                _missedCount++;
-                _missedLast = DateTimeOffset.Now;
-                _missedDoor = call.DoorName;
-                UpdateTray();
-                break;
             case CallStartedMessage call:
-                // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
-                foreach (var live in _liveWindows.Values.ToList())
-                    live.Close();
-                ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring,
-                    call.TalkAvailable);
+                OnCallStarted(call);
                 break;
             case DoorsMessage doors:
+                _serviceDoors = doors.Doors;
                 _tray?.SetDoors(doors.Enabled, doors.Doors);
+                UpdateRingDoors();
                 break;
             case LiveViewReadyMessage live:
                 ShowLiveView(live);
                 break;
             case LiveViewUnavailableMessage live:
                 _tray?.Notify("Kein Livebild", live.Reason);
+                break;
+            case CallEndedMessage end when _pending.ContainsKey(end.CallId):
+                // Verzögerter Ruf, inzwischen anderswo angenommen oder abgebrochen: auf diesem PC erscheint nichts.
+                CancelPending(end.CallId);
                 break;
             case CallEndedMessage end when _windows.TryGetValue(end.CallId, out var window):
                 window.EndCall(end.Reason);
@@ -241,62 +253,209 @@ public partial class App : Application
                 break;
             case TalkEndedMessage ended when _windows.TryGetValue(ended.CallId, out var window):
                 StopTalk(ended.CallId, notifyService: false);
-                window.ReleaseTalk();
                 window.ShowTalkProblem($"Sprechen beendet: {ended.Reason}");
                 break;
         }
     }
 
-    private void OnTalkResult(RingWindow window, TalkResultMessage result)
+    /// <summary>Klingeln nach der Einstellung dieses Benutzers für die Tür: sofort, nach 10 s oder gar nicht.</summary>
+    private void OnCallStarted(CallStartedMessage call)
     {
-        if (!result.Granted)
+        if (call.DoorId.Length > 0 && call.DoorName.Length > 0 && !_seenDoors.ContainsKey(call.DoorId))
         {
-            window.ShowTalkProblem(result.Message);
+            _seenDoors[call.DoorId] = call.DoorName;
+            UpdateRingDoors();
+        }
+        var mode = _ringPrefs.Get(call.DoorId);
+        // „Aus“: nichts zeigen und nicht als verpasst zählen. Das Livebild bleibt im Menü.
+        if (mode == RingMode.Off || _windows.ContainsKey(call.CallId) || _pending.ContainsKey(call.CallId))
+            return;
+        if (IsPaused)
+        {
+            CountMissed(call.DoorName);
             return;
         }
-        // Taste schon wieder losgelassen, bevor die Freigabe kam.
-        if (!window.TalkHeld)
+        void Show()
         {
-            _ = _client?.SendAsync(new TalkRequest(result.CallId, false));
-            return;
+            // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
+            foreach (var live in _liveWindows.Values.ToList())
+                live.Close();
+            ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring,
+                call.TalkAvailable);
         }
+        if (mode == RingMode.Delayed)
+            Defer(call.CallId, call.DoorName, Show);
+        else
+            Show();
+    }
 
-        StopTalk(_talkCallId, notifyService: true);
-        var callId = result.CallId;
-        var client = _client;
-        var sender = TalkSender.Start(
-            result.SampleRate,
-            packet => client?.SendAsync(new TalkAudioMessage(callId, Convert.ToBase64String(packet))) ?? Task.CompletedTask,
+    /// <summary>Während der Pause kein Fenster und kein Ton, nur mitzählen.</summary>
+    private void CountMissed(string doorName)
+    {
+        _missedCount++;
+        _missedLast = DateTimeOffset.Now;
+        _missedDoor = doorName;
+        UpdateTray();
+    }
+
+    /// <summary>Verzögert klingeln: Symbol blinkt, nach <see cref="RingSettings.Delay"/> Fenster und Klingelton.</summary>
+    private void Defer(string callId, string doorName, Action show)
+    {
+        var timer = new DispatcherTimer { Interval = RingSettings.Delay };
+        timer.Tick += (_, _) =>
+        {
+            if (!_pending.ContainsKey(callId))
+                return;
+            CancelPending(callId);
+            if (IsPaused)
+                CountMissed(doorName);
+            else
+                show();
+        };
+        _pending[callId] = new PendingRing(doorName, timer, show);
+        timer.Start();
+        UpdatePending();
+    }
+
+    private void CancelPending(string callId)
+    {
+        if (!_pending.Remove(callId, out var pending))
+            return;
+        pending.Timer.Stop();
+        UpdatePending();
+    }
+
+    /// <summary>„Jetzt anzeigen“ im Menü: verzögerte Rufe sofort zeigen.</summary>
+    private void ShowPendingNow()
+    {
+        foreach (var (callId, pending) in _pending.ToList())
+        {
+            CancelPending(callId);
+            pending.Show();
+        }
+    }
+
+    private void UpdatePending()
+    {
+        var doors = _pending.Values.Select(p => p.DoorName).Distinct().ToList();
+        _tray?.SetPending(doors.Count == 0 ? null : $"Es klingelt: {string.Join(", ", doors)}");
+    }
+
+    private void SetRingMode(RingDoor door, RingMode mode)
+    {
+        _ringPrefs.Set(door.DoorId, door.Name, mode);
+        UpdateRingDoors();
+    }
+
+    /// <summary>Türen für „Klingeln“: vom Dienst, aus Rufen dieser Sitzung und gespeicherte Abweichungen.</summary>
+    private void UpdateRingDoors()
+    {
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (doorId, pref) in _ringPrefs.Deviations)
+            names[doorId] = pref.Name;
+        foreach (var (doorId, name) in _seenDoors)
+            names[doorId] = name;
+        foreach (var door in _serviceDoors)
+            names[door.DoorId] = door.Name;
+        var doors = names
+            .Select(d => new RingDoor(d.Key, d.Value.Length > 0 ? d.Value : "Tür", _ringPrefs.Get(d.Key)))
+            .OrderBy(d => d.Name, StringComparer.CurrentCulture)
+            .ToList();
+        _tray?.SetRingDoors(doors);
+        UpdateTray();
+    }
+
+    /// <summary>Sprechtaste gedrückt: Mikrofon sofort öffnen (Vorlauf), dann beim Dienst die Sitzung anfordern.</summary>
+    private async void OnTalkPressed(RingWindow window, string callId)
+    {
+        // Im Nachlauf wieder gedrückt: einfach weitersprechen, die Sitzung beim Dienst läuft noch.
+        if (_talk is { } running && running.CallId == callId && running.Sender.Resume())
+        {
+            window.ShowTalking();
+            return;
+        }
+        StopTalk(_talk?.CallId, notifyService: true);
+        var sender = TalkSender.Open(
             problem => Dispatcher.InvokeAsync(() =>
             {
                 StopTalk(callId, notifyService: true);
                 window.ShowTalkProblem(problem);
             }),
-            out var startProblem);
+            out var openProblem);
         if (sender is null)
         {
-            _ = client?.SendAsync(new TalkRequest(callId, false));
-            window.ShowTalkProblem(startProblem);
+            window.ShowTalkProblem(openProblem);
             return;
         }
-        _talkSender = sender;
-        _talkCallId = callId;
+        _talk = new ActiveTalk(sender, callId, window);
         window.ShowTalking();
+        if (_client is null || !await _client.SendAsync(new TalkRequest(callId, true)))
+        {
+            StopTalk(callId, notifyService: false);
+            window.ShowTalkProblem("Dienst nicht erreichbar");
+        }
+    }
+
+    private void OnTalkResult(RingWindow window, TalkResultMessage result)
+    {
+        if (_talk is not { } talk || talk.CallId != result.CallId || talk.Granted)
+        {
+            // Antwort auf eine Anfrage, die es nicht mehr gibt: die Sitzung beim Dienst gleich wieder beenden.
+            if (result.Granted)
+                _ = _client?.SendAsync(new TalkRequest(result.CallId, false));
+            return;
+        }
+        if (!result.Granted)
+        {
+            StopTalk(talk.CallId, notifyService: false);
+            window.ShowTalkProblem(result.Message);
+            return;
+        }
+        talk.Granted = true;
+        var callId = result.CallId;
+        var client = _client;
+        talk.Sender.Begin(result.SampleRate,
+            packet => client?.SendAsync(new TalkAudioMessage(callId, Convert.ToBase64String(packet))) ?? Task.CompletedTask);
         // Der Dienst beendet nach MaxSeconds ohnehin, das hier stoppt auch das Mikrofon.
         _talkTimer.Stop();
         _talkTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, result.MaxSeconds));
         _talkTimer.Start();
     }
 
-    /// <summary>Beendet die Aufnahme zu diesem Ruf und meldet es auf Wunsch dem Dienst.</summary>
+    /// <summary>Taste losgelassen: Nachlauf aufnehmen, nach dem letzten Paket das Ende melden, dann Ton der Tür wieder an.</summary>
+    private void OnTalkReleased(string callId)
+    {
+        if (_talk is not { } talk || talk.CallId != callId)
+        {
+            _ = _client?.SendAsync(new TalkRequest(callId, false));
+            return;
+        }
+        var client = _client;
+        talk.Sender.Finish(
+            async () =>
+            {
+                if (client is not null)
+                    await client.SendAsync(new TalkRequest(callId, false)).ConfigureAwait(false);
+            },
+            () => Dispatcher.InvokeAsync(() =>
+            {
+                if (_talk != talk)
+                    return;
+                _talk = null;
+                _talkTimer.Stop();
+                talk.Sender.Dispose();
+                talk.Window.ShowTalkIdle();
+            }));
+    }
+
+    /// <summary>Beendet die Aufnahme zu diesem Ruf sofort, ohne Nachlauf, und meldet es auf Wunsch dem Dienst.</summary>
     private void StopTalk(string? callId, bool notifyService)
     {
-        if (callId is null || _talkCallId != callId)
+        if (callId is null || _talk is not { } talk || talk.CallId != callId)
             return;
         _talkTimer.Stop();
-        _talkSender?.Dispose();
-        _talkSender = null;
-        _talkCallId = null;
+        talk.Sender.Dispose();
+        _talk = null;
         if (notifyService)
             _ = _client?.SendAsync(new TalkRequest(callId, false));
     }
@@ -316,19 +475,8 @@ public partial class App : Application
         if (talkAvailable)
         {
             window.EnableTalk();
-            window.TalkPressed += async () =>
-            {
-                window.ShowTalkConnecting();
-                if (_client is null || !await _client.SendAsync(new TalkRequest(callId, true)))
-                    window.ShowTalkProblem("Dienst nicht erreichbar");
-            };
-            window.TalkReleased += () =>
-            {
-                if (_talkCallId == callId)
-                    StopTalk(callId, notifyService: true);
-                else
-                    _ = _client?.SendAsync(new TalkRequest(callId, false));
-            };
+            window.TalkPressed += () => OnTalkPressed(window, callId);
+            window.TalkReleased += () => OnTalkReleased(callId);
         }
         window.RingingChanged += UpdateRingtone;
         window.Closed += (_, _) =>
@@ -406,9 +554,11 @@ public partial class App : Application
         _pauseTimer.Stop();
         _pauseTimer.Interval = duration;
         _pauseTimer.Start();
-        // Wer mitten im Klingeln pausiert, will Ruhe: offene Klingelfenster schliessen.
+        // Wer mitten im Klingeln pausiert, will Ruhe: offene Klingelfenster schliessen, verzögerte Rufe verwerfen.
         foreach (var window in _windows.Values.Where(w => w.Mode == WindowMode.Ring).ToList())
             window.Close();
+        foreach (var callId in _pending.Keys.ToList())
+            CancelPending(callId);
         UpdateTray();
     }
 
@@ -432,6 +582,11 @@ public partial class App : Application
         if (_tray is null)
             return;
         var state = TrayStatus.Evaluate(_status?.Connected ?? true, _status?.Service, _pausedUntil, DateTimeOffset.Now);
+        // Abweichungen bei „Klingeln“ sichtbar machen, damit klar ist, warum es an einer Tür nicht klingelt.
+        if (state.Color is TrayColor.Green or TrayColor.Orange &&
+            RingSettings.Summary(_serviceDoors.Concat(_seenDoors.Select(d => new DoorEntry(d.Key, d.Value)))
+                .DistinctBy(d => d.DoorId).Select(d => (d.Name, _ringPrefs.Get(d.DoorId)))) is { } summary)
+            state = state with { Text = $"{state.Text}. {summary}" };
         _tray.Update(state, _status?.Service?.ServiceVersion);
         _tray.SetPause(IsPaused ? _pausedUntil : null, MissedText());
 
@@ -484,18 +639,27 @@ public partial class App : Application
         key.SetValue("AutoDoorSound", on ? 1 : 0, RegistryValueKind.DWord);
     }
 
+    /// <summary>Nur auf diesem PC, ohne Livebild, Öffnen gesperrt. Steht eine Tür auf „nach 10 s“, zeigt das Testklingeln
+    /// die Verzögerung mit blinkendem Symbol, damit man die Wirkung sieht.</summary>
     private void ShowTestRing()
     {
         var callId = "test-" + Guid.NewGuid().ToString("N");
-        ShowRing(callId, "Testklingeln", DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, WindowMode.Test);
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-        timer.Tick += (_, _) =>
+        void Show()
         {
-            timer.Stop();
-            if (_windows.TryGetValue(callId, out var window))
-                window.EndCall(CallEndReason.Timeout);
-        };
-        timer.Start();
+            ShowRing(callId, "Testklingeln", DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, WindowMode.Test);
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                if (_windows.TryGetValue(callId, out var window))
+                    window.EndCall(CallEndReason.Timeout);
+            };
+            timer.Start();
+        }
+        if (_ringPrefs.Deviations.Values.Any(d => d.Mode == RingMode.Delayed))
+            Defer(callId, "Testklingeln", Show);
+        else
+            Show();
     }
 
     private void UpdateRingtone()

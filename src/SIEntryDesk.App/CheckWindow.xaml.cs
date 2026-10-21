@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Threading;
 using SIEntryDesk.Core.Diagnostics;
 using SIEntryDesk.Core.Ipc;
 
@@ -26,10 +27,14 @@ public partial class CheckWindow : Window
     private readonly List<CheckItem> _service = [];
     private bool _servicePending;
     private DateTimeOffset _at;
+    // Sekunden seit Beginn, damit man sieht, dass die Prüfung der Anlage noch läuft (ohne Konsole bis etwa 10 s).
+    private readonly DispatcherTimer _elapsed = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly System.Diagnostics.Stopwatch _clock = new();
 
     public CheckWindow()
     {
         InitializeComponent();
+        _elapsed.Tick += (_, _) => Render();
         Loaded += async (_, _) => await RunAsync();
     }
 
@@ -37,6 +42,7 @@ public partial class CheckWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _elapsed.Stop();
         _cts.Cancel();
         base.OnClosed(e);
     }
@@ -63,6 +69,8 @@ public partial class CheckWindow : Window
         _local.Clear();
         _service.Clear();
         _servicePending = true;
+        _clock.Restart();
+        _elapsed.Start();
         Render();
 
         var service = AskServiceAsync();
@@ -72,6 +80,7 @@ public partial class CheckWindow : Window
             Render();
         }
         await service;
+        _elapsed.Stop();
         _servicePending = false;
         _at = DateTimeOffset.Now;
         Render();
@@ -138,7 +147,7 @@ public partial class CheckWindow : Window
         if (_servicePending)
             Results.Children.Add(new TextBlock
             {
-                Text = $"{CheckReport.Installation}: wird geprüft …",
+                Text = $"{CheckReport.Installation}: wird geprüft … {_clock.Elapsed.TotalSeconds:0} s",
                 Foreground = InfoBrush,
                 Margin = new Thickness(0, 12, 0, 0),
             });

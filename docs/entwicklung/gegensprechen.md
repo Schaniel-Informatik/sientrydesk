@@ -53,6 +53,10 @@ Stand 2026-10-05, umgesetzt. Opus/RTP an beiden Türstationen bestätigt, mit W1
   „Anruf halten“ (gut). An der Tür nichts gehört, Wiederholung mit genauerer Beobachtung. Wunsch: Sprechen schaltet
   „Ton an“ ein, damit man die Antwort hört (umgesetzt für 0.6.1).
 - 2026-10-05, zweiter Versuch mit Headset: an der Tür verständlich, Verzögerung eine gute Sekunde.
+- 2026-10-21, Rückmeldung aus der Anwendung: Die Verzögerung macht das Sprechen holprig, Anfang und letztes Wort gingen
+  verloren. 0.7.0: Mikrofon öffnet beim Drücken (Vorlauf bis 2 s bis zur Freigabe), 0,6 s Nachlauf nach dem Loslassen,
+  Ende an den Dienst erst nach dem letzten Paket, Senden im 20-ms-Takt. Die rund 1 s bis zur Antwort (Ton über das
+  Livebild) bleibt.
 1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,

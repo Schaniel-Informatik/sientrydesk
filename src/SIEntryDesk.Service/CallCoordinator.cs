@@ -399,18 +399,18 @@ internal sealed class CallCoordinator(
         });
     }
 
-    /// <summary>Türliste für das Livebild ohne Klingeln, nur Türen, die dieser PC anzeigt.</summary>
+    /// <summary>Türen, die dieser PC anzeigt: für das Livebild ohne Klingeln (wenn eingeschaltet) und für die Einstellung
+    /// „Klingeln“ pro Tür in der App, die es auch ohne Livebild gibt.</summary>
     private void PublishDoors()
     {
         var opt = options.Value;
-        var enabled = opt.LiveView && state.VideoEnabled;
-        var doors = enabled && _doors is not null
-            ? _doors.All()
+        var doors = _doors is null
+            ? []
+            : _doors.All()
                 .Where(d => opt.AcceptsDoor(d.DoorId, d.DoorName))
                 .Select(d => new DoorEntry(d.DoorId, state.DisplayName(d.CameraId, d.DoorName.Length > 0 ? d.DoorName : "Tür")))
-                .ToArray()
-            : [];
-        state.Doors = new DoorsMessage(enabled, doors);
+                .ToArray();
+        state.Doors = new DoorsMessage(opt.LiveView && state.VideoEnabled, doors);
         pipes.Broadcast(state.Doors);
     }
 

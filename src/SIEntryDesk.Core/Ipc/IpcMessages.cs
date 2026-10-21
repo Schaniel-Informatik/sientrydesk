@@ -5,8 +5,8 @@ using SIEntryDesk.Core.Diagnostics;
 namespace SIEntryDesk.Core.Ipc;
 
 /// <summary>
-/// Nachrichten zwischen Dienst und Tray-App. Die App erhält keine Tokens, Tür-IDs oder Stream-Adressen,
-/// nur was sie anzeigen muss. Öffnen fordert sie über die Ruf-Kennung an, den Rest entscheidet der Dienst.
+/// Nachrichten zwischen Dienst und Tray-App. Die App erhält keine Tokens und keine Adressen der Konsole, nur was sie
+/// anzeigen muss, Tür-IDs nur als Kennung für das Livebild und die Einstellung „Klingeln“. Öffnen fordert sie über die Ruf-Kennung an, den Rest entscheidet der Dienst.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(StatusMessage), "status")]
@@ -53,10 +53,11 @@ public sealed record StatusMessage(
     string ExpiryNotice = "") : IpcMessage;
 
 /// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern. TalkAvailable: Gegensprechen
-/// ist auf diesem PC eingerichtet und die Tür hat eine bekannte Kamera.</summary>
+/// ist auf diesem PC eingerichtet und die Tür hat eine bekannte Kamera. DoorId: für die Einstellung „Klingeln“ pro Tür,
+/// leer bei einem Dienst vor 0.7.0.</summary>
 public sealed record CallStartedMessage(
     string CallId, string DoorName, DateTimeOffset StartedAt, bool UnlockAllowed, bool VideoAvailable = false,
-    bool TalkAvailable = false) : IpcMessage;
+    bool TalkAvailable = false, string DoorId = "") : IpcMessage;
 
 /// <summary>Dienst → App: Der Ruf ist beendet, das Fenster schliesst sich.</summary>
 public sealed record CallEndedMessage(string CallId, CallEndReason Reason) : IpcMessage;
@@ -81,8 +82,9 @@ public sealed record VideoUnavailableMessage(string CallId, string Reason) : Ipc
 
 public sealed record DoorEntry(string DoorId, string Name);
 
-/// <summary>Dienst → App: Türen, deren Livebild ohne Klingeln abrufbar ist. Enabled = auf diesem PC eingeschaltet.
-/// Eine Tür erscheint nach ihrem ersten Klingeln, weil erst dann ihre Kamera bekannt ist.</summary>
+/// <summary>Dienst → App: Türen dieses PCs, für das Livebild ohne Klingeln und die Einstellung „Klingeln“ pro Tür.
+/// Enabled = Livebild ohne Klingeln auf diesem PC eingeschaltet. Eine Tür erscheint mit DoorCameras in der Konfiguration
+/// oder nach ihrem ersten Klingeln, weil erst dann ihre Kamera bekannt ist.</summary>
 public sealed record DoorsMessage(bool Enabled, DoorEntry[] Doors) : IpcMessage
 {
     public bool Equals(DoorsMessage? other) => other is not null && Enabled == other.Enabled && Doors.SequenceEqual(other.Doors);
