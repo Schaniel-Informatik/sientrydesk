@@ -14,6 +14,12 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   (Variante A, Risiko zur Kenntnis genommen).
 
 ## Nächste Version
+- **Intune: Paketdatei und Erkennungsskript gehören zusammen** (entschieden 22.10., nach dem Fehler beim Verteilen von
+  0.7.1: Erkennungsskript 0.7.1 hochgeladen, Paketdatei noch 0.7.0 → 0x87D1041C „not detected after installation“).
+  (1) `prepare-intune.ps1`: Erkennungsskript heisst `detect-<Version>.ps1`, die Zusammenfassung ist eine Checkliste mit
+  Paketdatei, Erkennungsskript und App-Version, alle mit derselben Version, plus Hinweis, den Upload abzuwarten;
+  `intune.md` nachführen. (2) `tools/intune-check.ps1`: rote Zeile, wenn die Version im Namen der Paketdatei nicht zur
+  Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
 ## 0.7.1 (gebaut, unter Windows zu testen)
