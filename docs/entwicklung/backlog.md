@@ -25,7 +25,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
-## 0.8.0 (umgesetzt 27.10., noch nicht gebaut)
+## 0.8.0 (27.10. gebaut, an der Tür zu testen)
 - **Gegensprechen mit Headset wie am Telefon** (Rückmeldung 27.10.: die meisten nutzen Headsets, die Antwort des
   Besuchers ging verloren, weil der Ton der Tür beim Sprechen und im Nachlauf stumm war): Ist das Kommunikationsgerät
   von Windows für die Ausgabe ein Headset, Kopfhörer oder Hörer (EndpointFormFactor 5/3/6), bleibt der Ton der Tür beim
@@ -34,7 +34,8 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Sprechen hören / Lautsprecher – Tür beim Sprechen stumm (nur wenn Gegensprechen eingerichtet ist, dafür
   `TalkEnabled` im Status). Prüfen zeigt „Sprechen mit“. Sprechtaste wie bisher halten.
 - **Mit Lautsprechern wie bisher**, aber Nachlauf 0,3 s statt 0,6 s, und der Ton der Tür geht wieder an, sobald das
-  Mikrofon aus ist, nicht erst nach dem letzten gesendeten Paket.
+  Mikrofon aus ist, nicht erst nach dem letzten gesendeten Paket. Nachlauf 0 s und Echounterdrückung für Lautsprecher
+  verworfen (27.10.): 0 s bringt die Antwort kaum früher, schneidet aber das letzte Wort ab.
 - **Marcel testet an der Tür mit Headset:** Antwort hörbar, auch wenn beide gleichzeitig reden? Hört man die eigene
   Stimme verzögert aus der Tür zurück (Echounterdrückung der Türstation)? Ton der Tür im Headset, Klingelton auf dem
   Lautsprecher? Menü und Prüfen: „Headset (erkannt)“? Mit Lautsprechern: Antwort nach dem Loslassen schneller hörbar?
