@@ -139,7 +139,7 @@ public partial class App : Application
         _listenMode = TalkAudio.LoadMode();
         _ringPrefs = new RingPreferences();
         _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound,
-            StartCheck, Shutdown, SetRingMode, ShowPendingNow, SetListenMode, TalkAudio.HeadsetDetected));
+            StartCheck, Shutdown, SetRingMode, ShowPendingNow, SetListenMode));
         _tray.SetAutoSound(_autoSound);
         _tray.SetListenMode(_listenMode);
         UpdateRingDoors();

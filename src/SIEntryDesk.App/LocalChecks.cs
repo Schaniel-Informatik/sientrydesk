@@ -78,9 +78,9 @@ internal static class LocalChecks
         }
     }
 
-    /// <summary>Ob der Ton der Tür beim Sprechen hörbar bleibt (Headset) und über welches Gerät. Nur ein Hinweis.</summary>
+    /// <summary>Headset oder Lautsprecher, ob der Ton der Tür beim Sprechen hörbar bleibt. Nur ein Hinweis.</summary>
     private static CheckItem TalkSound() =>
-        Item("Ton beim Sprechen", CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
+        Item("Sprechen mit", CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
 
     /// <summary>Öffnet das Mikrofon kurz, so wie beim Sprechen. Nur fürs Gegensprechen nötig, deshalb höchstens orange.</summary>
     private static CheckItem Microphone()

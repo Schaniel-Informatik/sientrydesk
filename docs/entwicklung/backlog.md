@@ -30,13 +30,14 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Besuchers ging verloren, weil der Ton der Tür beim Sprechen und im Nachlauf stumm war): Ist das Kommunikationsgerät
   von Windows für die Ausgabe ein Headset, Kopfhörer oder Hörer (EndpointFormFactor 5/3/6), bleibt der Ton der Tür beim
   Sprechen an und läuft über dieses Gerät (`SetOutputDevice`), der Klingelton bleibt auf dem Standardgerät. Einstellung
-  pro Benutzer im Rechtsklick-Menü „Tür beim Sprechen hören: automatisch / immer / nie“ (nur wenn Gegensprechen
-  eingerichtet ist, dafür `TalkEnabled` im Status). Prüfen zeigt „Ton beim Sprechen“. Sprechtaste wie bisher halten.
+  pro Benutzer im Rechtsklick-Menü „Sprechen mit: Headset (erkannt)“ → automatisch erkennen / Headset – Tür beim
+  Sprechen hören / Lautsprecher – Tür beim Sprechen stumm (nur wenn Gegensprechen eingerichtet ist, dafür
+  `TalkEnabled` im Status). Prüfen zeigt „Sprechen mit“. Sprechtaste wie bisher halten.
 - **Mit Lautsprechern wie bisher**, aber Nachlauf 0,3 s statt 0,6 s, und der Ton der Tür geht wieder an, sobald das
   Mikrofon aus ist, nicht erst nach dem letzten gesendeten Paket.
 - **Marcel testet an der Tür mit Headset:** Antwort hörbar, auch wenn beide gleichzeitig reden? Hört man die eigene
   Stimme verzögert aus der Tür zurück (Echounterdrückung der Türstation)? Ton der Tür im Headset, Klingelton auf dem
-  Lautsprecher? Prüfen: „Headset erkannt“? Mit Lautsprechern: Antwort nach dem Loslassen schneller hörbar?
+  Lautsprecher? Menü und Prüfen: „Headset (erkannt)“? Mit Lautsprechern: Antwort nach dem Loslassen schneller hörbar?
 
 ## 0.7.1 (22.10. an der Tür getestet und freigegeben, Release v0.7.1)
 - Klingeln pro Tür direkt im Rechtsklick-Menü (Rückmeldung zum Test von 0.7.0): kein Untermenü „Klingeln“ mehr, jede

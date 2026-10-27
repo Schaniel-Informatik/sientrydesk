@@ -19,8 +19,7 @@ internal sealed record TrayActions(
     Action Exit,
     Action<RingDoor, RingMode> RingModeChanged,
     Action ShowPendingNow,
-    Action<ListenMode> ListenModeChanged,
-    Func<bool> HeadsetDetected);
+    Action<ListenMode> ListenModeChanged);
 
 /// <summary>Eine Tür im Untermenü „Klingeln“ mit der Einstellung dieses Benutzers.</summary>
 internal sealed record RingDoor(string DoorId, string Name, RingMode Mode);
@@ -151,7 +150,7 @@ internal sealed class TrayIcon : IDisposable
 
     public void SetListenMode(ListenMode mode) => _listenMode = mode;
 
-    /// <summary>Gegensprechen auf diesem PC eingerichtet: erst dann gibt es „Tür beim Sprechen hören“.</summary>
+    /// <summary>Gegensprechen auf diesem PC eingerichtet: erst dann gibt es „Sprechen mit“.</summary>
     public void SetTalkEnabled(bool on) => _talkEnabled = on;
 
     public void Notify(string title, string text) =>
@@ -293,17 +292,14 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    /// <summary>„Tür beim Sprechen hören“: automatisch (Headset erkannt?), immer oder nie.</summary>
+    /// <summary>„Sprechen mit“: automatisch erkennen, Headset (Tür beim Sprechen hören) oder Lautsprecher (stumm).</summary>
     private Forms.ToolStripMenuItem ListenMenu()
     {
-        var item = new Forms.ToolStripMenuItem($"Tür beim Sprechen hören: {TalkAudio.Label(_listenMode)}");
+        var item = new Forms.ToolStripMenuItem($"Sprechen mit: {TalkAudio.Current(_listenMode)}");
         foreach (var mode in Enum.GetValues<ListenMode>())
         {
             var choice = mode;
-            var label = mode == ListenMode.Auto
-                ? $"automatisch ({(_actions.HeadsetDetected() ? "Headset erkannt" : "kein Headset erkannt")})"
-                : TalkAudio.Label(mode);
-            item.DropDownItems.Add(new Forms.ToolStripMenuItem(label, null, (_, _) =>
+            item.DropDownItems.Add(new Forms.ToolStripMenuItem(TalkAudio.Choice(mode), null, (_, _) =>
             {
                 _listenMode = choice;
                 _actions.ListenModeChanged(choice);

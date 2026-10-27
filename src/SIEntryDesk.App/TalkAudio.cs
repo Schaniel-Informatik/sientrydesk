@@ -3,18 +3,20 @@ using NAudio.CoreAudioApi;
 
 namespace SIEntryDesk.App;
 
-/// <summary>Einstellung „Tür beim Sprechen hören“ pro Benutzer.</summary>
+/// <summary>Einstellung „Sprechen mit“ pro Benutzer.</summary>
 internal enum ListenMode
 {
-    /// <summary>Hören, wenn das Kommunikationsgerät von Windows ein Headset oder Kopfhörer ist.</summary>
+    /// <summary>Automatisch erkennen: Headset, wenn das Kommunikationsgerät von Windows ein Headset oder Kopfhörer ist.</summary>
     Auto,
-    Always,
-    Never,
+    /// <summary>Headset: Tür beim Sprechen hören.</summary>
+    Headset,
+    /// <summary>Lautsprecher: Tür beim Sprechen stumm.</summary>
+    Speaker,
 }
 
 /// <param name="ListenWhileTalking">Ton der Tür beim Sprechen nicht stumm schalten.</param>
 /// <param name="OutputDeviceId">Ton der Tür auf dieses Gerät (Kommunikationsgerät, wie bei Teams), null = Standardgerät.</param>
-/// <param name="Description">Für die Prüfung, z. B. „Headset erkannt (…): Tür beim Sprechen hörbar“.</param>
+/// <param name="Description">Für die Prüfung, z. B. „Headset (erkannt, …) – Tür beim Sprechen hörbar“.</param>
 internal sealed record TalkAudioPlan(bool ListenWhileTalking, string? OutputDeviceId, string Description);
 
 /// <summary>
@@ -26,7 +28,7 @@ internal sealed record TalkAudioPlan(bool ListenWhileTalking, string? OutputDevi
 internal static class TalkAudio
 {
     private const string SettingsKey = @"Software\SIEntryDesk";
-    private const string ValueName = "ListenWhileTalking";
+    private const string ValueName = "TalkWith";
 
     // EndpointFormFactor von Windows: 3 Kopfhörer, 5 Headset, 6 Hörer.
     private static readonly HashSet<int> InEar = [3, 5, 6];
@@ -36,8 +38,8 @@ internal static class TalkAudio
         using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
         return (key?.GetValue(ValueName) as string) switch
         {
-            "always" => ListenMode.Always,
-            "never" => ListenMode.Never,
+            "headset" => ListenMode.Headset,
+            "speaker" => ListenMode.Speaker,
             _ => ListenMode.Auto,
         };
     }
@@ -45,14 +47,23 @@ internal static class TalkAudio
     public static void SaveMode(ListenMode mode)
     {
         using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
-        key.SetValue(ValueName, mode switch { ListenMode.Always => "always", ListenMode.Never => "never", _ => "auto" });
+        key.SetValue(ValueName, mode switch { ListenMode.Headset => "headset", ListenMode.Speaker => "speaker", _ => "auto" });
     }
 
-    public static string Label(ListenMode mode) => mode switch
+    /// <summary>Für die Menüzeile: „Headset (erkannt)“, „Lautsprecher (erkannt)“, „Headset“ oder „Lautsprecher“.</summary>
+    public static string Current(ListenMode mode) => mode switch
     {
-        ListenMode.Always => "immer",
-        ListenMode.Never => "nie",
-        _ => "automatisch",
+        ListenMode.Headset => "Headset",
+        ListenMode.Speaker => "Lautsprecher",
+        _ => HeadsetDetected() ? "Headset (erkannt)" : "Lautsprecher (erkannt)",
+    };
+
+    /// <summary>Für die Auswahl im Menü: Wahl und ihre Wirkung.</summary>
+    public static string Choice(ListenMode mode) => mode switch
+    {
+        ListenMode.Headset => "Headset – Tür beim Sprechen hören",
+        ListenMode.Speaker => "Lautsprecher – Tür beim Sprechen stumm",
+        _ => $"automatisch erkennen (jetzt: {(HeadsetDetected() ? "Headset" : "Lautsprecher")})",
     };
 
     /// <summary>Ist das Kommunikationsgerät für die Ausgabe ein Headset oder Kopfhörer?</summary>
@@ -64,10 +75,10 @@ internal static class TalkAudio
         var name = output?.Name ?? "kein Ausgabegerät für Kommunikation";
         return mode switch
         {
-            ListenMode.Never => new(false, null, "Einstellung „nie“: Tür beim Sprechen stumm"),
-            ListenMode.Always => new(true, output?.Id, $"Einstellung „immer“: Tür beim Sprechen hörbar ({name})"),
-            _ when output is { InEar: true } => new(true, output.Id, $"Headset erkannt ({name}): Tür beim Sprechen hörbar"),
-            _ => new(false, null, $"kein Headset erkannt ({name}): Tür beim Sprechen stumm"),
+            ListenMode.Speaker => new(false, null, "Lautsprecher (eingestellt) – Tür beim Sprechen stumm"),
+            ListenMode.Headset => new(true, output?.Id, $"Headset (eingestellt, {name}) – Tür beim Sprechen hörbar"),
+            _ when output is { InEar: true } => new(true, output.Id, $"Headset (erkannt, {name}) – Tür beim Sprechen hörbar"),
+            _ => new(false, null, $"Lautsprecher (erkannt, {name}) – Tür beim Sprechen stumm"),
         };
     }
 
