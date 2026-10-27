@@ -8,8 +8,8 @@ namespace SIEntryDesk.App;
 
 public sealed record ServiceClientStatus(bool Connected, StatusMessage? Service);
 
-/// <summary>Verbindung zum lokalen Dienst über die Named Pipe, mit automatischem Neuaufbau.
-/// Ereignisse werden auf dem UI-Thread ausgelöst.</summary>
+/// <summary>Connection to the local service via the named pipe, with automatic reconnect. Events are raised on the UI
+/// thread.</summary>
 internal sealed class ServiceClient(Dispatcher dispatcher)
 {
     private readonly SemaphoreSlim _writeLock = new(1, 1);
@@ -26,7 +26,7 @@ internal sealed class ServiceClient(Dispatcher dispatcher)
         {
             try
             {
-                // Identification genügt dem Dienst, um den Windows-Benutzer festzustellen.
+                // Identification is enough for the service to determine the Windows user.
                 using var pipe = new NamedPipeClientStream(
                     ".", IpcProtocol.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous, TokenImpersonationLevel.Identification);
                 await pipe.ConnectAsync(5000, ct).ConfigureAwait(false);

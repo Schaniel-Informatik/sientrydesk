@@ -5,7 +5,7 @@ namespace SIEntryDesk.Core.Tests;
 
 public class AccessEventParserTests
 {
-    // Aufbau wie im Test beobachtet, alle Werte erfunden.
+    // Structure as observed in the test, all values made up.
     internal const string RingJson = """
         {"event":"access.remote_view","receiver_id":"","event_object_id":"00000000-0000-4000-8000-000000000001",
          "save_to_history":false,

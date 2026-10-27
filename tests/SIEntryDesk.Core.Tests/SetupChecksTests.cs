@@ -32,13 +32,13 @@ public class SetupChecksTests
     [Fact]
     public void Ambiguous_names_get_no_suggestion()
     {
-        // "Hof Tür" passt exakt auf "Hof" und wird zugeordnet, "Westflügel" auf nichts.
+        // "Hof Tür" matches "Hof" exactly and is mapped, "Westflügel" matches nothing.
         var suggestions = SetupChecks.SuggestDoorCameras(
             [new AccessDoor("door-hof", "Hof Tür", ""), new AccessDoor("door-w", "Westflügel", "")], Cameras);
         Assert.Equal("cam-hof-000001", suggestions["door-hof"]);
         Assert.False(suggestions.ContainsKey("door-w"));
 
-        // "Hof Westtor" enthält sowohl "hof" als auch "hofwest": zwei Treffer, keine Zuordnung.
+        // "Hof Westtor" contains both "hof" and "hofwest": two matches, no mapping.
         var partial = SetupChecks.SuggestDoorCameras([new AccessDoor("door-hw", "Hof Westtor", "")], Cameras);
         Assert.False(partial.ContainsKey("door-hw"));
     }
@@ -111,7 +111,7 @@ public class SetupChecksTests
     {
         var loaded = SetupChecks.ParseConfigJson("""
             {
-              // von Hand
+              // by hand
               "host": "10.0.0.1",
               "AccessPin": "aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa",
               "Doors": null,
@@ -152,14 +152,14 @@ public class SetupChecksTests
     {
         var options = new EntryDeskOptions { Host = "h", AccessPin = PinA, ProtectPin = PinB };
         Assert.True(SetupChecks.PinsUnchanged(options, [Port(12445, PinA), Port(443, PinB), Port(7441, PinB)]));
-        // Nicht erreichbare Ports ändern nichts, solange Access passt.
+        // Unreachable ports change nothing as long as Access matches.
         Assert.True(SetupChecks.PinsUnchanged(options, [Port(12445, PinA), Port(443, null), Port(7441, null)]));
-        // Access nicht erreichbar oder anders: neu bestätigen.
+        // Access unreachable or different: confirm again.
         Assert.False(SetupChecks.PinsUnchanged(options, [Port(12445, null), Port(443, PinB), Port(7441, PinB)]));
         Assert.False(SetupChecks.PinsUnchanged(options, [Port(12445, PinB), Port(443, PinB), Port(7441, PinB)]));
-        // Neues Zertifikat auf 7441.
+        // New certificate on 7441.
         Assert.False(SetupChecks.PinsUnchanged(options, [Port(12445, PinA), Port(443, PinB), Port(7441, PinA)]));
-        // Bisher ohne Livebild: Pins für 443 und 7441 wären neu.
+        // Previously without live view: pins for 443 and 7441 would be new.
         var noVideo = new EntryDeskOptions { Host = "h", AccessPin = PinA };
         Assert.False(SetupChecks.PinsUnchanged(noVideo, [Port(12445, PinA), Port(443, PinB), Port(7441, PinB)]));
     }
@@ -198,7 +198,7 @@ public class SetupChecksTests
         var finding = Assert.Single(SetupChecks.CompareDoors(options, doors, Cameras));
         Assert.Equal(FindingLevel.Ok, finding.Level);
 
-        // Eine Tür, die dieser PC nicht anzeigt, braucht keine Kamera.
+        // A door this PC does not show needs no camera.
         var onlyNorth = new EntryDeskOptions { Doors = ["door-nord"], DoorCameras = new() { ["door-nord"] = "cam-nord-00001" } };
         Assert.Equal(FindingLevel.Ok, Assert.Single(SetupChecks.CompareDoors(onlyNorth, doors, Cameras)).Level);
     }

@@ -7,7 +7,7 @@ using SIEntryDesk.Core.Video;
 
 namespace SIEntryDesk.Core.Protect;
 
-/// <summary>Aufrufe der Protect Integration API über UniFi OS (Port 443), gepinnt, ohne Proxy.</summary>
+/// <summary>Calls to the Protect Integration API via UniFi OS (port 443), pinned, without a proxy.</summary>
 public sealed partial class ProtectApiClient : IDisposable
 {
     private const string BasePath = "/proxy/protect/integration/v1";
@@ -32,8 +32,8 @@ public sealed partial class ProtectApiClient : IDisposable
     }
 
     /// <summary>
-    /// Vorhandene RTSPS-Streams einer Kamera je Qualität. Verwendet werden nur Port und Pfad aus der Antwort,
-    /// der Host bleibt der konfigurierte, damit eine manipulierte Antwort nicht auf ein fremdes Ziel lenkt.
+    /// Available RTSPS streams of a camera per quality. Only port and path are taken from the response, the host stays
+    /// the configured one, so that a manipulated response cannot redirect to a foreign target.
     /// </summary>
     public async Task<IReadOnlyDictionary<string, StreamSource>> GetStreamsAsync(string cameraId, CancellationToken ct)
     {
@@ -59,7 +59,7 @@ public sealed partial class ProtectApiClient : IDisposable
         return streams;
     }
 
-    /// <summary>Protect-Version, als einfache Prüfung des Schlüssels.</summary>
+    /// <summary>Protect version, as a simple check of the key.</summary>
     public async Task<string> GetVersionAsync(CancellationToken ct)
     {
         using var response = await _http.GetAsync($"{BasePath}/meta/info", ct).ConfigureAwait(false);
@@ -72,7 +72,8 @@ public sealed partial class ProtectApiClient : IDisposable
             : "?";
     }
 
-    /// <summary>Legt für eine Kamera einen RTSPS-Stream an. Ändert die Kamera-Konfiguration, nur nach Bestätigung.</summary>
+    /// <summary>Creates an RTSPS stream for a camera. Changes the camera configuration, only after
+    /// confirmation.</summary>
     public async Task<IReadOnlyDictionary<string, StreamSource>> CreateStreamAsync(string cameraId, string quality, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(cameraId) || quality is not ("low" or "medium" or "high"))
@@ -84,8 +85,9 @@ public sealed partial class ProtectApiClient : IDisposable
     }
 
     /// <summary>
-    /// Öffnet eine Talkback-Sitzung zur Kamera (offizielle Integration API). Die Antwort nennt das Ziel für den Ton,
-    /// meist die Türstation selbst. Eine Laufzeit oder ein Schliessen kennt die API nicht, deshalb pro Sprechstoss neu.
+    /// Opens a talkback session to the camera (official Integration API). The response names the target for the audio,
+    /// usually the door station itself. The API knows no lifetime and no way to close it, therefore a new one per talk
+    /// turn.
     /// </summary>
     public async Task<TalkbackTarget?> CreateTalkbackSessionAsync(string cameraId, Action<string> problem, CancellationToken ct)
     {
@@ -113,7 +115,7 @@ public sealed partial class ProtectApiClient : IDisposable
             obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
     }
 
-    /// <summary>Kamera-ID → Name aus Protect. Dient auch als Lebenszeichen für Schlüssel und Erreichbarkeit.</summary>
+    /// <summary>Camera ID → name from Protect. Also serves as a sign of life for key and reachability.</summary>
     public async Task<IReadOnlyDictionary<string, string>> GetCameraNamesAsync(CancellationToken ct)
     {
         using var response = await _http.GetAsync($"{BasePath}/cameras", ct).ConfigureAwait(false);

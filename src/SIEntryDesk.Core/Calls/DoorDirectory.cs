@@ -2,12 +2,12 @@ using System.Text.Json;
 
 namespace SIEntryDesk.Core.Calls;
 
-/// <summary>Eine Tür mit der Protect-Kamera ihrer Türstation.</summary>
+/// <summary>A door with the Protect camera of its door station.</summary>
 public sealed record KnownDoor(string DoorId, string DoorName, string CameraId);
 
 /// <summary>
-/// Welche Kamera zu welcher Tür gehört, steht zuverlässig nur im Klingel-Ereignis von Access. Das Verzeichnis merkt
-/// sich die Zuordnung beim ersten Klingeln und speichert sie, damit das Livebild ohne Klingeln danach verfügbar ist.
+/// Which camera belongs to which door is reliably known only from the Access ring event. The directory remembers the
+/// mapping at the first ring and stores it, so that the live view without ringing is available afterwards.
 /// </summary>
 public sealed class DoorDirectory
 {
@@ -15,7 +15,7 @@ public sealed class DoorDirectory
     private readonly string? _path;
     private readonly Dictionary<string, KnownDoor> _doors = new(StringComparer.Ordinal);
 
-    /// <param name="path">JSON-Datei, oder null für nur im Speicher.</param>
+    /// <param name="path">JSON file, or null for in-memory only.</param>
     public DoorDirectory(string? path)
     {
         _path = path;
@@ -25,7 +25,7 @@ public sealed class DoorDirectory
         {
             foreach (var door in JsonSerializer.Deserialize<List<KnownDoor>>(File.ReadAllBytes(path)) ?? [])
             {
-                // Die Datei wird wie jede Eingabe geprüft.
+                // The file is validated like any input.
                 if (UntrustedText.IsSafeId(door.DoorId) && UntrustedText.IsSafeId(door.CameraId))
                     _doors[door.DoorId] = door with { DoorName = UntrustedText.Clean(door.DoorName) };
             }
@@ -35,7 +35,7 @@ public sealed class DoorDirectory
         }
     }
 
-    /// <summary>Übernimmt die Zuordnung aus einem Ruf. True, wenn sich etwas geändert hat.</summary>
+    /// <summary>Takes over the mapping from a call. True if something changed.</summary>
     public bool Learn(CallInfo call)
     {
         if (!UntrustedText.IsSafeId(call.DoorId) || !UntrustedText.IsSafeId(call.CameraId))
@@ -51,7 +51,8 @@ public sealed class DoorDirectory
         }
     }
 
-    /// <summary>Zuordnung aus der Konfiguration. Sie hat Vorrang vor einer gelernten Kamera, der Türname bleibt erhalten.</summary>
+    /// <summary>Mapping from the configuration. It takes precedence over a learned camera, the door name is
+    /// kept.</summary>
     public void Seed(string doorId, string cameraId)
     {
         if (!UntrustedText.IsSafeId(doorId) || !UntrustedText.IsSafeId(cameraId))
@@ -88,7 +89,7 @@ public sealed class DoorDirectory
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Ohne Schreibrecht bleibt die Zuordnung bis zum nächsten Neustart im Speicher.
+            // Without write access the mapping stays in memory until the next restart.
         }
     }
 }

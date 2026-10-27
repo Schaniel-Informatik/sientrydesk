@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""SI EntryDesk – Machbarkeitstest gegen UniFi Access und UniFi Protect.
+"""SI EntryDesk – feasibility test against UniFi Access and UniFi Protect.
 
-Nur offizielle APIs:
-  - UniFi Access Developer API (Port 12445, Bearer-Token)
-  - UniFi Protect Integration API (UniFi OS, Header X-API-KEY)
+Official APIs only:
+  - UniFi Access Developer API (port 12445, bearer token)
+  - UniFi Protect Integration API (UniFi OS, header X-API-KEY)
 
-Zugangsdaten kommen ausschliesslich aus Umgebungsvariablen, gesetzt über `op run`.
-TLS wird gegen gepinnte SHA-256-Fingerprints geprüft, die Prüfung wird nie abgeschaltet.
-Aufruf und Variablen: siehe README.md in diesem Ordner.
+Credentials come exclusively from environment variables, set via `op run`.
+TLS is checked against pinned SHA-256 fingerprints, the check is never switched off.
+Usage and variables: see README.md in this folder.
 """
 import argparse
 import asyncio
@@ -33,7 +33,7 @@ ACCESS_BASE = "/api/v1/developer"
 PROTECT_BASE = "/proxy/protect/integration/v1"
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 
-# reason_code aus access.remote_view.change (Access API Reference, Abschnitt 11.1)
+# reason_code from access.remote_view.change (Access API Reference, section 11.1)
 REMOTE_VIEW_REASONS = {
     105: "Zeitüberschreitung, niemand hat abgenommen",
     106: "Öffnen abgelehnt",
@@ -47,7 +47,7 @@ CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 SECRET_KEYS = {"token", "access_token", "api_key", "apikey", "password", "secret"}
 
 
-# ---------------------------------------------------------------- Hilfsfunktionen
+# ---------------------------------------------------------------- helpers
 
 def die(msg):
     print(f"FEHLER: {msg}", file=sys.stderr, flush=True)
@@ -62,7 +62,7 @@ def env(name):
 
 
 def clean(text):
-    """Steuerzeichen aus nicht vertrauenswürdigem Text entfernen (keine Terminal-Escape-Sequenzen)."""
+    """Remove control characters from untrusted text (no terminal escape sequences)."""
     return CONTROL_CHARS.sub("?", str(text))
 
 
@@ -72,7 +72,7 @@ def mask_url(url):
 
 
 def redact(obj):
-    """Tokens und Stream-Pfade vor Ausgabe und Log unkenntlich machen."""
+    """Mask tokens and stream paths before output and log."""
     if isinstance(obj, dict):
         return {k: ("***" if k.lower() in SECRET_KEYS and v else redact(v)) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -99,7 +99,7 @@ def show(obj):
 # ---------------------------------------------------------------- TLS mit Pinning
 
 def fetch_cert(host, port, timeout=5):
-    """Zertifikat abholen, ohne ihm zu vertrauen. Nur zum Vergleich mit dem Pin."""
+    """Fetch the certificate without trusting it. Only for comparison with the pin."""
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -136,7 +136,7 @@ def check_pin(host, port, pin_var):
 
 
 def cert_dns_name(der):
-    """Ersten DNS-Namen aus dem Zertifikat lesen, für die Namensprüfung externer Werkzeuge."""
+    """Read the first DNS name from the certificate, for the name check of external tools."""
     res = subprocess.run(["openssl", "x509", "-inform", "DER", "-noout", "-ext", "subjectAltName"],
                          input=der, capture_output=True, timeout=10)
     match = re.search(r"DNS:([A-Za-z0-9.-]+)", res.stdout.decode(errors="replace"))
@@ -146,11 +146,11 @@ def cert_dns_name(der):
 
 
 def pinned_context(host, port, pin_var):
-    """SSL-Kontext, der ausschliesslich das gepinnte Zertifikat akzeptiert.
+    """SSL context that accepts only the pinned certificate.
 
-    Das Zertifikat der Konsole ist selbst ausgestellt. Es wird nach dem Fingerprint-Vergleich
-    als einziger Vertrauensanker geladen, die eigentliche Verbindung prüft dann dagegen.
-    Die Namensprüfung entfällt, weil der Pin sie ersetzt.
+    The console certificate is self-signed. After the fingerprint comparison it is loaded as the only
+    trust anchor, the actual connection is then checked against it.
+    The name check is dropped because the pin replaces it.
     """
     der = check_pin(host, port, pin_var)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -224,7 +224,7 @@ def report_error(api, status, payload, hint=""):
 # ---------------------------------------------------------------- cert
 
 def cmd_cert(_args):
-    """Fingerprints der Konsole anzeigen. Einmal prüfen, dann als Pins eintragen."""
+    """Show the fingerprints of the console. Check once, then enter them as pins."""
     host = env("SIED_HOST")
     for label, port, var in (("UniFi OS / Protect", PROTECT_PORT, "SIED_PIN_PROTECT"),
                              ("Access API", ACCESS_PORT, "SIED_PIN_ACCESS"),
@@ -248,8 +248,8 @@ def cmd_cert(_args):
 
 # ---------------------------------------------------------------- scopes
 
-# Ein lesender Endpunkt je Recht (Access API Reference). Bearbeiten-Rechte lassen sich so nicht
-# prüfen, ohne etwas zu ändern.
+# One reading endpoint per permission (Access API Reference). Edit permissions cannot be checked
+# this way without changing something.
 SCOPE_PROBES = (
     ("view:device", "/devices"),
     ("view:space", "/doors"),
@@ -262,7 +262,7 @@ SCOPE_PROBES = (
 
 
 def cmd_scopes(_args):
-    """Nur lesend: welche Leserechte haben die Access-Tokens? Zeigt nur den Status, keine Daten."""
+    """Read-only: which read permissions do the Access tokens have? Shows only the status, no data."""
     for var in ("SIED_ACCESS_TOKEN", "SIED_ACCESS_UNLOCK_TOKEN"):
         if not os.environ.get(var, "").strip():
             print(f"== {var}: nicht gesetzt")
@@ -287,7 +287,7 @@ def flatten(items):
 
 
 def cmd_inventory(_args):
-    """Nur lesend: Access-Geräte und -Türen, Protect-Version und -Kameras."""
+    """Read-only: Access devices and doors, Protect version and cameras."""
     if os.environ.get("SIED_ACCESS_TOKEN", "").strip():
         inventory_access()
     else:
@@ -381,9 +381,9 @@ def describe_protect(msg):
 
 
 async def listen_ws(source, url, ctx, headers, describe, fh, verbose, idle_timeout=None):
-    """WebSocket mitschreiben. Mit idle_timeout: keine Protokoll-Pings, sondern Neuaufbau,
-    wenn so lange keine Nachricht kommt (die Access-API beantwortet keine Pings und sendet
-    stattdessen alle 5 s ein "Hello")."""
+    """Record the WebSocket. With idle_timeout: no protocol pings, but reconnect if no message
+    arrives for that long (the Access API does not answer pings and instead sends a "Hello"
+    every 5 s)."""
     from websockets.asyncio.client import connect
     from websockets.exceptions import InvalidStatus
 
@@ -406,7 +406,7 @@ async def listen_ws(source, url, ctx, headers, describe, fh, verbose, idle_timeo
                     except (TypeError, ValueError):
                         msg = None
                     if not isinstance(msg, dict):
-                        # z. B. das "Hello" der Access-API als Lebenszeichen
+                        # e.g. the "Hello" of the Access API as a sign of life
                         if verbose:
                             print(f"{now()} [{source}] Text: {clean(str(raw).strip())[:200]}", flush=True)
                         log_line(fh, source, {"_text": clean(raw)[:2000]})
@@ -462,7 +462,7 @@ def cmd_listen(args):
 # ---------------------------------------------------------------- stream
 
 def cmd_stream(args):
-    """RTSPS-Stream einer Protect-Kamera prüfen: Codecs, Auflösung, Ton. Optional anzeigen."""
+    """Check the RTSPS stream of a Protect camera: codecs, resolution, audio. Optionally display it."""
     camera = check_id(args.camera, "Kamera-ID")
     pro = Protect()
     status, payload = pro.call("GET", f"/cameras/{camera}/rtsps-stream")
@@ -491,8 +491,8 @@ def cmd_stream(args):
     der = check_pin(parts.hostname, parts.port or RTSPS_PORT, "SIED_PIN_RTSPS")
     print(f"Stream {args.quality}: {mask_url(url)} (Zertifikat entspricht dem Pin)", flush=True)
 
-    # ffmpeg (ab 9) prüft TLS selbst. Es bekommt das gepinnte Zertifikat als einzigen Vertrauensanker
-    # und einen Namen, der im Zertifikat steht, weil die Konsole per IP angesprochen wird.
+    # ffmpeg (from 9) checks TLS itself. It gets the pinned certificate as the only trust anchor
+    # and a name that is in the certificate, because the console is addressed by IP.
     os.makedirs(OUT_DIR, exist_ok=True)
     ca_file = os.path.join(OUT_DIR, "rtsps-pin.pem")
     with open(ca_file, "w", encoding="ascii") as fh:
@@ -531,7 +531,7 @@ def cmd_stream(args):
 # ---------------------------------------------------------------- talkback
 
 def cmd_talkback(args):
-    """Talkback-Sitzung anlegen und Audioformat zeigen. Mit --tone einen kurzen Ton senden."""
+    """Create a talkback session and show the audio format. With --tone send a short tone."""
     camera = check_id(args.camera, "Kamera-ID")
     pro = Protect()
     status, payload = pro.call("POST", f"/cameras/{camera}/talkback-session")
@@ -556,7 +556,7 @@ def cmd_talkback(args):
 # ---------------------------------------------------------------- unlock
 
 def cmd_unlock(args):
-    """Öffnet eine echte Tür. Nur mit Freigabe und jemandem vor Ort."""
+    """Unlocks a real door. Only with approval and someone on site."""
     if not args.ja_tuer_oeffnen:
         die("Öffnet eine echte Tür. Nur mit Freigabe und jemandem vor Ort, dann mit --ja-tuer-oeffnen.")
     door = check_id(args.door, "Tür-ID")

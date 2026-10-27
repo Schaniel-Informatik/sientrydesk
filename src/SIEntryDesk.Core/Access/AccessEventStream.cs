@@ -5,24 +5,24 @@ using SIEntryDesk.Core.Security;
 
 namespace SIEntryDesk.Core.Access;
 
-/// <summary>Zustand der Verbindung zu Access, für die Anzeige am PC.</summary>
+/// <summary>State of the connection to Access, for display on the PC.</summary>
 public enum AccessLinkState
 {
     Connected,
-    /// <summary>Konsole nicht erreichbar, typisch ausserhalb des Firmennetzes. Kein Alarm.</summary>
+    /// <summary>Console not reachable, typically outside the company network. No alarm.</summary>
     Unreachable,
-    /// <summary>Token abgelehnt (401/403).</summary>
+    /// <summary>Token rejected (401/403).</summary>
     Rejected,
-    /// <summary>Zertifikat passt nicht zum Pin.</summary>
+    /// <summary>Certificate does not match the pin.</summary>
     CertificateMismatch,
-    /// <summary>Verbindung erreicht, aber gestört oder unterbrochen.</summary>
+    /// <summary>Connection reached, but disturbed or interrupted.</summary>
     Interrupted,
 }
 
 /// <summary>
-/// Dauerhafte Verbindung zum Ereignis-WebSocket der Access Developer API.
-/// Access beantwortet keine WebSocket-Pings, sendet aber alle 5 s ein "Hello". Bleibt es länger still,
-/// wird die Verbindung neu aufgebaut, damit kein Klingeln in einer toten Verbindung verloren geht.
+/// Persistent connection to the event WebSocket of the Access Developer API. Access does not answer WebSocket pings,
+/// but sends a "Hello" every 5 s. If it stays silent for longer, the connection is re-established so that no ring gets
+/// lost in a dead connection.
 /// </summary>
 public sealed class AccessEventStream
 {
@@ -133,7 +133,7 @@ public sealed class AccessEventStream
         }
     }
 
-    /// <summary>Kein TCP-Verbindungsaufbau möglich (Zeitüberschreitung, Netz oder Host nicht erreichbar, DNS).</summary>
+    /// <summary>No TCP connection possible (timeout, network or host unreachable, DNS).</summary>
     private static bool IsUnreachable(Exception ex)
     {
         for (var e = ex; e is not null; e = e.InnerException)

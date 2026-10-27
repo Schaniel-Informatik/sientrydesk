@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace SIEntryDesk.Service;
 
-/// <summary>Einfaches Tagesprotokoll unter %ProgramData%\SIEntryDesk\logs, 14 Tage aufbewahrt. Keine Tokens loggen.</summary>
+/// <summary>Simple daily log under %ProgramData%\SIEntryDesk\logs, kept for 14 days. Never log tokens.</summary>
 internal sealed class FileLoggerProvider(string directory) : ILoggerProvider
 {
     private const int KeepDays = 14;
@@ -47,7 +47,7 @@ internal sealed class FileLoggerProvider(string directory) : ILoggerProvider
             }
             catch (IOException)
             {
-                // Protokollieren darf den Dienst nicht stören.
+                // Logging must not disturb the service.
             }
             catch (UnauthorizedAccessException)
             {

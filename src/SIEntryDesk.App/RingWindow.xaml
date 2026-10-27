@@ -27,7 +27,7 @@
             <TextBlock x:Name="TimeText" FontSize="13" Foreground="#A0A0A0" Margin="0,2,0,0" />
         </StackPanel>
 
-        <!-- Die Videoanzeige ist ein eigenes Fenster (HwndHost), WPF kann nicht darüber zeichnen. -->
+        <!-- The video view is a separate window (HwndHost), WPF cannot draw over it. -->
         <Border Grid.Row="1" Margin="0,14,0,6" Background="Black">
             <vlc:VideoView x:Name="Video" />
         </Border>
@@ -45,7 +45,7 @@
 
         <TextBlock x:Name="StatusText" Grid.Row="3" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,12" MinHeight="20" />
 
-        <!-- Gegensprechen: sprechen, solange gedrückt (Entscheid 2026-10-02). Der Dienst entscheidet, ob es gerade geht. -->
+        <!-- Talkback: talk while pressed (decision 2026-10-02). The service decides whether it is possible right now. -->
         <Button x:Name="TalkButton" Grid.Row="4" Content="Sprechen – gedrückt halten" Height="52" FontSize="17"
                 Background="#1F6FEB" Style="{StaticResource ActionButton}" Margin="0,0,0,12" Visibility="Collapsed"
                 PreviewMouseLeftButtonDown="OnTalkDown" PreviewMouseLeftButtonUp="OnTalkUp" LostMouseCapture="OnTalkLost" />

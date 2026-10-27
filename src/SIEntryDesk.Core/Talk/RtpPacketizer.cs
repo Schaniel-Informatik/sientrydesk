@@ -4,9 +4,9 @@ using System.Security.Cryptography;
 namespace SIEntryDesk.Core.Talk;
 
 /// <summary>
-/// RTP-Pakete (RFC 3550) für Opus (RFC 7587): ein Opus-Paket pro RTP-Paket, Zeitstempel immer im Takt 48 kHz,
-/// auch wenn mit 24 kHz kodiert wird. Payload-Typ 97 wie ffmpeg, mit dem die Türstation im Machbarkeitstest Ton
-/// wiedergegeben hat.
+/// RTP packets (RFC 3550) for Opus (RFC 7587): one Opus packet per RTP packet, timestamps always at 48 kHz, even when
+/// encoding at 24 kHz. Payload type 97 as with ffmpeg, with which the door station played audio in the feasibility
+/// test.
 /// </summary>
 public sealed class RtpPacketizer
 {
@@ -30,7 +30,8 @@ public sealed class RtpPacketizer
         _timestamp = firstTimestamp;
     }
 
-    /// <summary>Baut das nächste Paket für ein Opus-Paket, das <paramref name="durationMs"/> Ton enthält.</summary>
+    /// <summary>Builds the next packet for an Opus packet that contains <paramref name="durationMs"/> of
+    /// audio.</summary>
     public byte[] Next(ReadOnlySpan<byte> opus, int durationMs = 20)
     {
         var packet = new byte[HeaderBytes + opus.Length];

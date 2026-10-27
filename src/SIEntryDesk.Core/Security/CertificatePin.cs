@@ -6,9 +6,8 @@ using System.Text;
 namespace SIEntryDesk.Core.Security;
 
 /// <summary>
-/// SHA-256-Fingerprint eines Serverzertifikats. Die UniFi-Konsole verwendet selbst ausgestellte Zertifikate,
-/// deshalb wird statt einer Zertifizierungsstelle genau dieses eine Zertifikat akzeptiert.
-/// Die TLS-Prüfung wird nie abgeschaltet.
+/// SHA-256 fingerprint of a server certificate. The UniFi console uses self-signed certificates, so instead of a
+/// certificate authority exactly this one certificate is accepted. TLS validation is never switched off.
 /// </summary>
 public sealed class CertificatePin
 {
@@ -16,7 +15,7 @@ public sealed class CertificatePin
 
     private CertificatePin(byte[] sha256) => _sha256 = sha256;
 
-    /// <summary>Akzeptiert Hex mit oder ohne Trennzeichen (Doppelpunkt, Leerzeichen, Bindestrich).</summary>
+    /// <summary>Accepts hex with or without separators (colon, space, hyphen).</summary>
     public static CertificatePin Parse(string fingerprint)
     {
         ArgumentNullException.ThrowIfNull(fingerprint);
@@ -37,14 +36,14 @@ public sealed class CertificatePin
         certificate is not null &&
         CryptographicOperations.FixedTimeEquals(SHA256.HashData(certificate.GetRawCertData()), _sha256);
 
-    /// <summary>Callback für HttpClient und ClientWebSocket. Kettenfehler sind bei selbst ausgestellten
-    /// Zertifikaten normal und zählen nicht, entscheidend ist allein der Fingerprint.</summary>
+    /// <summary>Callback for HttpClient and ClientWebSocket. Chain errors are normal with self-signed certificates and
+    /// do not count, only the fingerprint decides.</summary>
     public bool Validate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors errors) =>
         Matches(certificate);
 
     public override string ToString() => Format(_sha256);
 
-    /// <summary>Fingerprint eines vorgelegten Zertifikats, für verständliche Fehlermeldungen.</summary>
+    /// <summary>Fingerprint of a presented certificate, for understandable error messages.</summary>
     public static string FingerprintOf(X509Certificate certificate) => Format(SHA256.HashData(certificate.GetRawCertData()));
 
     public static string Format(ReadOnlySpan<byte> sha256) =>

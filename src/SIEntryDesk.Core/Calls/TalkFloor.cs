@@ -1,21 +1,21 @@
 namespace SIEntryDesk.Core.Calls;
 
-/// <summary>Wer an einer Tür gerade spricht. ClientId ist die Verbindung der App zum Dienst.</summary>
+/// <summary>Who is currently talking at a door. ClientId is the app's connection to the service.</summary>
 public sealed record TalkTurn(string DoorId, string CallId, int ClientId, string Speaker, DateTimeOffset Since);
 
 /// <summary>
-/// Vergibt das Sprechen an einer Tür auf diesem PC: immer nur eine App gleichzeitig, höchstens <see cref="MaxTalk"/>
-/// am Stück. Zwischen PCs gibt es keine Absprache, jeder PC hat seinen eigenen Dienst.
+/// Grants talking at a door on this PC: only one app at a time, at most <see cref="MaxTalk"/> in one go. There is no
+/// coordination between PCs, each PC has its own service.
 /// </summary>
 public sealed class TalkFloor(TimeProvider time)
 {
     private readonly object _gate = new();
     private readonly Dictionary<string, TalkTurn> _turns = new(StringComparer.Ordinal);
 
-    /// <summary>Schutz gegen eine hängende Sprechtaste (Entscheid 2026-10-02).</summary>
+    /// <summary>Protection against a stuck talk button (decision 2026-10-02).</summary>
     public TimeSpan MaxTalk { get; init; } = TimeSpan.FromSeconds(60);
 
-    /// <summary>Gibt das Sprechen frei, wenn niemand sonst an dieser Tür spricht. Busy nennt dann den Sprecher.</summary>
+    /// <summary>Grants talking if nobody else is talking at this door. Otherwise busy names the speaker.</summary>
     public bool TryTake(string doorId, string callId, int clientId, string speaker, out TalkTurn turn)
     {
         lock (_gate)
@@ -32,7 +32,7 @@ public sealed class TalkFloor(TimeProvider time)
         }
     }
 
-    /// <summary>Das laufende Sprechen dieser App an dieser Tür, wenn es noch gilt.</summary>
+    /// <summary>This app's current talk turn at this door, if it is still valid.</summary>
     public TalkTurn? Current(string callId, int clientId)
     {
         lock (_gate)
@@ -45,13 +45,13 @@ public sealed class TalkFloor(TimeProvider time)
     public TalkTurn? Release(string callId, int clientId) =>
         RemoveWhere(t => t.CallId == callId && t.ClientId == clientId).FirstOrDefault();
 
-    /// <summary>Beim Trennen einer App.</summary>
+    /// <summary>When an app disconnects.</summary>
     public IReadOnlyList<TalkTurn> ReleaseClient(int clientId) => RemoveWhere(t => t.ClientId == clientId);
 
-    /// <summary>Beim Ende eines Rufs.</summary>
+    /// <summary>When a call ends.</summary>
     public IReadOnlyList<TalkTurn> ReleaseCall(string callId) => RemoveWhere(t => t.CallId == callId);
 
-    /// <summary>Beendet Sprechen, das länger als <see cref="MaxTalk"/> dauert.</summary>
+    /// <summary>Ends talking that lasts longer than <see cref="MaxTalk"/>.</summary>
     public IReadOnlyList<TalkTurn> Expire()
     {
         var now = time.GetUtcNow();

@@ -3,13 +3,13 @@ using System.Text;
 
 namespace SIEntryDesk.Core.Video;
 
-/// <summary>Ein Stück aus einem RTSP-Datenstrom über TCP.</summary>
+/// <summary>One piece of an RTSP data stream over TCP.</summary>
 internal abstract record RtspChunk;
 
-/// <summary>Eingebetteter Binärrahmen: '$', Kanal, Länge (2 Byte), RTP/RTCP-Daten. Raw enthält alles.</summary>
+/// <summary>Embedded binary frame: '$', channel, length (2 bytes), RTP/RTCP data. Raw contains everything.</summary>
 internal sealed record RtspInterleaved(byte[] Raw) : RtspChunk;
 
-/// <summary>Anfrage oder Antwort. Head ist Startzeile plus Kopfzeilen ohne die abschliessende Leerzeile.</summary>
+/// <summary>Request or response. Head is the start line plus header lines without the final empty line.</summary>
 internal sealed record RtspText(string Head, byte[] Body) : RtspChunk
 {
     public string StartLine => Head.Split("\r\n", 2)[0];
@@ -35,7 +35,7 @@ internal sealed record RtspText(string Head, byte[] Body) : RtspChunk
     }
 }
 
-/// <summary>Zerlegt einen RTSP-Datenstrom in Textnachrichten und Binärrahmen, mit festen Grössengrenzen.</summary>
+/// <summary>Splits an RTSP data stream into text messages and binary frames, with fixed size limits.</summary>
 internal sealed class RtspReader(Stream stream)
 {
     public const int MaxHeadBytes = 16 * 1024;
@@ -45,7 +45,7 @@ internal sealed class RtspReader(Stream stream)
     private int _start;
     private int _end;
 
-    /// <summary>Nächstes Stück, oder null wenn der Strom endet.</summary>
+    /// <summary>Next piece, or null when the stream ends.</summary>
     public async Task<RtspChunk?> ReadAsync(CancellationToken ct)
     {
         if (!await EnsureAsync(1, ct).ConfigureAwait(false))

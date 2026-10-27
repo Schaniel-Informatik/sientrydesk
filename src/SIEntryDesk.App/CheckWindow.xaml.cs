@@ -9,8 +9,8 @@ using SIEntryDesk.Core.Ipc;
 namespace SIEntryDesk.App;
 
 /// <summary>
-/// SIEntryDesk.exe --check: grün/orange/rot je Voraussetzung. Die App prüft den PC, der Dienst die Anlage mit seinen
-/// gespeicherten Zugängen. Braucht keine Eingaben und keine Adminrechte.
+/// SIEntryDesk.exe --check: green/orange/red per prerequisite. The app checks the PC, the service checks the
+/// installation with its stored credentials. Needs no input and no admin rights.
 /// </summary>
 public partial class CheckWindow : Window
 {
@@ -27,7 +27,8 @@ public partial class CheckWindow : Window
     private readonly List<CheckItem> _service = [];
     private bool _servicePending;
     private DateTimeOffset _at;
-    // Sekunden seit Beginn, damit man sieht, dass die Prüfung der Anlage noch läuft (ohne Konsole bis etwa 10 s).
+    // Seconds since the start, so that one sees the check of the installation is still running (without console up to
+    // about 10 s).
     private readonly DispatcherTimer _elapsed = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly System.Diagnostics.Stopwatch _clock = new();
 
@@ -58,7 +59,7 @@ public partial class CheckWindow : Window
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>PC und Anlage gleichzeitig, jeder Punkt erscheint, sobald er fertig ist.</summary>
+    /// <summary>PC and installation at the same time, each item appears as soon as it is done.</summary>
     private async Task RunAsync()
     {
         RunButton.IsEnabled = false;
@@ -95,7 +96,8 @@ public partial class CheckWindow : Window
         CopyButton.IsEnabled = true;
     }
 
-    /// <summary>Eigene Verbindung zum Dienst, unabhängig von der Tray-App, und die Prüfung der Anlage.</summary>
+    /// <summary>Own connection to the service, independent of the tray app, and the check of the
+    /// installation.</summary>
     private async Task AskServiceAsync()
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);

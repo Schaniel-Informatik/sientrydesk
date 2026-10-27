@@ -5,7 +5,7 @@ using SIEntryDesk.Core.Ipc;
 
 namespace SIEntryDesk.Service;
 
-/// <summary>Gemeinsamer Zustand für Pipe-Server und Koordinator.</summary>
+/// <summary>Shared state for pipe server and coordinator.</summary>
 internal sealed class ServiceState
 {
     public static readonly string Version =
@@ -20,8 +20,8 @@ internal sealed class ServiceState
 
     public CallTracker? Tracker { get; set; }
 
-    /// <summary>Stand der Konfigurationsdateien beim Start. Der Dienst liest sie nur dann, die Prüfung zeigt deshalb, mit
-    /// welcher Fassung er läuft und ob seither eine neuere da ist.</summary>
+    /// <summary>State of the configuration files at startup. The service reads them only then, so the check shows which
+    /// version it runs with and whether a newer one has appeared since.</summary>
     public IReadOnlyDictionary<string, DateTime?> ConfigLoaded { get; } = new Dictionary<string, DateTime?>
     {
         [ServicePaths.ConfigFile] = LastWrite(ServicePaths.ConfigFile),
@@ -30,16 +30,16 @@ internal sealed class ServiceState
 
     public static DateTime? LastWrite(string path) => File.Exists(path) ? File.GetLastWriteTime(path) : null;
 
-    /// <summary>Livebild eingerichtet (Protect-Schlüssel und Pin vorhanden).</summary>
+    /// <summary>Live view set up (Protect key and pin present).</summary>
     public bool VideoEnabled { get; set; }
 
-    /// <summary>Gegensprechen eingerichtet (auf diesem PC eingeschaltet und Protect-Schlüssel vorhanden).</summary>
+    /// <summary>Talkback set up (switched on for this PC and Protect key present).</summary>
     public bool TalkEnabled { get; set; }
 
-    /// <summary>Aktuelle Türliste für das Livebild ohne Klingeln und die Einstellung „Klingeln“ in der App.</summary>
+    /// <summary>Current door list for the live view without ringing and the per-door ring setting in the app.</summary>
     public DoorsMessage Doors { get; set; } = new(false, []);
 
-    /// <summary>Protect-Kamera-ID → Name, für die Anzeige statt der Access-Türnamen.</summary>
+    /// <summary>Protect camera ID → name, for display instead of the Access door names.</summary>
     public ConcurrentDictionary<string, string> CameraNames { get; } = new(StringComparer.Ordinal);
 
     public LinkHealth Health
@@ -60,8 +60,8 @@ internal sealed class ServiceState
         }
     }
 
-    /// <summary>True, wenn sich etwas geändert hat. Warning färbt orange, ExpiryNotice löst zusätzlich die tägliche
-    /// Meldung in der App aus.</summary>
+    /// <summary>True if something changed. Warning turns orange, ExpiryNotice additionally triggers the daily notice in
+    /// the app.</summary>
     public bool SetWarning(string warning, string expiryNotice)
     {
         lock (_gate)

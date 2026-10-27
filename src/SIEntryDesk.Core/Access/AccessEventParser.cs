@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace SIEntryDesk.Core.Access;
 
 /// <summary>
-/// Liest Nachrichten aus dem WebSocket /api/v1/developer/devices/notifications.
-/// Alles, was nicht dem erwarteten Aufbau entspricht, wird verworfen (Rückgabe null).
+/// Reads messages from the WebSocket /api/v1/developer/devices/notifications. Anything that does not match the expected
+/// structure is discarded (returns null).
 /// </summary>
 public static class AccessEventParser
 {
@@ -84,7 +84,7 @@ public static class AccessEventParser
             UntrustedText.Clean(GetString(data, "name")));
     }
 
-    /// <summary>Nur erfolgreiche Türöffnungen, mit dem Namen der Person und dem Hub als Verweis auf die Tür.</summary>
+    /// <summary>Only successful door unlocks, with the person's name and the hub as a reference to the door.</summary>
     private static AccessUnlockLogged? ParseLog(JsonElement data)
     {
         var source = GetObject(data, "_source");
@@ -109,7 +109,7 @@ public static class AccessEventParser
             return null;
 
         var actor = UntrustedText.Clean(GetString(GetObject(source, "actor"), "display_name"), 60);
-        // Bei Öffnungen direkt an der Tür (Karte, PIN, Taster) nennt Access keinen Namen, sondern "N/A".
+        // For unlocks directly at the door (card, PIN, button), Access gives no name but "N/A".
         if (actor.Equals("N/A", StringComparison.OrdinalIgnoreCase))
             actor = string.Empty;
         var provider = UntrustedText.Clean(GetString(GetObject(source, "authentication"), "credential_provider"), 30);

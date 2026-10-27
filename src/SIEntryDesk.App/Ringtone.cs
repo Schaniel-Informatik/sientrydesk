@@ -3,7 +3,8 @@ using System.Media;
 
 namespace SIEntryDesk.App;
 
-/// <summary>Klingelton in Schleife. Wird zur Laufzeit erzeugt (zwei Töne, dann Pause), damit keine fremde Audiodatei nötig ist.</summary>
+/// <summary>Ringtone in a loop. Generated at runtime (two tones, then a pause), so that no third-party audio file is
+/// needed.</summary>
 internal sealed class Ringtone : IDisposable
 {
     private const int SampleRate = 22050;
@@ -45,7 +46,7 @@ internal sealed class Ringtone : IDisposable
             var count = (int)(SampleRate * seconds);
             for (var i = 0; i < count; i++)
             {
-                // Kurzes Ein- und Ausblenden gegen Knacksen, leichter Oberton für einen Glockenklang.
+                // Short fade in and out against clicks, slight overtone for a bell sound.
                 var t = (double)i / SampleRate;
                 var envelope = Math.Min(1.0, Math.Min(i, count - i) / (SampleRate * 0.01)) * Math.Exp(-2.5 * t);
                 var value = Math.Sin(2 * Math.PI * frequency * t) + 0.3 * Math.Sin(4 * Math.PI * frequency * t);

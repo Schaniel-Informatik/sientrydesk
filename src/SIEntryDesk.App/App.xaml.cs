@@ -20,16 +20,17 @@ public partial class App : Application
     private Ringtone? _ringtone;
     private Task<LibVLC?>? _libVlc;
 
-    /// <summary>Wartezeit, bevor ein „dieser PC klingelt nicht“ gemeldet wird, damit kurze Störungen still bleiben.</summary>
+    /// <summary>Waiting time before "this PC does not ring" is reported, so that short disturbances stay
+    /// silent.</summary>
     private static readonly TimeSpan AlarmDelay = TimeSpan.FromSeconds(30);
     private const string SettingsKey = @"Software\SIEntryDesk";
 
-    /// <summary>Null bis zum ersten Verbindungsversuch, damit das Symbol beim Start nicht kurz rot aufblitzt.</summary>
+    /// <summary>Null until the first connection attempt, so that the icon does not flash red at startup.</summary>
     private ServiceClientStatus? _status;
     private readonly DispatcherTimer _alarmTimer = new() { Interval = AlarmDelay };
     private bool _alarmNotified;
 
-    // Pause gilt nur für diese Sitzung, ein Neustart beendet sie bewusst.
+    // The pause applies to this session only, a restart deliberately ends it.
     private readonly DispatcherTimer _pauseTimer = new();
     private DateTimeOffset? _pausedUntil;
     private int _missedCount;
@@ -39,15 +40,15 @@ public partial class App : Application
     private bool _autoSound;
     private ListenMode _listenMode;
 
-    // Klingeln pro Tür: Einstellung dieses Benutzers, Türen vom Dienst und aus Rufen dieser Sitzung, verzögerte Rufe.
+    // Ringing per door: this user's setting, doors from the service and from calls of this session, delayed calls.
     private RingPreferences _ringPrefs = null!;
     private IReadOnlyList<DoorEntry> _serviceDoors = [];
     private readonly Dictionary<string, string> _seenDoors = new(StringComparer.Ordinal);
     private sealed record PendingRing(string DoorName, DispatcherTimer Timer, Action Show);
     private readonly Dictionary<string, PendingRing> _pending = new(StringComparer.Ordinal);
 
-    // Gegensprechen: höchstens eine Aufnahme gleichzeitig, mit Sicherheitsnetz für die Höchstdauer. Granted: Der Dienst
-    // hat die Sitzung, die Aufnahme sendet. Bis dahin speichert sie zwischen.
+    // Talkback: at most one recording at a time, with a safety net for the maximum duration. Granted: the service has
+    // the session, the recording is sending. Until then it buffers.
     private sealed class ActiveTalk(TalkSender sender, string callId, RingWindow window)
     {
         public TalkSender Sender { get; } = sender;
@@ -58,12 +59,12 @@ public partial class App : Application
     private ActiveTalk? _talk;
     private readonly DispatcherTimer _talkTimer = new();
 
-    // Erinnerung vor Ablauf der Schlüssel: einmal pro Tag und Benutzer, stündlich geprüft (Datumswechsel).
+    // Reminder before the keys expire: once per day and user, checked hourly (date change).
     private readonly DispatcherTimer _expiryTimer = new() { Interval = TimeSpan.FromHours(1) };
 
     private static readonly string[] HelpArgs = ["--help", "-h", "-?", "/?", "--hilfe"];
 
-    // Zeilen höchstens etwa 45 Zeichen, sonst bricht das Meldungsfenster selbst um und zerstört die Einrückung.
+    // Lines at most about 45 characters, otherwise the message box wraps them itself and destroys the indentation.
     private static readonly string HelpText =
         $"""
         SI EntryDesk {TrayIcon.AppVersion}
@@ -103,7 +104,7 @@ public partial class App : Application
             return;
         }
 
-        // Prüfung für die Fehlersuche, unabhängig von einer laufenden Tray-App.
+        // Check for troubleshooting, independent of a running tray app.
         if (e.Args.Any(a => string.Equals(a, "--check", StringComparison.OrdinalIgnoreCase)))
         {
             ShutdownMode = ShutdownMode.OnMainWindowClose;
@@ -112,7 +113,7 @@ public partial class App : Application
             return;
         }
 
-        // Einrichtungsassistent für Admins, unabhängig von einer laufenden Tray-App. Optional mit bestehender Datei.
+        // Setup wizard for admins, independent of a running tray app. Optionally with an existing file.
         var setup = Array.FindIndex(e.Args, a => string.Equals(a, "--setup", StringComparison.OrdinalIgnoreCase));
         if (setup >= 0)
         {
@@ -132,7 +133,7 @@ public partial class App : Application
         }
 
         LocalChecks.InTrayApp = true;
-        // LibVLC im Hintergrund laden, damit das erste Klingeln nicht darauf wartet.
+        // Load LibVLC in the background so that the first ring does not wait for it.
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
         _autoSound = LoadAutoSound();
@@ -184,10 +185,10 @@ public partial class App : Application
     {
         try
         {
-            // Pfad ausdrücklich, weil die App als einzelne .exe veröffentlicht wird.
+            // Explicit path, because the app is published as a single .exe.
             LibVLCSharp.Shared.Core.Initialize(Path.Combine(AppContext.BaseDirectory, "libvlc", "win-x64"));
-            // --rtsp-tcp: Der Dienst nimmt nur RTP über die RTSP-Verbindung an, UDP-Versuche kosten nur Zeit.
-            // --verbose=2 nur, damit das Protokoll die geladenen Module nennt, geschrieben werden davon wenige Zeilen.
+            // --rtsp-tcp: the service only accepts RTP over the RTSP connection, UDP attempts only cost time.
+            // --verbose=2 only so that the log names the loaded modules; only a few of these lines are written.
             var libVlc = new LibVLC("--rtsp-tcp", "--no-osd", "--no-video-title-show", "--no-snapshot-preview", "--verbose=2");
             VlcLog.Attach(libVlc);
             return libVlc;
@@ -200,7 +201,7 @@ public partial class App : Application
 
     private CheckWindow? _checkWindow;
 
-    /// <summary>Prüfung aus dem Menü: gleich in dieser App, damit das Fenster sofort erscheint.</summary>
+    /// <summary>Check from the menu: right in this app, so that the window appears immediately.</summary>
     private void StartCheck()
     {
         if (_checkWindow is not null)
@@ -233,7 +234,7 @@ public partial class App : Application
                 _tray?.Notify("Kein Livebild", live.Reason);
                 break;
             case CallEndedMessage end when _pending.ContainsKey(end.CallId):
-                // Verzögerter Ruf, inzwischen anderswo angenommen oder abgebrochen: auf diesem PC erscheint nichts.
+                // Delayed call, answered elsewhere or cancelled in the meantime: nothing appears on this PC.
                 CancelPending(end.CallId);
                 break;
             case CallEndedMessage end when _windows.TryGetValue(end.CallId, out var window):
@@ -261,7 +262,7 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Klingeln nach der Einstellung dieses Benutzers für die Tür: sofort, nach 10 s oder gar nicht.</summary>
+    /// <summary>Ring according to this user's setting for the door: immediately, after 10 s or not at all.</summary>
     private void OnCallStarted(CallStartedMessage call)
     {
         if (call.DoorId.Length > 0 && call.DoorName.Length > 0 && !_seenDoors.ContainsKey(call.DoorId))
@@ -270,7 +271,7 @@ public partial class App : Application
             UpdateRingDoors();
         }
         var mode = _ringPrefs.Get(call.DoorId);
-        // „Aus“: nichts zeigen und nicht als verpasst zählen. Das Livebild bleibt im Menü.
+        // "Off": show nothing and do not count as missed. The live view stays in the menu.
         if (mode == RingMode.Off || _windows.ContainsKey(call.CallId) || _pending.ContainsKey(call.CallId))
             return;
         if (IsPaused)
@@ -280,7 +281,7 @@ public partial class App : Application
         }
         void Show()
         {
-            // Das Klingelfenster hat Vorrang vor einem offenen Livebild.
+            // The ring window takes precedence over an open live view.
             foreach (var live in _liveWindows.Values.ToList())
                 live.Close();
             ShowRing(call.CallId, call.DoorName, call.StartedAt, call.UnlockAllowed, call.VideoAvailable, WindowMode.Ring,
@@ -292,7 +293,7 @@ public partial class App : Application
             Show();
     }
 
-    /// <summary>Während der Pause kein Fenster und kein Ton, nur mitzählen.</summary>
+    /// <summary>During the pause no window and no sound, only count.</summary>
     private void CountMissed(string doorName)
     {
         _missedCount++;
@@ -301,7 +302,7 @@ public partial class App : Application
         UpdateTray();
     }
 
-    /// <summary>Verzögert klingeln: Symbol blinkt, nach <see cref="RingSettings.Delay"/> Fenster und Klingelton.</summary>
+    /// <summary>Delayed ringing: the icon blinks, window and ringtone after <see cref="RingSettings.Delay"/>.</summary>
     private void Defer(string callId, string doorName, Action show)
     {
         var timer = new DispatcherTimer { Interval = RingSettings.Delay };
@@ -328,7 +329,7 @@ public partial class App : Application
         UpdatePending();
     }
 
-    /// <summary>„Jetzt anzeigen“ im Menü: verzögerte Rufe sofort zeigen.</summary>
+    /// <summary>"Jetzt anzeigen" in the menu: show delayed calls immediately.</summary>
     private void ShowPendingNow()
     {
         foreach (var (callId, pending) in _pending.ToList())
@@ -350,7 +351,8 @@ public partial class App : Application
         UpdateRingDoors();
     }
 
-    /// <summary>Türen für „Klingeln“: vom Dienst, aus Rufen dieser Sitzung und gespeicherte Abweichungen.</summary>
+    /// <summary>Doors for the ring setting: from the service, from calls of this session and stored
+    /// deviations.</summary>
     private void UpdateRingDoors()
     {
         var names = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -367,10 +369,11 @@ public partial class App : Application
         _tray?.SetRingDoors(doors);
     }
 
-    /// <summary>Sprechtaste gedrückt: Mikrofon sofort öffnen (Vorlauf), dann beim Dienst die Sitzung anfordern.</summary>
+    /// <summary>Talk button pressed: open the microphone immediately (pre-roll), then request the session from the
+    /// service.</summary>
     private async void OnTalkPressed(RingWindow window, string callId)
     {
-        // Im Nachlauf wieder gedrückt: einfach weitersprechen, die Sitzung beim Dienst läuft noch.
+        // Pressed again during the tail: just keep talking, the session at the service is still running.
         if (_talk is { } running && running.CallId == callId && running.Sender.Resume())
         {
             window.ShowTalking();
@@ -402,7 +405,7 @@ public partial class App : Application
     {
         if (_talk is not { } talk || talk.CallId != result.CallId || talk.Granted)
         {
-            // Antwort auf eine Anfrage, die es nicht mehr gibt: die Sitzung beim Dienst gleich wieder beenden.
+            // Answer to a request that no longer exists: end the session at the service right away.
             if (result.Granted)
                 _ = _client?.SendAsync(new TalkRequest(result.CallId, false));
             return;
@@ -418,13 +421,14 @@ public partial class App : Application
         var client = _client;
         talk.Sender.Begin(result.SampleRate,
             packet => client?.SendAsync(new TalkAudioMessage(callId, Convert.ToBase64String(packet))) ?? Task.CompletedTask);
-        // Der Dienst beendet nach MaxSeconds ohnehin, das hier stoppt auch das Mikrofon.
+        // The service ends after MaxSeconds anyway, this also stops the microphone.
         _talkTimer.Stop();
         _talkTimer.Interval = TimeSpan.FromSeconds(Math.Max(1, result.MaxSeconds));
         _talkTimer.Start();
     }
 
-    /// <summary>Taste losgelassen: Nachlauf aufnehmen, dann Ton der Tür wieder an, nach dem letzten Paket das Ende melden.</summary>
+    /// <summary>Button released: record the tail, then door audio on again, report the end after the last
+    /// packet.</summary>
     private void OnTalkReleased(string callId)
     {
         if (_talk is not { } talk || talk.CallId != callId)
@@ -436,7 +440,7 @@ public partial class App : Application
         talk.Sender.Finish(
             () => Dispatcher.InvokeAsync(() =>
             {
-                // Mikrofon aus: kein Echo mehr möglich, der Ton der Tür darf wieder laufen.
+                // Microphone off: no echo possible anymore, the door audio may play again.
                 if (_talk == talk)
                     talk.Window.ShowTalkIdle();
             }),
@@ -456,7 +460,8 @@ public partial class App : Application
             }));
     }
 
-    /// <summary>Beendet die Aufnahme zu diesem Ruf sofort, ohne Nachlauf, und meldet es auf Wunsch dem Dienst.</summary>
+    /// <summary>Ends the recording for this call immediately, without tail, and reports it to the service if
+    /// requested.</summary>
     private void StopTalk(string? callId, bool notifyService)
     {
         if (callId is null || _talk is not { } talk || talk.CallId != callId)
@@ -504,7 +509,7 @@ public partial class App : Application
             _ = RequestVideoAsync(window, callId);
     }
 
-    /// <summary>Mittig auf dem Hauptbildschirm, weitere Fenster leicht versetzt.</summary>
+    /// <summary>Centered on the primary screen, further windows slightly offset.</summary>
     private static void Place(Window window, int index)
     {
         var area = SystemParameters.WorkArea;
@@ -565,7 +570,7 @@ public partial class App : Application
         _pauseTimer.Stop();
         _pauseTimer.Interval = duration;
         _pauseTimer.Start();
-        // Wer mitten im Klingeln pausiert, will Ruhe: offene Klingelfenster schliessen, verzögerte Rufe verwerfen.
+        // Whoever pauses in the middle of ringing wants quiet: close open ring windows, discard delayed calls.
         foreach (var window in _windows.Values.Where(w => w.Mode == WindowMode.Ring).ToList())
             window.Close();
         foreach (var callId in _pending.Keys.ToList())
@@ -608,7 +613,8 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Meldet einmal pro Störung, wenn dieser PC seit <see cref="AlarmDelay"/> nicht klingeln kann.</summary>
+    /// <summary>Reports once per disturbance when this PC has not been able to ring for <see
+    /// cref="AlarmDelay"/>.</summary>
     private void NotifyAlarm()
     {
         _alarmTimer.Stop();
@@ -619,7 +625,7 @@ public partial class App : Application
         _tray?.Notify("SI EntryDesk: dieser PC klingelt nicht", state.Text);
     }
 
-    /// <summary>Ab 14 Tagen vor Ablauf der Schlüssel einmal pro Tag eine Meldung, auf jeder App.</summary>
+    /// <summary>From 14 days before the keys expire, one notice per day, on every app.</summary>
     private void CheckExpiryNotice()
     {
         var notice = _status?.Service?.ExpiryNotice;
@@ -652,8 +658,8 @@ public partial class App : Application
         key.SetValue("AutoDoorSound", on ? 1 : 0, RegistryValueKind.DWord);
     }
 
-    /// <summary>Nur auf diesem PC, ohne Livebild, Öffnen gesperrt. Steht eine Tür auf „nach 10 s“, zeigt das Testklingeln
-    /// die Verzögerung mit blinkendem Symbol, damit man die Wirkung sieht.</summary>
+    /// <summary>Only on this PC, without live view, unlocking disabled. If a door is set to "after 10 s", the test ring
+    /// shows the delay with a blinking icon, so that the effect is visible.</summary>
     private void ShowTestRing()
     {
         var callId = "test-" + Guid.NewGuid().ToString("N");

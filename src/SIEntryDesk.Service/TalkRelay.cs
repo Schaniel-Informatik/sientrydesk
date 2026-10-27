@@ -8,9 +8,9 @@ using SIEntryDesk.Core.Talk;
 namespace SIEntryDesk.Service;
 
 /// <summary>
-/// Gegensprechen: gibt das Sprechen an einer Tür frei (eine App pro Tür, höchstens 60 s am Stück), holt pro Sprechstoss
-/// eine Talkback-Sitzung bei Protect und schickt die Opus-Pakete der App als RTP an die Türstation. Die App erfährt das
-/// Ziel nicht, und der Ton endet hier, sobald das Sprechen nicht mehr erlaubt ist.
+/// Talkback: grants talking at a door (one app per door, at most 60 s in one go), gets a talkback session from Protect
+/// for each talk turn and sends the app's Opus packets as RTP to the door station. The app never learns the target, and
+/// the audio stops here as soon as talking is no longer allowed.
 /// </summary>
 internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcMessage> sendToClient) : IDisposable
 {
@@ -34,7 +34,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
         public void Dispose() => udp.Dispose();
     }
 
-    /// <summary>Opus-Pakete von 20 ms, also 50 pro Sekunde. Mehr nimmt der Dienst nicht an.</summary>
+    /// <summary>Opus packets of 20 ms, that is 50 per second. The service accepts no more.</summary>
     private const int MaxFramesPerSecond = 60;
 
     private readonly TalkFloor _floor = new(time);
@@ -94,14 +94,14 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
         return new TalkResultMessage(call.CallId, true, "Sprechen", target.SamplingRate, MaxSeconds);
     }
 
-    /// <summary>Taste losgelassen.</summary>
+    /// <summary>Button released.</summary>
     public void Stop(string callId, int clientId)
     {
         _floor.Release(callId, clientId);
         End((callId, clientId), reason: null, notify: false);
     }
 
-    /// <summary>Ein Opus-Paket der App. Ohne gültige Freigabe wird es verworfen.</summary>
+    /// <summary>An Opus packet from the app. Discarded without a valid grant.</summary>
     public void Audio(string callId, int clientId, string base64)
     {
         if (!_sessions.TryGetValue((callId, clientId), out var session))
@@ -129,7 +129,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
         }
     }
 
-    /// <summary>Ruf zu Ende (nach der Nachfrist bzw. sofort nach „anderswo angenommen“).</summary>
+    /// <summary>Call over (after the grace period, or immediately after "answered elsewhere").</summary>
     public void EndCall(string callId, string reason)
     {
         _floor.ReleaseCall(callId);
@@ -137,7 +137,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
             End(key, reason, notify: true);
     }
 
-    /// <summary>App getrennt.</summary>
+    /// <summary>App disconnected.</summary>
     public void EndClient(int clientId)
     {
         _floor.ReleaseClient(clientId);
@@ -145,7 +145,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
             End(key, "App getrennt", notify: false);
     }
 
-    /// <summary>Regelmässig aufgerufen: beendet Sprechen nach der Höchstdauer, auch wenn keine Pakete mehr kommen.</summary>
+    /// <summary>Called regularly: ends talking after the maximum duration, even if no more packets arrive.</summary>
     public void Expire()
     {
         foreach (var turn in _floor.Expire())
@@ -164,7 +164,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
             sendToClient(key.ClientId, new TalkEndedMessage(key.CallId, reason));
     }
 
-    /// <summary>„DOMAIN\anna“ → „anna“ für die Anzeige.</summary>
+    /// <summary>"DOMAIN\anna" → "anna" for display.</summary>
     private static string ShortName(string user) => user.Contains('\\') ? user[(user.LastIndexOf('\\') + 1)..] : user;
 
     public void Dispose()

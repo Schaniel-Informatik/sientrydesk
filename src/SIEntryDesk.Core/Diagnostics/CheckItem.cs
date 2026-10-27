@@ -11,8 +11,8 @@ public enum CheckLevel
     Fail,
 }
 
-/// <summary>Ein Punkt der Prüfung von SIEntryDesk.exe --check. Detail sagt, was los ist und was zu tun ist.
-/// Nie Tokens, Schlüssel oder Stream-Adressen, das Ergebnis wird kopiert und weitergegeben.</summary>
+/// <summary>One item of the check of SIEntryDesk.exe --check. Detail says what is going on and what to do. Never
+/// tokens, keys or stream addresses, the result is copied and passed on.</summary>
 public sealed record CheckItem(string Area, string Name, CheckLevel Level, string Detail);
 
 public static class CheckReport
@@ -28,7 +28,7 @@ public static class CheckReport
         _ => "·",
     };
 
-    /// <summary>Gesamturteil: rot, sobald ein Punkt rot ist, sonst orange bei einer Warnung.</summary>
+    /// <summary>Overall result: red as soon as one item is red, otherwise orange if there is a warning.</summary>
     public static CheckLevel Overall(IEnumerable<CheckItem> items) =>
         items.Select(i => i.Level).DefaultIfEmpty(CheckLevel.Ok).Max() switch
         {
@@ -36,7 +36,7 @@ public static class CheckReport
             var level => level,
         };
 
-    /// <summary>Text zum Kopieren in ein Ticket oder eine Mail.</summary>
+    /// <summary>Text to copy into a ticket or an email.</summary>
     public static string ToText(IEnumerable<CheckItem> items, string header, DateTimeOffset at)
     {
         var list = items.ToList();

@@ -11,24 +11,24 @@ namespace SIEntryDesk.App;
 
 public enum WindowMode
 {
-    /// <summary>Echter Klingelruf.</summary>
+    /// <summary>Real doorbell call.</summary>
     Ring,
-    /// <summary>Testklingeln nur auf diesem PC, ohne Tür und Bild.</summary>
+    /// <summary>Test ring on this PC only, without door and video.</summary>
     Test,
-    /// <summary>Livebild ohne Klingeln, vom Benutzer geöffnet.</summary>
+    /// <summary>Live view without ringing, opened by the user.</summary>
     LiveView,
 }
 
 /// <summary>
-/// Fenster zu einem Klingelruf. Liegt über allen Fenstern, übernimmt aber nicht die Tastatur,
-/// damit niemand mitten im Tippen etwas auslöst.
+/// Window for a doorbell call. Stays on top of all windows, but does not take the keyboard focus, so that nobody
+/// triggers anything while typing.
 /// </summary>
 public partial class RingWindow : Window
 {
-    /// <summary>Sicherheitsnetz, falls das Ende des Rufs nie ankommt (Access beendet nach 60 s).</summary>
+    /// <summary>Safety net in case the end of the call never arrives (Access ends after 60 s).</summary>
     private static readonly TimeSpan MaxLifetime = TimeSpan.FromSeconds(90);
-    /// <summary>So lange bleibt das Fenster nach dem Ende offen, mit Livebild. Gleich lang wie die Nachfrist des Dienstes
-    /// zum Öffnen nach „Besucher hat abgebrochen“ oder „Niemand hat abgenommen“.</summary>
+    /// <summary>How long the window stays open after the end, with live view. Same length as the service's grace period
+    /// for unlocking after "visitor cancelled" or "nobody answered".</summary>
     private static readonly TimeSpan LingerAfterEnd = TimeSpan.FromSeconds(10);
 
     private static readonly Brush Neutral = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
@@ -40,14 +40,14 @@ public partial class RingWindow : Window
     private bool _ended;
     private bool _opened;
     private bool _unlockPending;
-    /// <summary>Nach dem Ende noch öffnen erlaubt (108/105), bis sich das Fenster schliesst.</summary>
+    /// <summary>Unlocking still allowed after the end (108/105) until the window closes.</summary>
     private bool _reopenable;
     private bool _closed;
     private bool _muted = true;
     private MediaPlayer? _player;
     private bool _talkAvailable;
     private bool _talking;
-    // Mit Headset (0.8.0): Ton der Tür beim Sprechen nicht stumm, Ausgabe über das Kommunikationsgerät.
+    // With headset (0.8.0): door audio not muted while talking, output via the communications device.
     private bool _listenWhileTalking;
     private string? _outputDevice;
 
@@ -101,20 +101,20 @@ public partial class RingWindow : Window
 
     public string CallId { get; }
 
-    /// <summary>Solange geklingelt wird, läuft der Klingelton.</summary>
+    /// <summary>The ringtone plays as long as it rings.</summary>
     public bool IsRinging { get; private set; } = true;
 
     public event Action? UnlockRequested;
     public event Action? RingingChanged;
 
-    /// <summary>Sprechtaste gedrückt bzw. losgelassen (auch beim Schliessen oder wenn das Sprechen endet).</summary>
+    /// <summary>Talk button pressed or released (also when closing or when talking ends).</summary>
     public event Action? TalkPressed;
     public event Action? TalkReleased;
 
-    /// <summary>Die Sprechtaste ist gerade gedrückt.</summary>
+    /// <summary>The talk button is currently pressed.</summary>
     public bool TalkHeld { get; private set; }
 
-    /// <summary>Gegensprechen anbieten (Dienst: eingerichtet und Kamera der Tür bekannt).</summary>
+    /// <summary>Offer talkback (service: set up and camera of the door known).</summary>
     public void EnableTalk()
     {
         if (Mode != WindowMode.Ring)
@@ -124,19 +124,19 @@ public partial class RingWindow : Window
         TalkButton.IsEnabled = true;
     }
 
-    /// <summary>Vor dem Livebild: Ton der Tür beim Sprechen hören (Headset) und auf welchem Gerät.</summary>
+    /// <summary>Before the live view: whether to hear the door while talking (headset) and on which device.</summary>
     internal void SetTalkAudio(TalkAudioPlan plan)
     {
         _listenWhileTalking = plan.ListenWhileTalking;
         _outputDevice = plan.OutputDeviceId;
     }
 
-    /// <summary>Stumm nur, solange mit Lautsprechern gesprochen wird, sonst gäbe es Echo.</summary>
+    /// <summary>Muted only while talking with speakers, otherwise there would be an echo.</summary>
     private bool PlayerMuted => _muted || (_talking && !_listenWhileTalking);
 
-    /// <summary>Sprechtaste gedrückt: Das Mikrofon läuft sofort, bis zur Freigabe wird zwischengespeichert. Mit
-    /// Lautsprechern ist der Ton der Tür so lange stumm, mit Headset bleibt er an. Man will die Antwort hören, deshalb ist
-    /// „Ton an“ ab jetzt eingeschaltet.</summary>
+    /// <summary>Talk button pressed: the microphone runs immediately and buffers until talking is granted. With
+    /// speakers the door audio is muted meanwhile, with a headset it stays on. One wants to hear the answer, so "Ton
+    /// an" is switched on from now on.</summary>
     public void ShowTalking()
     {
         _talking = true;
@@ -150,7 +150,7 @@ public partial class RingWindow : Window
         TalkButton.Background = TalkActive;
     }
 
-    /// <summary>Mikrofon aus (nach dem Nachlauf, bei Fehlern): Ton der Tür wieder wie eingestellt.</summary>
+    /// <summary>Microphone off (after the tail, on errors): door audio back as set.</summary>
     public void ShowTalkIdle()
     {
         if (TalkHeld)
@@ -167,7 +167,7 @@ public partial class RingWindow : Window
         TalkButton.Background = TalkIdle;
     }
 
-    /// <summary>Sprechen geht nicht oder ist abgebrochen: auch eine noch gedrückte Taste gilt als losgelassen.</summary>
+    /// <summary>Talking is not possible or was aborted: a button that is still held counts as released too.</summary>
     public void ShowTalkProblem(string message)
     {
         ReleaseTalk();
@@ -181,11 +181,11 @@ public partial class RingWindow : Window
             return;
         _ended = true;
         StopRinging();
-        // Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, darf man in der Nachfrist
-        // noch öffnen. Der Dienst prüft das ebenfalls.
+        // If the visitor cancelled (e.g. pressed twice) or nobody answered, unlocking is still allowed during the grace
+        // period. The service checks this as well.
         _reopenable = _unlockAllowed && !_opened && reason is CallEndReason.Cancelled or CallEndReason.Timeout;
         OpenButton.IsEnabled = _reopenable && !_unlockPending;
-        // Sprechen geht in der Nachfrist weiter, ausser jemand anders hat angenommen oder abgelehnt (prüft auch der Dienst).
+        // Talking continues during the grace period, unless someone else answered or declined (the service checks too).
         if (_talkAvailable && reason is not (CallEndReason.Cancelled or CallEndReason.Timeout or CallEndReason.Opened))
         {
             ReleaseTalk();
@@ -193,8 +193,8 @@ public partial class RingWindow : Window
         }
         Headline.Text = "Ruf beendet";
         Headline.Foreground = Neutral;
-        // Nach dem Öffnen über die API meldet Access das Ende als "Besucher hat abgebrochen" (108).
-        // Die Öffnung hat in der Anzeige Vorrang.
+        // After unlocking via the API, Access reports the end as "visitor cancelled" (108). The unlock takes precedence
+        // in the display.
         if (!_opened)
             SetStatus(_reopenable ? $"{CallEndReasons.ToGerman(reason)}, Öffnen noch kurz möglich" : CallEndReasons.ToGerman(reason),
                 reason == CallEndReason.Opened ? Good : Neutral);
@@ -233,8 +233,8 @@ public partial class RingWindow : Window
         FlashTaskbar();
     }
 
-    /// <summary>Spielt das Livebild über die Einmal-Adresse des Dienstes. Der Ton der Tür ist stumm, ausser der
-    /// Benutzer hat „Ton der Tür automatisch einschalten“ gewählt. Dann ersetzt er den Klingelton.</summary>
+    /// <summary>Plays the live view via the service's one-time address. The door audio is muted, unless the user chose
+    /// "Ton der Tür(en) automatisch einschalten". Then it replaces the ringtone.</summary>
     public void PlayVideo(LibVLC libVlc, string url, bool autoSound)
     {
         if (_player is not null || _closed)
@@ -246,10 +246,10 @@ public partial class RingWindow : Window
         {
             if (_player is null)
                 return;
-            // Ton der Tür auf das Kommunikationsgerät (Headset). Geht erst, wenn die Wiedergabe läuft.
+            // Door audio to the communications device (headset). Only works once playback is running.
             if (_outputDevice is not null)
                 _player.SetOutputDevice(_outputDevice);
-            // Während mit Lautsprechern gesprochen wird, bleibt der Ton der Tür stumm, sonst gibt es Echo.
+            // While talking with speakers, the door audio stays muted, otherwise there is an echo.
             _player.Mute = PlayerMuted;
             VideoText.Text = "Livebild";
             SoundButton.IsEnabled = true;
@@ -279,7 +279,7 @@ public partial class RingWindow : Window
         _player = null;
         Video.MediaPlayer = null;
         Video.Dispose();
-        // Stop kann bei Netzproblemen blockieren, deshalb nicht auf dem UI-Thread.
+        // Stop can block on network problems, therefore not on the UI thread.
         if (player is not null)
             ThreadPool.QueueUserWorkItem(_ =>
             {
@@ -296,7 +296,7 @@ public partial class RingWindow : Window
         _muted = !_muted;
         _player.Mute = PlayerMuted;
         SoundButton.Content = _muted ? "Ton an" : "Ton aus";
-        // Wer die Tür hören will, braucht den Klingelton nicht mehr.
+        // Whoever wants to hear the door no longer needs the ringtone.
         if (!_muted)
             StopRinging();
     }
@@ -330,8 +330,9 @@ public partial class RingWindow : Window
 
     private void OnTalkLost(object sender, System.Windows.Input.MouseEventArgs e) => ReleaseTalk();
 
-    /// <summary>Taste losgelassen, Maus weg, Fenster zu oder Sprechen beendet: genau einmal melden. Der Ton der Tür bleibt
-    /// stumm, bis der Nachlauf vorbei ist (<see cref="ShowTalkIdle"/>), sonst nähme das Mikrofon ihn noch auf.</summary>
+    /// <summary>Button released, mouse gone, window closed or talking ended: report exactly once. With speakers the
+    /// door audio stays muted until the tail is over (<see cref="ShowTalkIdle"/>), otherwise the microphone would still
+    /// pick it up.</summary>
     public void ReleaseTalk()
     {
         if (!TalkHeld)

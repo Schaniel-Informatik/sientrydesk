@@ -29,6 +29,8 @@ Against a real console (VPN or local network), credentials only from environment
 - `src/SIEntryDesk.App`: tray app (WPF), never sees credentials
 - `deploy/`: files shipped in the packages; `docs/admin`: admin guides; `docs/entwicklung`: design notes (German)
 
+Code comments are in English. The user interface, log messages and the admin and design docs are in German.
+
 ## Ideas where help is welcome
 - Testing with other door stations (e.g. G4 Doorbell, G6 Entry variants) and other UniFi versions
 - English user interface (the app is German today)

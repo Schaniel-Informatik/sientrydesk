@@ -6,10 +6,11 @@ using SIEntryDesk.Core.Diagnostics;
 
 namespace SIEntryDesk.App;
 
-/// <summary>Prüfungen auf diesem PC für --check: alles, was der Benutzer ohne Adminrechte sehen kann.</summary>
+/// <summary>Checks on this PC for --check: everything the user can see without admin rights.</summary>
 internal static class LocalChecks
 {
-    /// <summary>Einzeln, damit das Fenster jeden Punkt zeigt, sobald er fertig ist. Das Mikrofon zuletzt, es dauert am längsten.</summary>
+    /// <summary>One by one, so that the window shows each item as soon as it is done. The microphone last, it takes
+    /// longest.</summary>
     public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, SoundOutput, Microphone, TalkSound];
 
     public static CheckItem Item(string name, CheckLevel level, string detail) => new(CheckReport.ThisPc, name, level, detail);
@@ -48,7 +49,7 @@ internal static class LocalChecks
             : Item("Autostart", CheckLevel.Warn, "nicht eingetragen, die App startet nicht von selbst. install.ps1 erneut ausführen");
     }
 
-    /// <summary>True, wenn die Prüfung aus dem Menü der laufenden Tray-App kommt (nicht SIEntryDesk.exe --check).</summary>
+    /// <summary>True if the check comes from the menu of the running tray app (not SIEntryDesk.exe --check).</summary>
     public static bool InTrayApp { get; set; }
 
     private static CheckItem TrayApp()
@@ -78,11 +79,12 @@ internal static class LocalChecks
         }
     }
 
-    /// <summary>Headset oder Lautsprecher, ob der Ton der Tür beim Sprechen hörbar bleibt. Nur ein Hinweis.</summary>
+    /// <summary>Headset or speakers, whether the door audio stays audible while talking. Information only.</summary>
     private static CheckItem TalkSound() =>
         Item("Sprechen mit", CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
 
-    /// <summary>Öffnet das Mikrofon kurz, so wie beim Sprechen. Nur fürs Gegensprechen nötig, deshalb höchstens orange.</summary>
+    /// <summary>Opens the microphone briefly, as when talking. Only needed for talkback, therefore at most
+    /// orange.</summary>
     private static CheckItem Microphone()
     {
         string name;

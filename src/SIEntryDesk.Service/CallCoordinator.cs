@@ -15,8 +15,8 @@ using SIEntryDesk.Core.Video;
 namespace SIEntryDesk.Service;
 
 /// <summary>
-/// Verbindet Access-Ereignisse, Rufzustand und die Tray-Apps. Öffnet nur nach den Regeln des CallTracker,
-/// gibt Livebilder nur während eines laufenden Rufs frei und Gegensprechen nur während des Rufs und kurz danach.
+/// Connects Access events, call state and the tray apps. Unlocks only according to the rules of the CallTracker, grants
+/// live views only during a running call and talkback only during the call and shortly after.
 /// </summary>
 internal sealed class CallCoordinator(
     IOptions<EntryDeskOptions> options,
@@ -25,13 +25,14 @@ internal sealed class CallCoordinator(
     TimeProvider time,
     ILogger<CallCoordinator> log) : BackgroundService
 {
-    /// <summary>So lange nach dem Rufende läuft das Bild noch, damit man sieht, wer hereinkommt.</summary>
+    /// <summary>For this long after the end of the call the video keeps running, so that one sees who comes
+    /// in.</summary>
     private static readonly TimeSpan VideoGraceAfterEnd = TimeSpan.FromSeconds(25);
     private static readonly TimeSpan VideoMaxLifetime = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StreamCacheLifetime = TimeSpan.FromMinutes(5);
-    /// <summary>Kurze Unterbrüche lösen keinen Statuswechsel aus, erst wenn sie länger dauern.</summary>
+    /// <summary>Short interruptions do not trigger a status change, only longer ones do.</summary>
     private static readonly TimeSpan LinkDebounce = TimeSpan.FromSeconds(10);
-    /// <summary>So oft werden Protect (Schlüssel, Kameranamen) und die Ablaufdaten geprüft.</summary>
+    /// <summary>How often Protect (key, camera names) and the expiry dates are checked.</summary>
     private static readonly TimeSpan HealthInterval = TimeSpan.FromMinutes(15);
 
     private readonly object _linkGate = new();
@@ -54,7 +55,7 @@ internal sealed class CallCoordinator(
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _stopping = ct;
-        // Die Prüfung (--check) muss auch antworten, wenn der Start an Konfiguration oder Zugängen scheitert.
+        // The check (--check) must answer even if the start fails because of configuration or credentials.
         _diagnostics = new Diagnostics(options, state, () => _doors, log);
         pipes.RequestHandler = HandleRequestAsync;
         var opt = options.Value;
@@ -163,8 +164,8 @@ internal sealed class CallCoordinator(
     }
 
     /// <summary>
-    /// Übersetzt den Zustand der Access-Verbindung für die Anzeige. Verbunden gilt sofort, ein Wechsel weg von
-    /// „bereit“ erst nach <see cref="LinkDebounce"/>, damit kurze Wiederverbindungen nicht als Störung erscheinen.
+    /// Translates the state of the Access connection for the display. Connected applies immediately, a change away from
+    /// "ready" only after <see cref="LinkDebounce"/>, so that short reconnects do not appear as a disturbance.
     /// </summary>
     private void OnLinkState(AccessLinkState link)
     {
@@ -221,7 +222,8 @@ internal sealed class CallCoordinator(
         pipes.Broadcast(state.Status());
     }
 
-    /// <summary>Prüft Protect und die Ablaufdaten beim Start und danach regelmässig, holt dabei die Kameranamen.</summary>
+    /// <summary>Checks Protect and the expiry dates at startup and regularly afterwards, fetching the camera
+    /// names.</summary>
     private async Task HealthLoopAsync(CancellationToken ct)
     {
         using var timer = new PeriodicTimer(HealthInterval, time);
@@ -261,7 +263,7 @@ internal sealed class CallCoordinator(
                           names.Any(n => !state.CameraNames.TryGetValue(n.Key, out var old) || old != n.Value);
             foreach (var (id, name) in names)
                 state.CameraNames[id] = name;
-            // Ein Tippfehler in DoorCameras soll auffallen, bevor jemand klingelt.
+            // A typo in DoorCameras should be noticed before someone rings.
             var unknown = options.Value.DoorCameras.Count(d => !names.ContainsKey(d.Value));
             _videoProblem = unknown == 0
                 ? null
@@ -354,7 +356,7 @@ internal sealed class CallCoordinator(
         }
     }
 
-    /// <summary>Sprechtaste gedrückt: nur während des Rufs bzw. der Nachfrist, nur mit bekannter Kamera.</summary>
+    /// <summary>Talk button pressed: only during the call or the grace period, only with a known camera.</summary>
     private async Task<TalkResultMessage> TalkAsync(string callId, PipeClient client, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(callId) || _tracker is null)
@@ -372,8 +374,8 @@ internal sealed class CallCoordinator(
     }
 
     /// <summary>
-    /// Gegensprechen endet mit dem Ruf: sofort nach „anderswo angenommen“ oder „abgelehnt“, sonst nach der Nachfrist,
-    /// in der das Fenster noch offen ist.
+    /// Talkback ends with the call: immediately after "answered elsewhere" or "declined", otherwise after the grace
+    /// period during which the window is still open.
     /// </summary>
     private void EndTalk(string callId, CallEndReason reason)
     {
@@ -399,8 +401,8 @@ internal sealed class CallCoordinator(
         });
     }
 
-    /// <summary>Türen, die dieser PC anzeigt: für das Livebild ohne Klingeln (wenn eingeschaltet) und für die Einstellung
-    /// „Klingeln“ pro Tür in der App, die es auch ohne Livebild gibt.</summary>
+    /// <summary>Doors this PC shows: for the live view without ringing (if switched on) and for the per-door ring
+    /// setting in the app, which exists even without live view.</summary>
     private void PublishDoors()
     {
         var opt = options.Value;
@@ -456,7 +458,7 @@ internal sealed class CallCoordinator(
         }
     }
 
-    /// <summary>Einmal-Adresse für das Livebild, nur für einen laufenden Ruf mit bekannter Kamera.</summary>
+    /// <summary>One-time address for the live view, only for a running call with a known camera.</summary>
     private async Task<IpcMessage> VideoAsync(string callId, string user, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(callId))
@@ -474,7 +476,8 @@ internal sealed class CallCoordinator(
         return new VideoReadyMessage(callId, url);
     }
 
-    /// <summary>Livebild ohne Klingeln, auf diesem PC abschaltbar. Jeder Abruf wird mit Benutzer protokolliert.</summary>
+    /// <summary>Live view without ringing, can be switched off on this PC. Every request is logged with the
+    /// user.</summary>
     private async Task<IpcMessage> LiveViewAsync(string doorId, string user, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(doorId))
@@ -495,7 +498,7 @@ internal sealed class CallCoordinator(
         return new LiveViewReadyMessage(doorId, state.DisplayName(door.CameraId, door.DoorName), url, until);
     }
 
-    /// <summary>Holt die Stream-Adresse über Protect und öffnet eine Einmal-Adresse im Proxy.</summary>
+    /// <summary>Gets the stream address via Protect and opens a one-time address in the proxy.</summary>
     private async Task<(string? Url, string? Problem)> OpenStreamAsync(
         string cameraId, string doorName, string key, TimeSpan lifetime, CancellationToken ct)
     {
@@ -552,7 +555,7 @@ internal sealed class CallCoordinator(
         });
     }
 
-    /// <summary>Feste UUID je PC und Benutzer, damit dieselbe Person im Access-Protokoll gleich erscheint.</summary>
+    /// <summary>Fixed UUID per PC and user, so that the same person appears the same way in the Access log.</summary>
     private static string ActorId(string user)
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"SIEntryDesk|{Environment.MachineName}|{user}".ToUpperInvariant()));

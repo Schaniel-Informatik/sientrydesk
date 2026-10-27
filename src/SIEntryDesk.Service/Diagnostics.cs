@@ -16,9 +16,9 @@ using SIEntryDesk.Core.Setup;
 namespace SIEntryDesk.Service;
 
 /// <summary>
-/// Prüfung für SIEntryDesk.exe --check: Konfiguration, Zugänge und Verbindungen zur Anlage, mit den gespeicherten
-/// Zugängen. Läuft auch, wenn der Dienst beim Start gescheitert ist. Nur lesende Aufrufe, das Recht zum Öffnen wird an
-/// einer Tür geprüft, die es nicht gibt. Das Ergebnis enthält keine Geheimnisse.
+/// Check for SIEntryDesk.exe --check: configuration, credentials and connections to the installation, with the stored
+/// credentials. Runs even if the service failed at startup. Read-only calls only, the unlock permission is checked on a
+/// door that does not exist. The result contains no secrets.
 /// </summary>
 internal sealed class Diagnostics(
     IOptions<EntryDeskOptions> options, ServiceState state, Func<DoorDirectory?> doors, ILogger log)
@@ -48,7 +48,7 @@ internal sealed class Diagnostics(
         var items = new List<CheckItem>();
         var opt = options.Value;
 
-        // Konfiguration
+        // Configuration
         if (!File.Exists(ServicePaths.ConfigFile) && !File.Exists(ServicePaths.LegacyConfigFile))
         {
             items.Add(Item("Konfiguration", CheckLevel.Fail, $"{ServicePaths.ConfigFile} fehlt. install.ps1 mit sientrydesk.json ausführen"));
@@ -63,7 +63,7 @@ internal sealed class Diagnostics(
         items.Add(Item("Konfiguration", CheckLevel.Ok, $"Konsole {host}"));
         items.AddRange(ConfigFiles());
 
-        // Zugänge
+        // Credentials
         Secrets? secrets = null;
         try
         {
@@ -79,7 +79,7 @@ internal sealed class Diagnostics(
             items.Add(Item("Zugänge", CheckLevel.Fail, "fehlen oder nicht lesbar. set-tokens.ps1 bzw. Paket Zugänge erneut ausführen"));
         }
 
-        // Alle Ports gleichzeitig: Ist die Konsole nicht erreichbar, dauert die Prüfung so höchstens einmal PortTimeout.
+        // All ports at the same time: if the console is unreachable, the check takes at most one PortTimeout this way.
         var accessPin = CertificatePin.Parse(opt.AccessPin);
         var video = opt.VideoConfigured && opt.ValidateVideo() is null;
         var protectPin = video ? CertificatePin.Parse(opt.ProtectPin) : null;
@@ -101,7 +101,7 @@ internal sealed class Diagnostics(
         if (accessPort.Result.Ok && secrets is not null)
             await AccessTokenAsync(items, host, secrets.AccessToken, accessPin, ct).ConfigureAwait(false);
 
-        // Bei nicht erreichbarer Konsole sagt die Zeile „Konsole“ schon alles.
+        // With an unreachable console the "Konsole" line already says it all.
         if (!(unreachable && state.Health == LinkHealth.Unreachable))
             items.Add(state.Health switch
             {
@@ -110,7 +110,7 @@ internal sealed class Diagnostics(
                 _ => Item("Klingel-Ereignisse", CheckLevel.Fail, state.Status().Problem),
             });
 
-        // Protect: Livebild und Gegensprechen
+        // Protect: live view and talkback
         if (!opt.VideoConfigured)
         {
             items.Add(Item("Livebild", CheckLevel.Info, "nicht eingerichtet (kein ProtectPin in der sientrydesk.json)"));
@@ -139,7 +139,8 @@ internal sealed class Diagnostics(
 
     private sealed record PortResult(CheckItem Item, bool Ok, bool Unreachable);
 
-    /// <summary>Erreichbarkeit und Fingerabdruck. Ein anderes Zertifikat heisst: neues Zertifikat oder falsche Konsole.</summary>
+    /// <summary>Reachability and fingerprint. A different certificate means: new certificate or wrong
+    /// console.</summary>
     private static async Task<PortResult> PortAsync(string name, string host, int port, CertificatePin pin, CancellationToken ct)
     {
         try
@@ -160,8 +161,8 @@ internal sealed class Diagnostics(
         }
     }
 
-    /// <summary>Mit welcher Fassung der Konfiguration der Dienst läuft. Er liest sie nur beim Start, eine neuere Datei
-    /// gilt erst nach einem Neustart des Dienstes.</summary>
+    /// <summary>Which version of the configuration the service runs with. It reads it only at startup, a newer file
+    /// only applies after a restart of the service.</summary>
     private IEnumerable<CheckItem> ConfigFiles()
     {
         foreach (var (path, loaded) in state.ConfigLoaded)
@@ -241,7 +242,7 @@ internal sealed class Diagnostics(
         }
     }
 
-    /// <summary>Eine Tür für sich, damit eine falsche Kamera-ID nicht die übrigen Türen verdeckt.</summary>
+    /// <summary>One door at a time, so that a wrong camera ID does not hide the other doors.</summary>
     private async Task<CheckItem> DoorStreamAsync(
         ProtectApiClient protect, KnownDoor door, IReadOnlyDictionary<string, string> cameras, CancellationToken ct)
     {

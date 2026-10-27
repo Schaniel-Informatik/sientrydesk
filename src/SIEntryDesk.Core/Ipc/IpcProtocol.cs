@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace SIEntryDesk.Core.Ipc;
 
-/// <summary>Eine JSON-Nachricht pro Zeile (UTF-8, "\n"), höchstens <see cref="MaxMessageBytes"/> lang.</summary>
+/// <summary>One JSON message per line (UTF-8, "\n"), at most <see cref="MaxMessageBytes"/> long.</summary>
 public static class IpcProtocol
 {
     public const string PipeName = "SIEntryDesk";
@@ -30,7 +30,7 @@ public static class IpcProtocol
         await stream.FlushAsync(ct).ConfigureAwait(false);
     }
 
-    /// <summary>Unbekannte oder fehlerhafte Nachrichten ergeben null und werden übersprungen.</summary>
+    /// <summary>Unknown or malformed messages yield null and are skipped.</summary>
     public static IpcMessage? Deserialize(ReadOnlySpan<byte> line)
     {
         try
@@ -44,14 +44,14 @@ public static class IpcProtocol
     }
 }
 
-/// <summary>Liest Zeilen aus einem Stream. Zu lange Zeilen beenden die Verbindung.</summary>
+/// <summary>Reads lines from a stream. Lines that are too long end the connection.</summary>
 public sealed class IpcReader(Stream stream)
 {
     private readonly byte[] _buffer = new byte[IpcProtocol.MaxMessageBytes + 1];
     private int _start;
     private int _end;
 
-    /// <summary>Nächste gültige Nachricht, oder null wenn der Stream endet.</summary>
+    /// <summary>Next valid message, or null when the stream ends.</summary>
     public async Task<IpcMessage?> ReadAsync(CancellationToken ct)
     {
         while (true)

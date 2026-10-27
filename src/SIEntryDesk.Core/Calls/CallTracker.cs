@@ -2,9 +2,9 @@ using SIEntryDesk.Core.Access;
 
 namespace SIEntryDesk.Core.Calls;
 
-/// <summary>Ein laufender oder gerade beendeter Klingelruf.</summary>
-/// <param name="CallId">request_id von Access.</param>
-/// <param name="CameraId">Protect-Kamera-ID der Türstation, leer wenn unbekannt.</param>
+/// <summary>A running or just ended doorbell call.</summary>
+/// <param name="CallId">request_id from Access.</param>
+/// <param name="CameraId">Protect camera ID of the door station, empty if unknown.</param>
 public sealed record CallInfo(
     string CallId,
     string DoorId,
@@ -18,7 +18,7 @@ public abstract record CallChange(CallInfo Call);
 public sealed record CallStarted(CallInfo Call) : CallChange(Call);
 public sealed record CallEnded(CallInfo Call, CallEndReason Reason) : CallChange(Call);
 
-/// <summary>Die Tür zum Ruf wurde geöffnet. OpenedBy kommt aus dem Access-Protokoll und kann nachgereicht werden.</summary>
+/// <summary>The door of the call was unlocked. OpenedBy comes from the Access log and may arrive later.</summary>
 public sealed record CallDoorOpened(CallInfo Call, string? OpenedBy) : CallChange(Call);
 
 public enum TalkDecision
@@ -35,13 +35,13 @@ public enum UnlockDecision
     CallEnded,
     NotAllowedByAccess,
     AlreadyRequested,
-    /// <summary>Die Tür wurde nach dem Ruf bereits geöffnet, zum Beispiel an der Tür selbst.</summary>
+    /// <summary>The door was already unlocked after the call, for example at the door itself.</summary>
     AlreadyOpened,
 }
 
 /// <summary>
-/// Hält den Zustand der Klingelrufe aus den Access-Ereignissen und entscheidet, ob geöffnet werden darf:
-/// nur während eines laufenden Rufs, nur die Tür dieses Rufs, und pro Ruf nur einmal gleichzeitig.
+/// Keeps the state of doorbell calls from the Access events and decides whether unlocking is allowed:
+/// only during a running call, only the door of that call, and only once at a time per call.
 /// </summary>
 public sealed class CallTracker
 {
@@ -62,14 +62,14 @@ public sealed class CallTracker
     private readonly TimeProvider _time;
     private readonly Func<AccessRingStarted, bool> _accept;
 
-    /// <summary>Access beendet einen Ruf nach 60 s. Fehlt das Ende, wird der Ruf danach verworfen.</summary>
+    /// <summary>Access ends a call after 60 s. If the end is missing, the call is discarded afterwards.</summary>
     public TimeSpan MaxCallDuration { get; init; } = TimeSpan.FromSeconds(90);
 
-    /// <summary>So lange nach dem Ende werden Öffnungen noch dem Ruf zugeordnet.</summary>
+    /// <summary>For this long after the end, unlocks are still attributed to the call.</summary>
     public TimeSpan OpenedCorrelationWindow { get; init; } = TimeSpan.FromSeconds(15);
 
-    /// <summary>So lange darf nach „Besucher hat abgebrochen“ oder „Niemand hat abgenommen“ noch geöffnet werden,
-    /// solange das Fenster mit dem Livebild offen ist. Nach „anderswo angenommen“ oder „abgelehnt“ nicht.</summary>
+    /// <summary>For this long, unlocking is still allowed after "visitor cancelled" or "nobody answered", while the
+    /// window with the live view is still open. Not after "answered elsewhere" or "declined".</summary>
     public TimeSpan UnlockGraceAfterEnd { get; init; } = TimeSpan.FromSeconds(10);
 
     public CallTracker(TimeProvider time, Func<AccessRingStarted, bool>? accept = null)
@@ -95,7 +95,7 @@ public sealed class CallTracker
         }
     }
 
-    /// <summary>Verwirft Rufe, für die Access nach der Höchstdauer kein Ende gemeldet hat.</summary>
+    /// <summary>Discards calls for which Access reported no end after the maximum duration.</summary>
     public IReadOnlyList<CallChange> Expire()
     {
         lock (_gate)
@@ -118,7 +118,7 @@ public sealed class CallTracker
             return _active.Values.Select(e => e.Info).ToList();
     }
 
-    /// <summary>Der laufende Ruf mit dieser Kennung, oder null.</summary>
+    /// <summary>The running call with this identifier, or null.</summary>
     public CallInfo? FindActive(string callId)
     {
         lock (_gate)
@@ -154,8 +154,8 @@ public sealed class CallTracker
     }
 
     /// <summary>
-    /// Gegensprechen nur während des Rufs und bis <see cref="UnlockGraceAfterEnd"/> danach, solange das Fenster noch
-    /// offen ist. Nicht nach „anderswo angenommen“ (dann spricht jemand anders) und nicht nach „abgelehnt“.
+    /// Talkback only during the call and up to <see cref="UnlockGraceAfterEnd"/> afterwards, while the window is still
+    /// open. Not after "answered elsewhere" (then someone else is talking) and not after "declined".
     /// </summary>
     public TalkDecision CanTalk(string callId, out CallInfo? call)
     {
@@ -179,7 +179,7 @@ public sealed class CallTracker
         }
     }
 
-    /// <summary>Nach einem Fehlschlag darf es erneut versucht werden, nach Erfolg nicht.</summary>
+    /// <summary>After a failure another attempt is allowed, after success not.</summary>
     public void CompleteUnlock(string callId, bool success)
     {
         lock (_gate)
@@ -206,12 +206,12 @@ public sealed class CallTracker
 
     private IReadOnlyList<CallChange> End(AccessRingEnded end, DateTimeOffset now)
     {
-        // Folgemeldungen ohne Kennung (nach dem Öffnen) betreffen keinen bestimmten Ruf.
+        // Follow-up messages without identifier (after unlocking) do not concern a specific call.
         if (end.RequestId is null || !_active.Remove(end.RequestId, out var entry))
             return [];
         entry.EndedAt = now;
         entry.EndReason = end.Reason;
-        // Ein laufendes Öffnen bleibt bestehen, sonst wäre in der Nachfrist ein zweites möglich.
+        // An unlock in progress stays, otherwise a second one would be possible in the grace period.
         _recentlyEnded.Add(entry);
         return [new CallEnded(entry.Info, end.Reason)];
     }
@@ -224,7 +224,7 @@ public sealed class CallTracker
             return [];
 
         var name = string.IsNullOrWhiteSpace(openedBy) ? null : openedBy;
-        // Melden, wenn die Öffnung neu ist oder der Name nachgereicht wird.
+        // Report if the unlock is new or the name arrives later.
         if (entry.OpenedReported && (name is null || name == entry.OpenedBy))
             return [];
         entry.OpenedReported = true;

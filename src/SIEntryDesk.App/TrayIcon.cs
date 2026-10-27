@@ -21,14 +21,14 @@ internal sealed record TrayActions(
     Action ShowPendingNow,
     Action<ListenMode> ListenModeChanged);
 
-/// <summary>Eine Tür im Untermenü „Klingeln“ mit der Einstellung dieses Benutzers.</summary>
+/// <summary>A door in the menu with this user's ring setting.</summary>
 internal sealed record RingDoor(string DoorId, string Name, RingMode Mode);
 
 /// <summary>
-/// Symbol im Infobereich. Linksklick: kurzes Menü mit Status, Türen fürs Livebild (mit ihrer Einstellung), Pause und
-/// „Einstellungen …“. Rechtsklick (oder „Einstellungen …“): Version, Status, jede Tür mit ihrer Einstellung „Klingeln“ zum
-/// Ändern, Pause, Ton, Testklingeln, Prüfen und Beenden. Die Menüs werden bei jedem Öffnen aus dem aktuellen
-/// Zustand gebaut. Während ein Ruf verzögert wird, blinkt das Symbol, und das Menü bietet „Jetzt anzeigen“.
+/// Icon in the notification area. Left click: short menu with status, doors for the live view (with their setting),
+/// pause and "Einstellungen …". Right click (or "Einstellungen …"): version, status, each door with its ring setting to
+/// change, pause, sound, talk with, test ring, check and exit. The menus are built from the current state each time
+/// they open. While a call is delayed, the icon blinks and the menu offers "Jetzt anzeigen".
 /// </summary>
 internal sealed class TrayIcon : IDisposable
 {
@@ -97,8 +97,8 @@ internal sealed class TrayIcon : IDisposable
 
     private void UpdateTooltip()
     {
-        // Der Tooltip des Tray-Symbols ist auf 127 Zeichen begrenzt. Abweichungen bei „Klingeln“ stehen darin, damit
-        // klar ist, warum es an einer Tür nicht klingelt. Im Menü stehen sie bei der Tür.
+        // The tooltip of the tray icon is limited to 127 characters. Deviations of the ring setting are shown in it, so
+        // that it is clear why a door does not ring. In the menu they are shown with the door.
         var summary = _state.Color is TrayColor.Green or TrayColor.Orange
             ? RingSettings.Summary(_ringDoors.Select(d => (d.Name, d.Mode)))
             : null;
@@ -108,14 +108,15 @@ internal sealed class TrayIcon : IDisposable
         _icon.Text = tooltip.Length > 127 ? tooltip[..127] : tooltip;
     }
 
-    /// <summary>Türen für das Untermenü „Klingeln“.</summary>
+    /// <summary>Doors with their ring setting for the menus.</summary>
     public void SetRingDoors(IReadOnlyList<RingDoor> doors)
     {
         _ringDoors = doors;
         UpdateTooltip();
     }
 
-    /// <summary>Verzögerter Ruf: Symbol blinkt, Text am Symbol und „Jetzt anzeigen“ im Menü. Null beendet das Blinken.</summary>
+    /// <summary>Delayed call: icon blinks, tooltip text and "Jetzt anzeigen" in the menu. Null ends the
+    /// blinking.</summary>
     public void SetPending(string? text)
     {
         _pending = text;
@@ -150,7 +151,7 @@ internal sealed class TrayIcon : IDisposable
 
     public void SetListenMode(ListenMode mode) => _listenMode = mode;
 
-    /// <summary>Gegensprechen auf diesem PC eingerichtet: erst dann gibt es „Sprechen mit“.</summary>
+    /// <summary>Talkback set up on this PC: only then is there "Sprechen mit".</summary>
     public void SetTalkEnabled(bool on) => _talkEnabled = on;
 
     public void Notify(string title, string text) =>
@@ -171,12 +172,12 @@ internal sealed class TrayIcon : IDisposable
     }
 
     /// <summary>
-    /// NotifyIcon zeigt von sich aus nur beim Rechtsklick ein Menü. Für den Linksklick wird kurz das kurze Menü
-    /// eingesetzt und über die interne Methode geöffnet, damit es sich beim Klick daneben wieder schliesst.
+    /// NotifyIcon shows a menu by itself only on right click. For the left click the short menu is set briefly and
+    /// opened via the internal method, so that it closes again when clicking elsewhere.
     /// </summary>
     private void ShowQuickMenu() => ShowMenu(_quickMenu);
 
-    /// <summary>„Einstellungen …“ im kurzen Menü: dasselbe wie ein Rechtsklick.</summary>
+    /// <summary>"Einstellungen …" in the short menu: the same as a right click.</summary>
     private void ShowFullMenu() => ShowMenu(_fullMenu);
 
     private void ShowMenu(Forms.ContextMenuStrip menu)
@@ -236,7 +237,7 @@ internal sealed class TrayIcon : IDisposable
 
         if (!full)
         {
-            // Für alle, die den Rechtsklick nicht kennen: öffnet dasselbe Menü.
+            // For everyone who does not know the right click: opens the same menu.
             menu.Items.Add("Einstellungen …", null, (_, _) =>
                 System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(ShowFullMenu));
             return;
@@ -257,8 +258,8 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add("Beenden", null, (_, _) => _actions.Exit());
     }
 
-    /// <summary>Linksklick: Türen für das Livebild ohne Klingeln, mit ihrer Einstellung „Klingeln“ wie beim Rechtsklick.
-    /// Ein Klick öffnet das Livebild, die Einstellung ändert man über „Einstellungen …“ bzw. den Rechtsklick.</summary>
+    /// <summary>Left click: doors for the live view without ringing, with their ring setting as in the right click
+    /// menu. A click opens the live view, the setting is changed via "Einstellungen …" or the right click.</summary>
     private void AddLiveViewDoors(Forms.ContextMenuStrip menu)
     {
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -272,8 +273,8 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    /// <summary>Rechtsklick: jede Tür mit ihrer Einstellung „Klingeln“ (sofort, nach 10 s, aus) für diesen Benutzer.
-    /// Hier nur die Einstellung, das Livebild gibt es im Menü per Linksklick.</summary>
+    /// <summary>Right click: each door with its ring setting (immediately, after 10 s, off) for this user. Only the
+    /// setting here, the live view is in the left click menu.</summary>
     private void AddRingDoors(Forms.ContextMenuStrip menu)
     {
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -292,7 +293,8 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    /// <summary>„Sprechen mit“: automatisch erkennen, Headset (Tür beim Sprechen hören) oder Lautsprecher (stumm).</summary>
+    /// <summary>"Sprechen mit": detect automatically, headset (hear the door while talking) or speakers
+    /// (muted).</summary>
     private Forms.ToolStripMenuItem ListenMenu()
     {
         var item = new Forms.ToolStripMenuItem($"Sprechen mit: {TalkAudio.Current(_listenMode)}");
@@ -308,7 +310,7 @@ internal sealed class TrayIcon : IDisposable
         return item;
     }
 
-    /// <summary>"&" wäre im Menü ein Tastenkürzel.</summary>
+    /// <summary>"&" would be a keyboard shortcut in the menu.</summary>
     private static string MenuText(string text) => text.Replace("&", "&&", StringComparison.Ordinal);
 
     private static Color ColorOf(TrayColor state) => state switch
@@ -320,8 +322,8 @@ internal sealed class TrayIcon : IDisposable
         _ => Color.FromArgb(140, 140, 140),
     };
 
-    /// <summary>Kreis in der Zustandsfarbe mit der Klingel aus dem Programm-Icon, bei Pause mit Pausenzeichen.
-    /// Gleiche Geometrie wie build/make_icon.py, in 16er-Einheiten.</summary>
+    /// <summary>Circle in the state color with the bell from the program icon, with a pause sign when paused. Same
+    /// geometry as build/make_icon.py, in units of 16.</summary>
     private static Icon CreateIcon(Color color, bool pause)
     {
         var size = Math.Max(16, Forms.SystemInformation.SmallIconSize.Width);

@@ -2,7 +2,7 @@ using System.Text;
 
 namespace SIEntryDesk.Core;
 
-/// <summary>Texte aus Ereignissen und API-Antworten sind nicht vertrauenswürdig: Steuerzeichen entfernen, Länge begrenzen.</summary>
+/// <summary>Texts from events and API responses are untrusted: remove control characters, limit the length.</summary>
 public static class UntrustedText
 {
     public const int DefaultMaxLength = 120;
@@ -16,13 +16,13 @@ public static class UntrustedText
         {
             if (sb.Length >= maxLength)
                 break;
-            // Steuerzeichen, auch Unicode-Formatzeichen wie Richtungswechsel, werden zu Leerzeichen.
+            // Control characters, including Unicode format characters such as direction changes, become spaces.
             sb.Append(char.IsControl(c) || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format ? ' ' : c);
         }
         return sb.ToString().Trim();
     }
 
-    /// <summary>IDs aus Ereignissen landen in URL-Pfaden. Erlaubt sind nur Buchstaben, Ziffern und Bindestrich.</summary>
+    /// <summary>IDs from events end up in URL paths. Only letters, digits and hyphen are allowed.</summary>
     public static bool IsSafeId(string? value) =>
         !string.IsNullOrEmpty(value) && value.Length <= 64 && value.All(c => char.IsAsciiLetterOrDigit(c) || c == '-');
 }

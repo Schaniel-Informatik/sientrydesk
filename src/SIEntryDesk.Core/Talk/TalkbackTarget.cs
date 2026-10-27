@@ -4,15 +4,15 @@ using System.Net.Sockets;
 namespace SIEntryDesk.Core.Talk;
 
 /// <summary>
-/// Ziel einer Talkback-Sitzung von Protect: die Türstation selbst (rtp://&lt;IP&gt;:&lt;Port&gt;), Opus in dieser
-/// Abtastrate. Die Antwort von Protect gilt als nicht vertrauenswürdig: nur eine IP-Adresse im lokalen Netz, damit
-/// eine manipulierte Antwort den Ton des Mikrofons nicht ins Internet lenkt.
+/// Target of a Protect talkback session: the door station itself (rtp://&lt;IP&gt;:&lt;Port&gt;), Opus at this sample
+/// rate. The response from Protect is considered untrusted: only an IP address in the local network, so that a
+/// manipulated response cannot send the microphone audio to the internet.
 /// </summary>
 public sealed record TalkbackTarget(IPAddress Address, int Port, int SamplingRate)
 {
     public IPEndPoint EndPoint => new(Address, Port);
 
-    /// <summary>Prüft die Antwort von POST /cameras/{id}/talkback-session. Problem ist für das Protokoll gedacht.</summary>
+    /// <summary>Checks the response of POST /cameras/{id}/talkback-session. Problem is meant for the log.</summary>
     public static TalkbackTarget? TryCreate(string? url, string? codec, int samplingRate, out string problem)
     {
         if (!string.Equals(codec, "opus", StringComparison.OrdinalIgnoreCase))
@@ -41,7 +41,7 @@ public sealed record TalkbackTarget(IPAddress Address, int Port, int SamplingRat
         return new TalkbackTarget(address, uri.Port, samplingRate);
     }
 
-    /// <summary>Private Bereiche nach RFC 1918, Link-Local und Unique Local (IPv6).</summary>
+    /// <summary>Private ranges according to RFC 1918, link-local and unique local (IPv6).</summary>
     internal static bool IsLocal(IPAddress address)
     {
         if (address.IsIPv4MappedToIPv6)

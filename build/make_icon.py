@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Erzeugt das Programm-Icon (Klingel auf grünem Kreis) als .ico mit PNG-Einträgen von 16 bis 256 px.
+"""Creates the program icon (bell on a green circle) as .ico with PNG entries from 16 to 256 px.
 
-Ohne Fremdbibliotheken: Die Formen werden mit 4-fachem Überabtasten gerastert. Dieselbe Geometrie wie das
-Tray-Symbol in TrayIcon.cs, dort in 16er-Einheiten.
-Aufruf: python3 build/make_icon.py
+Without third-party libraries: the shapes are rasterized with 4x supersampling. Same geometry as the tray icon in
+TrayIcon.cs, there in units of 16.
+Usage: python3 build/make_icon.py
 """
 import os
 import struct
@@ -20,8 +20,8 @@ def in_circle(x, y):
 
 
 def in_bell(x, y):
-    # Glockenkörper: Kuppel (obere Hälfte einer Ellipse), darunter nach aussen schwingende Flanken,
-    # ein Rand mit runden Enden und der Klöppel.
+    # Bell body: dome (upper half of an ellipse), below it flanks flaring outwards,
+    # a rim with round ends and the clapper.
     cx, cy, rx, ry = 8.0, 6.8, 4.2, 4.4
     dome = y <= cy and ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1
     t = (y - cy) / (10.6 - cy)
@@ -37,7 +37,7 @@ def render(size):
     ss = 4
     rows = []
     for py in range(size):
-        row = bytearray([0])  # PNG-Filter: keiner
+        row = bytearray([0])  # PNG filter: none
         for px in range(size):
             circle = bell = 0
             for sy in range(ss):

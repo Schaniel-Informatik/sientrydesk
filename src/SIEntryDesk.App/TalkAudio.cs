@@ -3,34 +3,36 @@ using NAudio.CoreAudioApi;
 
 namespace SIEntryDesk.App;
 
-/// <summary>Einstellung „Sprechen mit“ pro Benutzer.</summary>
+/// <summary>Setting "Sprechen mit" (talk with) per user.</summary>
 internal enum ListenMode
 {
-    /// <summary>Automatisch erkennen: Headset, wenn das Kommunikationsgerät von Windows ein Headset oder Kopfhörer ist.</summary>
+    /// <summary>Detect automatically: headset if the Windows communications device is a headset or
+    /// headphones.</summary>
     Auto,
-    /// <summary>Headset: Tür beim Sprechen hören.</summary>
+    /// <summary>Headset: hear the door while talking.</summary>
     Headset,
-    /// <summary>Lautsprecher: Tür beim Sprechen stumm.</summary>
+    /// <summary>Speakers: door muted while talking.</summary>
     Speaker,
 }
 
-/// <param name="ListenWhileTalking">Ton der Tür beim Sprechen nicht stumm schalten.</param>
-/// <param name="OutputDeviceId">Ton der Tür auf dieses Gerät (Kommunikationsgerät, wie bei Teams), null = Standardgerät.</param>
-/// <param name="Description">Für die Prüfung, z. B. „Headset (erkannt, …) – Tür beim Sprechen hörbar“.</param>
+/// <param name="ListenWhileTalking">Do not mute the door audio while talking.</param>
+/// <param name="OutputDeviceId">Door audio to this device (communications device, as with Teams), null = default
+/// device.</param>
+/// <param name="Description">For the check, e.g. "Headset (erkannt, …) – Tür beim Sprechen hörbar".</param>
 internal sealed record TalkAudioPlan(bool ListenWhileTalking, string? OutputDeviceId, string Description);
 
 /// <summary>
-/// Gegensprechen mit Headset wie am Telefon (0.8.0): Ist der Ton im Ohr, gibt es kein Echo über Lautsprecher und
-/// Mikrofon, der Ton der Tür bleibt beim Sprechen an und läuft über das Kommunikationsgerät. Mit Lautsprechern bleibt er
-/// stumm, solange das Mikrofon aufnimmt. Windows kennt den Gerätetyp (Headset, Kopfhörer, Lautsprecher …), manche
-/// USB-Headsets melden sich aber als Lautsprecher, deshalb lässt sich die Erkennung übersteuern.
+/// Talkback with a headset like on the phone (0.8.0): if the sound stays in the ear, there is no echo via speakers and
+/// microphone, so the door audio stays on while talking and plays via the communications device. With speakers it stays
+/// muted while the microphone records. Windows knows the device type (headset, headphones, speakers …), but some USB
+/// headsets report themselves as speakers, therefore the detection can be overridden.
 /// </summary>
 internal static class TalkAudio
 {
     private const string SettingsKey = @"Software\SIEntryDesk";
     private const string ValueName = "TalkWith";
 
-    // EndpointFormFactor von Windows: 3 Kopfhörer, 5 Headset, 6 Hörer.
+    // Windows EndpointFormFactor: 3 headphones, 5 headset, 6 handset.
     private static readonly HashSet<int> InEar = [3, 5, 6];
 
     public static ListenMode LoadMode()
@@ -50,7 +52,8 @@ internal static class TalkAudio
         key.SetValue(ValueName, mode switch { ListenMode.Headset => "headset", ListenMode.Speaker => "speaker", _ => "auto" });
     }
 
-    /// <summary>Für die Menüzeile: „Headset (erkannt)“, „Lautsprecher (erkannt)“, „Headset“ oder „Lautsprecher“.</summary>
+    /// <summary>For the menu line: "Headset (erkannt)", "Lautsprecher (erkannt)", "Headset" or
+    /// "Lautsprecher".</summary>
     public static string Current(ListenMode mode) => mode switch
     {
         ListenMode.Headset => "Headset",
@@ -58,7 +61,7 @@ internal static class TalkAudio
         _ => HeadsetDetected() ? "Headset (erkannt)" : "Lautsprecher (erkannt)",
     };
 
-    /// <summary>Für die Auswahl im Menü: Wahl und ihre Wirkung.</summary>
+    /// <summary>For the choices in the menu: choice and its effect.</summary>
     public static string Choice(ListenMode mode) => mode switch
     {
         ListenMode.Headset => "Headset – Tür beim Sprechen hören",
@@ -66,7 +69,7 @@ internal static class TalkAudio
         _ => $"automatisch erkennen (jetzt: {(HeadsetDetected() ? "Headset" : "Lautsprecher")})",
     };
 
-    /// <summary>Ist das Kommunikationsgerät für die Ausgabe ein Headset oder Kopfhörer?</summary>
+    /// <summary>Is the communications output device a headset or headphones?</summary>
     public static bool HeadsetDetected() => CommunicationsOutput() is { InEar: true };
 
     public static TalkAudioPlan Resolve(ListenMode mode)

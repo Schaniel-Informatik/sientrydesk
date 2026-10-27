@@ -4,9 +4,9 @@ using LibVLCSharp.Shared;
 namespace SIEntryDesk.App;
 
 /// <summary>
-/// Protokoll des Videoplayers unter %LOCALAPPDATA%\SIEntryDesk\vlc.log: welche Module geladen wurden, Warnungen und
-/// Fehler. Hilft, wenn das Livebild schwarz oder stumm bleibt (fehlt ein Plugin, steht dort „no … module matched“).
-/// Wird bei jedem Start neu angelegt und ist auf 512 KB begrenzt. Enthält nur Einmal-Adressen auf 127.0.0.1.
+/// Log of the video player under %LOCALAPPDATA%\SIEntryDesk\vlc.log: which modules were loaded, warnings and errors.
+/// Helps when the live view stays black or silent (if a plugin is missing, it says "no … module matched"). Created anew
+/// at every start and limited to 512 KB. Contains only one-time addresses on 127.0.0.1.
 /// </summary>
 internal static class VlcLog
 {

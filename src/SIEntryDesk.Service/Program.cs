@@ -9,7 +9,7 @@ if (args is [var helpArg] && helpArg.ToLowerInvariant() is "--help" or "-h" or "
     return 0;
 }
 
-// Für Admins: Zertifikats-Fingerabdrücke der Konsole anzeigen, zum Prüfen und Übernehmen in die Konfiguration.
+// For admins: show the certificate fingerprints of the console, to check them and take them into the configuration.
 if (args is ["show-pins", var pinHost])
 {
     if (Uri.CheckHostName(pinHost) == UriHostNameType.Unknown)
@@ -38,9 +38,9 @@ if (args is ["show-pins", var pinHost])
     return exit;
 }
 
-// Einrichtung (als Administrator): Zugänge von der Standardeingabe lesen und verschlüsselt ablegen.
-//   Zeile 1: Access-Token, Zeile 2: leer, Zeile 3 optional: Protect-API-Schlüssel für das Livebild.
-//   Zeile 2 war bis 0.5.2 ein eigener Token zum Öffnen. Das Format bleibt, damit ältere Skripte für die Zugänge passen.
+// Setup (as administrator): read the credentials from standard input and store them encrypted.
+//   Line 1: Access token, line 2: empty, line 3 optional: Protect API key for the live view.
+//   Up to 0.5.2 line 2 was a separate token for unlocking. The format stays so that older credential scripts still fit.
 if (args is ["set-secrets"])
 {
     var accessToken = Console.In.ReadLine()?.Trim();
@@ -62,7 +62,7 @@ if (args is ["set-secrets"])
     return 0;
 }
 
-// Als Dienst startet das Programm ohne Argumente. Alles andere ist ein Tippfehler und soll nicht den Dienst starten.
+// As a service the program starts without arguments. Anything else is a typo and must not start the service.
 if (args.Length > 0)
 {
     Console.Error.WriteLine($"Unbekannter Aufruf: {string.Join(' ', args)}");

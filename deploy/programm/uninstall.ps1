@@ -5,8 +5,8 @@
 #>
 param([switch] $KeepData)
 
-# Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
-# HKLM\SOFTWARE\WOW6432Node statt der richtigen Orte, deshalb hier in die 64-Bit-PowerShell wechseln.
+# Intune starts install commands as a 32-bit process. The 32-bit PowerShell sees C:\Program Files (x86) and
+# HKLM\SOFTWARE\WOW6432Node instead of the right locations, so switch to the 64-bit PowerShell here.
 if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
     $arguments = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', $PSCommandPath)
     foreach ($bound in $PSBoundParameters.GetEnumerator()) {
@@ -30,14 +30,15 @@ Remove-Item (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\S
 Get-NetFirewallRule -DisplayName 'SI EntryDesk: kein eingehender Zugriff' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 Remove-Item -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $env:ProgramFiles 'SIEntryDesk') -ErrorAction SilentlyContinue
-# Reste einer Installation durch die 32-Bit-PowerShell (Intune mit 0.5.0) entfernen.
+# Remove leftovers of an installation by the 32-bit PowerShell (Intune with 0.5.0).
 Remove-Item -Recurse -Force (Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk') -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
 Remove-Item -Path 'HKLM:\SOFTWARE\WOW6432Node\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 if (-not $KeepData) {
     Remove-Item -Recurse -Force (Join-Path $env:ProgramData 'SIEntryDesk') -ErrorAction SilentlyContinue
     Remove-Item -Force (Join-Path $env:WINDIR 'Temp\SIEntryDesk-install.log') -ErrorAction SilentlyContinue
-    # Einstellungen der Benutzer (Ton der Tür automatisch, Erinnerung), soweit ihre Profile geladen sind.
+    # The users' settings (door sound automatically, reminder, ring per door, talk with), as far as their profiles
+    # are loaded.
     Get-ChildItem Registry::HKEY_USERS | ForEach-Object {
         Remove-Item "Registry::$($_.Name)\Software\SIEntryDesk" -Recurse -Force -ErrorAction SilentlyContinue
     }

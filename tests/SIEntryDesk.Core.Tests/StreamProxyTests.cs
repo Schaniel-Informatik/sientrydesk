@@ -10,7 +10,7 @@ using SIEntryDesk.Core.Video;
 
 namespace SIEntryDesk.Core.Tests;
 
-/// <summary>Ende-zu-Ende mit einem nachgebauten RTSPS-Server auf localhost.</summary>
+/// <summary>End to end with a simulated RTSPS server on localhost.</summary>
 public sealed class StreamProxyTests : IAsyncLifetime
 {
     private const string StreamPath = "/StreamPfad0001";
@@ -97,8 +97,8 @@ public sealed class StreamProxyTests : IAsyncLifetime
     [Fact]
     public async Task Running_connections_end_when_the_address_expires()
     {
-        // Grosszügige Zeiten, damit ein langsamer CI-Runner den Test nicht zufällig scheitern lässt: Der nachgebaute
-        // Server hielte die Verbindung 30 s offen, der Proxy muss sie mit dem Ablauf nach 3 s beenden.
+        // Generous timings, so that a slow CI runner does not make the test fail by chance: the simulated server would
+        // keep the connection open for 30 s, the proxy must end it at expiry after 3 s.
         _hold = TimeSpan.FromSeconds(30);
         var lifetime = TimeSpan.FromSeconds(3);
         await using var proxy = NewProxy(CertificatePin.Parse(Convert.ToHexString(SHA256.HashData(_certificate.RawData))));
@@ -140,7 +140,7 @@ public sealed class StreamProxyTests : IAsyncLifetime
 
     private static Task Send(Stream stream, string text) => stream.WriteAsync(Encoding.ASCII.GetBytes(text)).AsTask();
 
-    /// <summary>Antwortet auf DESCRIBE mit Content-Base und SDP und schickt danach einen RTP-Rahmen.</summary>
+    /// <summary>Answers DESCRIBE with Content-Base and SDP and then sends one RTP frame.</summary>
     private async Task ServeAsync()
     {
         while (true)
@@ -177,7 +177,7 @@ public sealed class StreamProxyTests : IAsyncLifetime
                     }
                     catch (Exception)
                     {
-                        // Abgelehnte Handshakes sind Teil der Tests.
+                        // Rejected handshakes are part of the tests.
                     }
                 }
             });
@@ -189,7 +189,7 @@ public sealed class StreamProxyTests : IAsyncLifetime
         using var key = RSA.Create(2048);
         var request = new CertificateRequest("CN=unifi.local", key, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         using var ephemeral = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
-        // Auf macOS braucht der TLS-Server ein Zertifikat mit exportierbarem Schlüssel.
+        // On macOS the TLS server needs a certificate with an exportable key.
         return X509CertificateLoader.LoadPkcs12(ephemeral.Export(X509ContentType.Pkcs12, "t"), "t");
     }
 }

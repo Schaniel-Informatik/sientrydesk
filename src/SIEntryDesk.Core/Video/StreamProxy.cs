@@ -10,16 +10,17 @@ using SIEntryDesk.Core.Security;
 
 namespace SIEntryDesk.Core.Video;
 
-/// <summary>Ein RTSPS-Stream der Konsole. Host kommt aus der eigenen Konfiguration, nie aus einer API-Antwort.</summary>
+/// <summary>An RTSPS stream of the console. Host comes from the own configuration, never from an API
+/// response.</summary>
 public sealed record StreamSource(string Host, int Port, string Path)
 {
     public string UpstreamPrefix => $"rtsps://{Host}:{Port}{Path}";
 }
 
 /// <summary>
-/// Lokaler RTSP-Zugang für den Videoplayer der App. Baut zur Konsole eine TLS-Verbindung mit gepinntem Zertifikat auf
-/// und reicht den Stream unter einer Einmal-Adresse (rtsp://127.0.0.1:port/token) weiter. Adressen gelten nur für
-/// einen Ruf und werden mit ihm geschlossen.
+/// Local RTSP access for the app's video player. Opens a TLS connection with a pinned certificate to the console and
+/// passes the stream on under a one-time address (rtsp://127.0.0.1:port/token). Addresses are valid for one call only
+/// and are closed with it.
 /// </summary>
 public sealed class StreamProxy : IAsyncDisposable
 {
@@ -59,7 +60,7 @@ public sealed class StreamProxy : IAsyncDisposable
         _acceptLoop = AcceptLoopAsync(_stop.Token);
     }
 
-    /// <summary>Neue Einmal-Adresse für einen Ruf.</summary>
+    /// <summary>New one-time address for a call.</summary>
     public string Open(string key, StreamSource source, TimeSpan lifetime)
     {
         PruneExpired();
@@ -70,7 +71,8 @@ public sealed class StreamProxy : IAsyncDisposable
         return $"rtsp://127.0.0.1:{Port}/{token}";
     }
 
-    /// <summary>Beendet die Adresse und laufende Verbindungen genau zum Ablauf, nicht erst beim nächsten Aufbau.</summary>
+    /// <summary>Ends the address and running connections exactly at expiry, not only at the next connection
+    /// attempt.</summary>
     private async Task CloseAtExpiryAsync(string token, Session session, TimeSpan lifetime)
     {
         try
@@ -85,7 +87,7 @@ public sealed class StreamProxy : IAsyncDisposable
             session.Closed.Cancel();
     }
 
-    /// <summary>Schliesst alle Adressen und laufenden Verbindungen eines Rufs.</summary>
+    /// <summary>Closes all addresses and running connections of a call.</summary>
     public void Close(string key)
     {
         foreach (var (token, session) in _sessions.Where(s => s.Value.Key == key).ToList())
@@ -185,7 +187,7 @@ public sealed class StreamProxy : IAsyncDisposable
         return session.Expires > _time.GetUtcNow() ? session : null;
     }
 
-    /// <summary>Token aus "METHODE rtsp://127.0.0.1:port/TOKEN[/...] RTSP/1.0".</summary>
+    /// <summary>Token from "METHOD rtsp://127.0.0.1:port/TOKEN[/...] RTSP/1.0".</summary>
     private string? TokenOf(RtspText request)
     {
         var parts = request.StartLine.Split(' ');
@@ -235,7 +237,7 @@ public sealed class StreamProxy : IAsyncDisposable
         }
         catch (Exception) when (finished.IsCompletedSuccessfully)
         {
-            // Die Gegenrichtung wurde nur abgebrochen, weil eine Seite fertig war.
+            // The opposite direction was only cancelled because one side had finished.
         }
     }
 

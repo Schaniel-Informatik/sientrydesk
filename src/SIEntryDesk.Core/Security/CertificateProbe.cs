@@ -5,8 +5,8 @@ using System.Security.Cryptography.X509Certificates;
 namespace SIEntryDesk.Core.Security;
 
 /// <summary>
-/// Liest den Fingerabdruck des Zertifikats, das ein Server vorlegt, ohne ihm zu vertrauen. Nur zum Anzeigen,
-/// damit ein Admin den Pin prüfen und übernehmen kann. Über diese Verbindung wird nichts gesendet.
+/// Reads the fingerprint of the certificate a server presents, without trusting it. For display only, so that an admin
+/// can check and take over the pin. Nothing is sent over this connection.
 /// </summary>
 public static class CertificateProbe
 {

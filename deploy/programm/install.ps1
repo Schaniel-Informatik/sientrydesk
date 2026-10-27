@@ -27,8 +27,8 @@ param(
     [switch] $NoTalk
 )
 
-# Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
-# HKLM\SOFTWARE\WOW6432Node statt der richtigen Orte, deshalb hier in die 64-Bit-PowerShell wechseln.
+# Intune starts install commands as a 32-bit process. The 32-bit PowerShell sees C:\Program Files (x86) and
+# HKLM\SOFTWARE\WOW6432Node instead of the right locations, so switch to the 64-bit PowerShell here.
 if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
     $arguments = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', $PSCommandPath)
     foreach ($bound in $PSBoundParameters.GetEnumerator()) {
@@ -40,7 +40,7 @@ if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProces
 }
 
 $ErrorActionPreference = 'Stop'
-# Intune zeigt die Ausgabe nicht. Als SYSTEM deshalb ein Protokoll unter C:\Windows\Temp (enthält keine Zugänge).
+# Intune does not show the output. As SYSTEM therefore a log under C:\Windows\Temp (contains no credentials).
 if (([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
     Start-Transcript -Path (Join-Path $env:WINDIR 'Temp\SIEntryDesk-install.log') -Force | Out-Null
 }
@@ -62,8 +62,8 @@ Write-Host '1/8 Konfiguration prüfen'
 if (-not (Test-Path $ConfigFile)) {
     throw "Konfiguration nicht gefunden: $ConfigFile. Vorlage: sientrydesk.example.json"
 }
-# Windows PowerShell 5.1 liest kein JSON mit Kommentaren. Ganze Kommentarzeilen werden für die Prüfung entfernt,
-# der Dienst selbst versteht sie.
+# Windows PowerShell 5.1 does not read JSON with comments. Whole comment lines are removed for the check,
+# the service itself understands them.
 $configText = (Get-Content -Raw -Encoding UTF8 $ConfigFile) -replace '(?m)^\s*//.*$', ''
 try { $config = $configText | ConvertFrom-Json }
 catch { throw "sientrydesk.json ist kein gültiges JSON (Kommentare nur auf eigenen Zeilen): $($_.Exception.Message)" }
@@ -82,13 +82,13 @@ foreach ($part in 'Service', 'App') {
     if (Test-Path $target) { Remove-Item -Recurse -Force $target }
     Copy-Item -Recurse -Force (Join-Path $PSScriptRoot $part) $target
 }
-# Für Admins am Gerät: Zugänge erneuern, entfernen und prüfen wie Intune (detect.ps1 aus prepare-intune.ps1).
+# For admins at the device: renew and remove credentials, check like Intune (detect.ps1 from prepare-intune.ps1).
 foreach ($script in 'set-tokens.ps1', 'uninstall.ps1', 'detect.ps1') {
     $source = Join-Path $PSScriptRoot $script
     if (Test-Path $source) { Copy-Item -Force $source $installDir }
 }
 Get-ChildItem $installDir -Recurse -File | Unblock-File
-# Reste einer Installation durch die 32-Bit-PowerShell (Intune mit 0.5.0) entfernen.
+# Remove leftovers of an installation by the 32-bit PowerShell (Intune with 0.5.0).
 $x86Dir = Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk'
 Remove-Item -Recurse -Force $x86Dir -ErrorAction SilentlyContinue
 if (Test-Path $x86Dir) { Write-Warning "$x86Dir liess sich nicht ganz entfernen, Rest bitte von Hand löschen." }
@@ -100,7 +100,7 @@ if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
     New-Service -Name $serviceName -BinaryPathName "`"$serviceExe`"" -DisplayName 'SI EntryDesk' `
         -Description 'Klingel-Ereignisse von UniFi Access, Öffnen nur während eines Rufs' -StartupType Automatic | Out-Null
 }
-# Pfad immer setzen: Ein bestehender Dienst kann noch auf einen anderen Ort zeigen (z. B. Program Files (x86)).
+# Always set the path: an existing service may still point elsewhere (e.g. Program Files (x86)).
 $change = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" |
     Invoke-CimMethod -MethodName Change -Arguments @{ PathName = "`"$serviceExe`"" }
 if ($change.ReturnValue -ne 0) { throw "Programmpfad des Dienstes konnte nicht gesetzt werden (Code $($change.ReturnValue))" }
@@ -109,16 +109,16 @@ Invoke-Native 'sc.exe' @('failure', $serviceName, 'reset=', '86400', 'actions=',
 
 Write-Host '5/8 Datenordner und Rechte'
 New-Item -ItemType Directory -Force -Path $dataDir, $logDir, $stateDir | Out-Null
-# Nur SYSTEM (S-1-5-18), Administratoren (S-1-5-32-544) und das Dienstkonto, keine Vererbung von ProgramData.
+# Only SYSTEM (S-1-5-18), administrators (S-1-5-32-544) and the service account, no inheritance from ProgramData.
 Invoke-Native 'icacls.exe' @($dataDir, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', "${serviceAccount}:(OI)(CI)RX")
 Invoke-Native 'icacls.exe' @($logDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 Invoke-Native 'icacls.exe' @($stateDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 
 Write-Host '6/8 Konfiguration übernehmen'
 Copy-Item -Force $ConfigFile (Join-Path $dataDir 'sientrydesk.json')
-# Konfiguration bis 0.2.x, sonst würden alte Werte mitgelesen.
+# Configuration up to 0.2.x, otherwise old values would be read as well.
 Remove-Item -Force (Join-Path $dataDir 'config.json') -ErrorAction SilentlyContinue
-# Abweichungen nur für diesen PC. Ohne Schalter bleibt eine vorhandene sientrydesk.local.json unverändert.
+# Deviations for this PC only. Without switches an existing sientrydesk.local.json stays unchanged.
 $local = [ordered]@{}
 if ($NoLiveView) { $local['LiveView'] = $false }
 if ($NoTalk) { $local['Talkback'] = $false }
@@ -139,12 +139,12 @@ if ($SetTokens) {
 Write-Host '8/8 Autostart und Start'
 New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' `
     -Value "`"$appExe`"" -PropertyType String -Force | Out-Null
-# Die App braucht keinen eingehenden Zugriff, das Bild kommt über 127.0.0.1. Die Sperrregel verhindert die
-# Firewall-Abfrage, die LibVLC sonst auslöst, und hat Vorrang vor einer versehentlich erteilten Freigabe.
+# The app needs no inbound access, the video comes via 127.0.0.1. The block rule prevents the firewall prompt
+# LibVLC would otherwise trigger, and takes precedence over an accidentally granted exception.
 $firewallRule = 'SI EntryDesk: kein eingehender Zugriff'
 Get-NetFirewallRule -DisplayName $firewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName $firewallRule -Direction Inbound -Program $appExe -Action Block -Profile Any | Out-Null
-# Eintrag im Startmenü für alle Benutzer, falls die App beendet wurde.
+# Start menu entry for all users, in case the app was closed.
 $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk'))
 $shortcut.TargetPath = $appExe
 $shortcut.WorkingDirectory = Split-Path $appExe
@@ -158,9 +158,9 @@ New-Item -Force -Path 'HKLM:\SOFTWARE\SIEntryDesk' | Out-Null
 Set-ItemProperty -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Name 'Version' -Value $version
 
 if (([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
-    # Intune installiert als SYSTEM. Die Tray-App wurde oben beendet und muss in den angemeldeten Sitzungen wieder
-    # laufen, sonst klingelt bis zur nächsten Anmeldung nichts. Als SYSTEM geht das über die Sitzungsverwaltung,
-    # gestartet wird mit dem normalen (nicht erhöhten) Token des jeweiligen Benutzers.
+    # Intune installs as SYSTEM. The tray app was stopped above and must run again in the logged-on sessions,
+    # otherwise nothing rings until the next logon. As SYSTEM this works via the session management, started with
+    # the normal (non-elevated) token of each user.
     try {
         Add-Type -TypeDefinition @'
 using System;
@@ -221,8 +221,8 @@ public static class SIEntryDeskSessionLauncher
     private const int TokenPrimary = 1;
     private const uint CreateUnicodeEnvironment = 0x00000400;
 
-    // Startet ein Programm in jeder angemeldeten Benutzersitzung, mit dem normalen Token des Benutzers.
-    // Geht nur als SYSTEM (Intune), gibt die Anzahl gestarteter Prozesse zurück.
+    // Starts a program in every logged-on user session, with the user's normal token.
+    // Works only as SYSTEM (Intune), returns the number of started processes.
     public static int StartInUserSessions(string exe, string directory)
     {
         IntPtr sessions;
@@ -285,7 +285,7 @@ public static class SIEntryDeskSessionLauncher
         Write-Warning "App konnte nicht in den Sitzungen gestartet werden, sie startet bei der nächsten Anmeldung: $($_.Exception.Message)"
     }
 } else {
-    # Von Hand installiert: im normalen Benutzerkontext starten, nicht in dieser erhöhten Sitzung.
+    # Installed by hand: start in the normal user context, not in this elevated session.
     Start-Process explorer.exe -ArgumentList "`"$appExe`""
 }
 

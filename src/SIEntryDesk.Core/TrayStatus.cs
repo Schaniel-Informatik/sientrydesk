@@ -11,12 +11,12 @@ public enum TrayColor
     Blue,
 }
 
-/// <param name="Alarm">Dieser PC klingelt nicht, obwohl er es sollte. Die App meldet das nach einer Wartezeit.</param>
+/// <param name="Alarm">This PC does not ring although it should. The app reports this after a waiting time.</param>
 public sealed record TrayState(TrayColor Color, string Text, bool Alarm);
 
 /// <summary>
-/// Welche Farbe und welcher Text das Tray-Symbol zeigt. Reihenfolge: Rot (klingelt nicht) vor Blau (pausiert)
-/// vor Grau (nicht im Firmennetz, kein Alarm) vor Orange (Nebensache gestört) vor Grün.
+/// Which color and text the tray icon shows. Order: red (does not ring) before blue (paused) before grey (not in the
+/// company network, no alarm) before orange (minor issue) before green.
 /// </summary>
 public static class TrayStatus
 {

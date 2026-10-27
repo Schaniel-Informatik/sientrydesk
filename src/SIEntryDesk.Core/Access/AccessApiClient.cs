@@ -10,10 +10,10 @@ public sealed record AccessResult(int HttpStatus, string? Code, string Message)
     public bool Success => HttpStatus == 200 && Code == "SUCCESS";
 }
 
-/// <summary>Eine Tür aus Access (Recht view:space).</summary>
+/// <summary>A door from Access (permission view:space).</summary>
 public sealed record AccessDoor(string Id, string Name, string FullName);
 
-/// <summary>REST-Aufrufe der Access Developer API (Port 12445) mit gepinntem Zertifikat, ohne Proxy.</summary>
+/// <summary>REST calls to the Access Developer API (port 12445) with a pinned certificate, without a proxy.</summary>
 public sealed class AccessApiClient : IDisposable
 {
     public const int Port = 12445;
@@ -37,7 +37,7 @@ public sealed class AccessApiClient : IDisposable
     }
 
     /// <summary>
-    /// Öffnet eine Tür (Recht edit:space). actor_id und actor_name erscheinen im Access-Protokoll.
+    /// Unlocks a door (permission edit:space). actor_id and actor_name appear in the Access log.
     /// </summary>
     public async Task<AccessResult> UnlockAsync(string doorId, string actorId, string actorName, CancellationToken ct)
     {
@@ -49,7 +49,7 @@ public sealed class AccessApiClient : IDisposable
         return await ReadResultAsync(response, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Alle Türen (Recht view:space).</summary>
+    /// <summary>All doors (permission view:space).</summary>
     public async Task<IReadOnlyList<AccessDoor>> GetDoorsAsync(CancellationToken ct)
     {
         using var response = await _http.GetAsync("/api/v1/developer/doors", ct).ConfigureAwait(false);
@@ -73,7 +73,7 @@ public sealed class AccessApiClient : IDisposable
             obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
     }
 
-    /// <summary>Für die Rechteprüfung: beliebiger Aufruf, Ergebnis nur als Status und Code, Daten werden verworfen.</summary>
+    /// <summary>For the permission check: any call, result only as status and code, the data is discarded.</summary>
     public async Task<AccessResult> ProbeAsync(HttpMethod method, string path, object? body, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, path);

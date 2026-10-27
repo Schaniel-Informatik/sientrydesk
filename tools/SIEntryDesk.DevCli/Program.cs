@@ -1,10 +1,10 @@
-// Entwicklerwerkzeug: lauscht mit der Core-Logik auf Klingelrufe, wie es der Dienst tut.
-// Zugangsdaten nur aus Umgebungsvariablen (op run), siehe tools/feasibility/README.md:
-//   SIED_HOST, SIED_ACCESS_TOKEN, SIED_PIN_ACCESS, optional SIED_DOORS (kommagetrennt)
-// Aufruf: dotnet run --project tools/SIEntryDesk.DevCli -- listen [minuten]
-//         dotnet run --project tools/SIEntryDesk.DevCli -- video <kamera-id> [--play]
-//         dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> [sekunden]
-//         (zusätzlich SIED_PROTECT_KEY, SIED_PIN_PROTECT, SIED_PIN_RTSPS)
+// Developer tool: listens for doorbell calls with the core logic, as the service does.
+// Credentials only from environment variables (op run), see tools/feasibility/README.md:
+//   SIED_HOST, SIED_ACCESS_TOKEN, SIED_PIN_ACCESS, optional SIED_DOORS (comma separated)
+// Usage: dotnet run --project tools/SIEntryDesk.DevCli -- listen [minutes]
+//        dotnet run --project tools/SIEntryDesk.DevCli -- video <camera-id> [--play]
+//        dotnet run --project tools/SIEntryDesk.DevCli -- talk <camera-id> [seconds]
+//        (additionally SIED_PROTECT_KEY, SIED_PIN_PROTECT, SIED_PIN_RTSPS)
 
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -105,8 +105,8 @@ await expiry;
 log.LogInformation("Beendet, {Count} Lebenszeichen empfangen", heartbeats);
 return 0;
 
-// Gegensprechen ohne Windows: Talkback-Sitzung wie der Dienst, Testton mit derselben Opus- und RTP-Umsetzung wie die App.
-// Nur mit jemandem an der Tür, der sagt, ob der Ton ankommt.
+// Talkback without Windows: talkback session like the service, test tone with the same Opus and RTP implementation as
+// the app. Only with someone at the door who says whether the sound arrives.
 static async Task<int> TalkTestAsync(string cameraId, int seconds)
 {
     static string Get(string name) =>
@@ -130,7 +130,7 @@ static async Task<int> TalkTestAsync(string cameraId, int seconds)
     using var udp = new System.Net.Sockets.UdpClient(target.Address.AddressFamily);
     udp.Connect(target.EndPoint);
 
-    // Zwei Töne im Wechsel (660/880 Hz, halbe Lautstärke), deutlich als Test erkennbar.
+    // Two alternating tones (660/880 Hz, half volume), clearly recognizable as a test.
     var frame = new float[encoder.FrameSamples];
     var frames = seconds * 50;
     using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(20));
@@ -153,7 +153,7 @@ static async Task<int> TalkTestAsync(string cameraId, int seconds)
     return 0;
 }
 
-// Holt die Stream-Adresse über die Protect-API, öffnet eine Einmal-Adresse im Proxy und prüft sie mit ffprobe.
+// Gets the stream address via the Protect API, opens a one-time address in the proxy and checks it with ffprobe.
 static async Task<int> VideoTestAsync(string cameraId, bool play)
 {
     static string Get(string name) =>
@@ -181,7 +181,7 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
     log.LogInformation("Einmal-Adresse: {Url}", url);
 
     var watch = Stopwatch.StartNew();
-    // Mit --udp ohne erzwungenes TCP, wie ein Player, der zuerst UDP versucht.
+    // With --udp without forced TCP, like a player that tries UDP first.
     string[] transport = Environment.GetCommandLineArgs().Contains("--udp") ? ["-v", "debug"] : ["-v", "error", "-rtsp_transport", "tcp"];
     var probe = Process.Start(new ProcessStartInfo("ffprobe",
         [.. transport, "-show_entries", "stream=codec_type,codec_name,width,height,sample_rate", "-of", "compact", url])
@@ -194,7 +194,7 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
 
     if (Environment.GetCommandLineArgs().Contains("--decode"))
     {
-        // 15 s vollständig dekodieren: zeigt, ob Bild und Ton über den Proxy dauerhaft flüssig ankommen.
+        // Decode fully for 15 s: shows whether video and audio arrive smoothly over the proxy for a longer time.
         var decode = Process.Start(new ProcessStartInfo("ffmpeg",
             ["-hide_banner", "-nostats", "-loglevel", "info", "-rtsp_transport", "tcp", "-i", url, "-t", "15",
              "-map", "0", "-f", "null", "-"]) { RedirectStandardError = true })!;
@@ -215,7 +215,7 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
             player.Kill();
     }
 
-    // Nach dem Schliessen muss die Adresse ungültig sein.
+    // After closing, the address must be invalid.
     proxy.Close("test");
     var after = Process.Start(new ProcessStartInfo("ffprobe", ["-v", "error", "-rtsp_transport", "tcp", url])
         { RedirectStandardError = true })!;
@@ -226,7 +226,7 @@ static async Task<int> VideoTestAsync(string cameraId, bool play)
 }
 
 
-// Die Prüfungen des Einrichtungsassistenten gegen eine echte Konsole, alle lesend. Ausgabe ohne Geheimnisse.
+// The checks of the setup wizard against a real console, all read-only. Output without secrets.
 static async Task<int> SetupCheckAsync()
 {
     static string Get(string name) =>

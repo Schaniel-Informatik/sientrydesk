@@ -9,21 +9,21 @@ using SIEntryDesk.Audio;
 namespace SIEntryDesk.App;
 
 /// <summary>
-/// Nimmt das Standardmikrofon für Kommunikation auf (Entscheid 2026-10-02: keine Auswahl in der App), macht daraus
-/// Opus-Pakete von 20 ms in der Abtastrate der Türstation und gibt sie der Reihe nach weiter, solange gesprochen wird.
+/// Records the default communications microphone (decision 2026-10-02: no selection in the app), turns it into Opus
+/// packets of 20 ms at the door station's sample rate and passes them on in order while talking.
 /// </summary>
 /// <remarks>
-/// Ablauf (0.7.0, „Sprechen flüssiger“): <see cref="Open"/> beim Drücken, damit kein Wort verloren geht, bis der Dienst
-/// die Talkback-Sitzung hat. Bis dahin wird höchstens <see cref="PreRollLimit"/> zwischengespeichert. <see cref="Begin"/>
-/// mit der Freigabe sendet den Vorlauf und danach laufend. <see cref="Finish"/> beim Loslassen nimmt noch den Nachlauf
-/// auf und meldet das Ende erst nach dem letzten Paket, damit der Dienst die Sitzung nicht vor dem letzten Wort schliesst.
-/// Gesendet wird im Takt von 20 ms pro Paket, auch der Vorlauf, damit die Türstation keinen Schwall auf einmal bekommt.
+/// Flow (0.7.0, "smoother talking"): <see cref="Open"/> on press, so that no word gets lost until the service has the
+/// talkback session. Until then at most <see cref="PreRollLimit"/> is buffered. <see cref="Begin"/> with the grant
+/// sends the pre-roll and then continuously. <see cref="Finish"/> on release records the tail and reports the end only
+/// after the last packet, so that the service does not close the session before the last word. Sending is paced at 20
+/// ms per packet, the pre-roll too, so that the door station does not get a burst at once.
 /// </remarks>
 internal sealed class TalkSender : IDisposable
 {
     public static readonly TimeSpan PreRollLimit = TimeSpan.FromSeconds(2);
-    /// <summary>Nachlauf nach dem Loslassen: 0,6 s in 0.7.x, ab 0.8.0 0,3 s, weil mit Lautsprechern der Ton der Tür so lange
-    /// stumm bleibt und die Antwort des Besuchers sonst verloren geht (Rückmeldung 27.10.).</summary>
+    /// <summary>Tail after release: 0.6 s in 0.7.x, 0.3 s from 0.8.0, because with speakers the door audio stays muted
+    /// that long and the visitor's answer would otherwise get lost (feedback 2026-10-27).</summary>
     public static readonly TimeSpan Tail = TimeSpan.FromMilliseconds(300);
 
     private readonly object _gate = new();
@@ -56,8 +56,8 @@ internal sealed class TalkSender : IDisposable
         };
     }
 
-    /// <summary>Öffnet das Mikrofon und speichert zwischen, bis <see cref="Begin"/> kommt. Bei fehlendem Mikrofon oder
-    /// gesperrtem Zugriff null und eine Meldung.</summary>
+    /// <summary>Opens the microphone and buffers until <see cref="Begin"/> comes. Without a microphone or with blocked
+    /// access, null and a message.</summary>
     public static TalkSender? Open(Action<string> onError, out string problem)
     {
         WasapiRecorder? recorder = null;
@@ -69,8 +69,8 @@ internal sealed class TalkSender : IDisposable
                 problem = "Kein Mikrofon gefunden";
                 return null;
             }
-            // Ereignisgesteuert mit kurzem Puffer, damit der Ton ohne merkliche Verzögerung an die Tür geht. Bewusst
-            // ohne Kommunikationsmodus: der würde andere Töne am PC leiser stellen.
+            // Event-driven with a short buffer, so that the audio reaches the door without noticeable delay.
+            // Deliberately without communications mode: it would lower other sounds on the PC.
             recorder = new WasapiRecorderBuilder()
                 .WithDevice(device)
                 .WithSharedMode()
@@ -102,8 +102,8 @@ internal sealed class TalkSender : IDisposable
         }
     }
 
-    /// <summary>Freigabe vom Dienst: Vorlauf kodieren und senden, danach laufend. War die Taste schon losgelassen und der
-    /// Nachlauf vorbei, wird nur der Vorlauf gesendet und danach das Ende gemeldet.</summary>
+    /// <summary>Grant from the service: encode and send the pre-roll, then continuously. If the button was already
+    /// released and the tail is over, only the pre-roll is sent and then the end is reported.</summary>
     public void Begin(int sampleRate, Func<byte[], Task> send)
     {
         lock (_gate)
@@ -121,9 +121,9 @@ internal sealed class TalkSender : IDisposable
         _ = PumpAsync(send, _stop.Token);
     }
 
-    /// <summary>Taste losgelassen: noch <see cref="Tail"/> aufnehmen, dann stoppen. <paramref name="recordingEnded"/> läuft,
-    /// sobald das Mikrofon aus ist (ab dann darf der Ton der Tür wieder laufen), <paramref name="afterLast"/> nach dem
-    /// letzten gesendeten Paket (nur nach <see cref="Begin"/>), <paramref name="finished"/> danach.</summary>
+    /// <summary>Button released: record <see cref="Tail"/> more, then stop. <paramref name="recordingEnded"/> runs as
+    /// soon as the microphone is off (from then on the door audio may play again), <paramref name="afterLast"/> after
+    /// the last sent packet (only after <see cref="Begin"/>), <paramref name="finished"/> after that.</summary>
     public void Finish(Action recordingEnded, Func<Task> afterLast, Action finished)
     {
         lock (_gate)
@@ -137,8 +137,8 @@ internal sealed class TalkSender : IDisposable
         }
     }
 
-    /// <summary>Taste im Nachlauf wieder gedrückt: weiter aufnehmen, als wäre nie losgelassen worden. False, wenn die
-    /// Aufnahme schon zu Ende ist.</summary>
+    /// <summary>Button pressed again during the tail: keep recording as if it had never been released. False if the
+    /// recording has already ended.</summary>
     public bool Resume()
     {
         lock (_gate)
@@ -172,7 +172,7 @@ internal sealed class TalkSender : IDisposable
         recordingEnded?.Invoke();
     }
 
-    /// <summary>Nach dem letzten Paket: Ende melden, dann fertig. Ohne Freigabe gibt es nichts zu senden.</summary>
+    /// <summary>After the last packet: report the end, then done. Without a grant there is nothing to send.</summary>
     private void Complete()
     {
         if (_afterLast is { } afterLast)
@@ -182,7 +182,7 @@ internal sealed class TalkSender : IDisposable
         _queue.Writer.TryComplete();
     }
 
-    /// <summary>Sendet im Takt von 20 ms pro Paket. Liegt mehr bereit (Vorlauf), wartet jedes Paket auf seinen Takt.</summary>
+    /// <summary>Sends paced at 20 ms per packet. If more is ready (pre-roll), each packet waits for its slot.</summary>
     private async Task PumpAsync(Func<byte[], Task> send, CancellationToken ct)
     {
         var clock = Stopwatch.StartNew();
@@ -225,7 +225,7 @@ internal sealed class TalkSender : IDisposable
     /// <summary>KSDATAFORMAT_SUBTYPE_IEEE_FLOAT.</summary>
     private static readonly Guid IeeeFloatSubFormat = new("00000003-0000-0010-8000-00aa00389b71");
 
-    /// <summary>Bei WaveFormatExtensible steht das eigentliche Format im Unterformat.</summary>
+    /// <summary>With WaveFormatExtensible the actual format is in the sub format.</summary>
     private static WaveFormatEncoding Encoding(WaveFormat format) =>
         format is WaveFormatExtensible extensible
             ? extensible.SubFormat == IeeeFloatSubFormat ? WaveFormatEncoding.IeeeFloat : WaveFormatEncoding.Pcm
@@ -236,7 +236,7 @@ internal sealed class TalkSender : IDisposable
         if (Volatile.Read(ref _disposed) != 0 || data.IsEmpty)
             return;
         var samples = ToFloat(_format, data);
-        // Windows meldet Stille (z. B. stummgeschaltetes Mikrofon) per Flag, der Inhalt ist dann ungültig.
+        // Windows reports silence (e.g. muted microphone) by flag, the content is invalid then.
         if (flags.HasFlag(AudioClientBufferFlags.Silent))
             Array.Clear(samples);
         lock (_gate)
@@ -248,7 +248,7 @@ internal sealed class TalkSender : IDisposable
                 Encode(samples);
                 return;
             }
-            // Vorlauf: bis zur Freigabe sammeln, das Älteste verwerfen, wenn sie zu lange dauert.
+            // Pre-roll: collect until the grant, discard the oldest if it takes too long.
             _preRoll.Enqueue(samples);
             _preRollSamples += samples.Length;
             var limit = (int)(PreRollLimit.TotalSeconds * _format.SampleRate * _format.Channels);
@@ -294,7 +294,8 @@ internal sealed class TalkSender : IDisposable
         }
     }
 
-    /// <summary>Sofort beenden, ohne Nachlauf und ohne Ende zu melden (Höchstdauer, Fenster zu, Fehler).</summary>
+    /// <summary>Stop immediately, without tail and without reporting the end (maximum duration, window closed,
+    /// error).</summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)

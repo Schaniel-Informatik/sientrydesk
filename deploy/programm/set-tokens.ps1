@@ -30,7 +30,7 @@ function Read-Secret([string] $Prompt) {
 $access = Read-Secret 'Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten)'
 if (-not $access) { throw 'Ohne Access-Token geht es nicht.' }
 $protect = Read-Secret 'Protect-API-Schlüssel für das Livebild, leer = kein Livebild'
-# Zeile 2 bleibt leer (früher eigener Token zum Öffnen).
+# Line 2 stays empty (formerly a separate token for unlocking).
 "$access`n`n$protect" | & $ServiceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
 Remove-Variable access, protect

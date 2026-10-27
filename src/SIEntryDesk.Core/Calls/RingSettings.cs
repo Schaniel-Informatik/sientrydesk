@@ -1,20 +1,20 @@
 namespace SIEntryDesk.Core.Calls;
 
-/// <summary>Wie dieser Benutzer bei einer Tür klingeln lässt (Einstellung „Klingeln“ in der App).</summary>
+/// <summary>How this user lets a door ring (setting per door in the app).</summary>
 public enum RingMode
 {
-    /// <summary>Fenster und Klingelton sofort (Standard, auch für neue Türen).</summary>
+    /// <summary>Window and ringtone immediately (default, also for new doors).</summary>
     Immediate,
-    /// <summary>Zuerst blinkt das Symbol, Fenster und Klingelton nach <see cref="RingSettings.Delay"/>. Wird in dieser Zeit
-    /// anderswo angenommen oder bricht der Besucher ab, erscheint nichts.</summary>
+    /// <summary>First the icon blinks, window and ringtone after <see cref="RingSettings.Delay"/>. If the call is
+    /// answered elsewhere or the visitor cancels in the meantime, nothing appears.</summary>
     Delayed,
-    /// <summary>Kein Fenster, kein Ton, kein Blinken. Das Livebild ohne Klingeln bleibt.</summary>
+    /// <summary>No window, no sound, no blinking. The live view without ringing remains.</summary>
     Off,
 }
 
 /// <summary>
-/// Einstellung „Klingeln“ pro Tür und Benutzer. Eine Bequemlichkeit, keine Sperre: Wer eine Tür auf einem PC wirklich
-/// ausschliessen will (auch das Öffnen), nimmt Doors in der sientrydesk.json.
+/// Ring setting per door and user. A convenience, not a lock: to really exclude a door on a PC (including unlocking),
+/// use Doors in sientrydesk.json.
 /// </summary>
 public static class RingSettings
 {
@@ -27,7 +27,8 @@ public static class RingSettings
         _ => "sofort",
     };
 
-    /// <summary>Gespeicherter Wert → Einstellung. Unbekanntes gilt als „sofort“, damit nie unbemerkt eine Tür schweigt.</summary>
+    /// <summary>Stored value → setting. Anything unknown counts as "immediately", so that a door never goes silent
+    /// unnoticed.</summary>
     public static RingMode Parse(string? value) => value switch
     {
         "delayed" => RingMode.Delayed,
@@ -42,7 +43,8 @@ public static class RingSettings
         _ => "immediate",
     };
 
-    /// <summary>Türen, die nicht sofort klingeln, für den Text am Symbol, z. B. „Tür 2: aus“. Null, wenn alle sofort.</summary>
+    /// <summary>Doors that do not ring immediately, for the tray tooltip, e.g. "Tür 2: aus". Null if all ring
+    /// immediately.</summary>
     public static string? Summary(IEnumerable<(string Name, RingMode Mode)> doors)
     {
         var parts = doors

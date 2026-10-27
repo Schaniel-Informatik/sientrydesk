@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Plattformunabhängig, damit die Logik auch auf dem Mac getestet werden kann. -->
+  <!-- Platform independent, so that the logic can also be tested on the Mac. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>SIEntryDesk.Core</RootNamespace>

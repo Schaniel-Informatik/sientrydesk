@@ -45,6 +45,10 @@ Auf dem Handy funktioniert es gut, am PC nicht.
 - Entwickelt wird auf dem Mac. Das .NET SDK baut Windows-Apps auch dort (`EnableWindowsTargeting`),
   ausführen und testen kann man sie aber nur unter Windows. **Marcel testet auf Windows 11.**
 - Vor jedem Einrichtungsschritt prüfen, ob das Werkzeug mit nicht-interaktiver Bash funktioniert.
+- **Sprache:** Kommentare in Code, Skripten und Projektdateien auf Englisch (Entscheid 2026-10-27, Repository ist
+  öffentlich). Oberfläche, Protokoll, Admin-Doku (`docs/admin`), Hilfe der Admin-Skripte (`.SYNOPSIS`) und
+  `docs/entwicklung` bleiben Deutsch. `deploy/zugaenge` erst bei der nächsten echten Änderung umstellen, sonst braucht
+  es nur dafür ein neues Paket der Zugänge in Intune.
 - Was Admins für Einrichtung und Betrieb wissen müssen, gehört in `docs/admin/` (`installation.md`, `intune.md`,
   `betrieb.md`), nicht nur in den Chat. Der Build legt diese Dateien als `Doku\` ins Paket.
 - Ablage: `deploy/` nur ausgelieferte Dateien (`programm/`, `zugaenge/`), keine Anleitungen.

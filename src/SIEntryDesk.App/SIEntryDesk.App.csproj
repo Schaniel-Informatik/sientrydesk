@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Tray-App pro Benutzersitzung. Kennt keine Tokens, spricht nur mit dem lokalen Dienst. -->
+  <!-- Tray app per user session. Knows no tokens, talks only to the local service. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -10,14 +10,14 @@
     <RootNamespace>SIEntryDesk.App</RootNamespace>
     <AssemblyName>SIEntryDesk</AssemblyName>
     <ApplicationIcon>Assets\SIEntryDesk.ico</ApplicationIcon>
-    <!-- LibVLC nur für x64. -->
+    <!-- LibVLC for x64 only. -->
     <VlcWindowsX86Enabled>false</VlcWindowsX86Enabled>
     <VlcWindowsArm64Enabled>false</VlcWindowsArm64Enabled>
   </PropertyGroup>
 
-  <!-- Nur die LibVLC-Plugins, die das Livebild braucht (RTSP über den Dienst, H.264/H.265, AAC/Opus, Bild- und
-       Tonausgabe unter Windows). Alle unter LGPL wie LibVLC, geprüft am Quelltext 3.0.x, siehe THIRD-PARTY-NOTICES.md.
-       Fehlt eines, steht im vlc.log der App „no … module matched“. -->
+  <!-- Only the LibVLC plugins the live view needs (RTSP via the service, H.264/H.265, AAC/Opus, video and audio
+       output on Windows). All under LGPL like LibVLC, checked against the 3.0.x source, see THIRD-PARTY-NOTICES.md.
+       If one is missing, the app's vlc.log says "no … module matched". -->
   <ItemGroup>
     <VlcWindowsX64IncludeFiles Include="libvlc.dll;libvlccore.dll" />
     <VlcWindowsX64IncludeFiles Include="plugins\access\liblive555_plugin.dll" />
@@ -30,7 +30,7 @@
     <VlcWindowsX64IncludeFiles Include="plugins\audio_filter\libspeex_resampler_plugin.dll;plugins\audio_filter\libugly_resampler_plugin.dll;plugins\audio_filter\libtrivial_channel_mixer_plugin.dll;plugins\audio_filter\libsimple_channel_mixer_plugin.dll;plugins\audio_filter\libaudio_format_plugin.dll" />
   </ItemGroup>
 
-  <!-- WinForms nur für das Tray-Symbol, sonst gibt es Namenskonflikte mit WPF. -->
+  <!-- WinForms only for the tray icon, otherwise there are name conflicts with WPF. -->
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
@@ -44,9 +44,9 @@
   <ItemGroup>
     <PackageReference Include="LibVLCSharp.WPF" Version="3.10.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" />
-    <!-- Mikrofon fürs Gegensprechen (WASAPI), MIT. -->
+    <!-- Microphone for talkback (WASAPI), MIT. -->
     <PackageReference Include="NAudio.Wasapi" Version="3.1.0" />
-    <!-- Zustand des Dienstes für die Prüfung (check), MIT. -->
+    <!-- Service state for the check, MIT. -->
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
   </ItemGroup>
 

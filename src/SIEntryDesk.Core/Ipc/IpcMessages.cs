@@ -5,8 +5,9 @@ using SIEntryDesk.Core.Diagnostics;
 namespace SIEntryDesk.Core.Ipc;
 
 /// <summary>
-/// Nachrichten zwischen Dienst und Tray-App. Die App erhält keine Tokens und keine Adressen der Konsole, nur was sie
-/// anzeigen muss, Tür-IDs nur als Kennung für das Livebild und die Einstellung „Klingeln“. Öffnen fordert sie über die Ruf-Kennung an, den Rest entscheidet der Dienst.
+/// Messages between service and tray app. The app receives no tokens and no console addresses, only what it has to
+/// show; door IDs only as identifiers for the live view and the per-door ring setting. It requests unlocking by call
+/// identifier, the service decides the rest.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(StatusMessage), "status")]
@@ -30,21 +31,21 @@ namespace SIEntryDesk.Core.Ipc;
 [JsonDerivedType(typeof(CheckResultMessage), "checkResult")]
 public abstract record IpcMessage;
 
-/// <summary>Zustand des Dienstes aus Sicht der Anzeige.</summary>
+/// <summary>State of the service as seen by the display.</summary>
 public enum LinkHealth
 {
     Starting,
-    /// <summary>Klingeln kommt an.</summary>
+    /// <summary>Rings arrive.</summary>
     Ready,
-    /// <summary>Konsole nicht erreichbar, typisch ausserhalb des Firmennetzes. Kein Alarm.</summary>
+    /// <summary>Console not reachable, typically outside the company network. No alarm.</summary>
     Unreachable,
-    /// <summary>Konsole erreichbar, aber gestört (Token, Zertifikat, Konfiguration, Unterbruch). Alarm.</summary>
+    /// <summary>Console reachable, but disturbed (token, certificate, configuration, interruption). Alarm.</summary>
     Error,
 }
 
-/// <summary>Dienst → App: Verbindungszustand. Problem erklärt Unreachable/Error, Warning betrifft Nebensachen
-/// wie das Livebild oder bald ablaufende Schlüssel. TalkEnabled: Gegensprechen auf diesem PC eingerichtet (ab 0.8.0,
-/// für die Einstellung „Tür beim Sprechen hören“ im Menü).</summary>
+/// <summary>Service → app: connection state. Problem explains Unreachable/Error, Warning concerns minor issues such as
+/// the live view or keys about to expire. TalkEnabled: talkback is set up on this PC (from 0.8.0, for the "Sprechen
+/// mit" setting in the menu).</summary>
 public sealed record StatusMessage(
     bool AccessConnected,
     string Problem,
@@ -54,71 +55,74 @@ public sealed record StatusMessage(
     string ExpiryNotice = "",
     bool TalkEnabled = false) : IpcMessage;
 
-/// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern. TalkAvailable: Gegensprechen
-/// ist auf diesem PC eingerichtet und die Tür hat eine bekannte Kamera. DoorId: für die Einstellung „Klingeln“ pro Tür,
-/// leer bei einem Dienst vor 0.7.0.</summary>
+/// <summary>Service → app: the doorbell rings. VideoAvailable: the app can request a live view. TalkAvailable: talkback
+/// is set up on this PC and the door has a known camera. DoorId: for the per-door ring setting, empty with a service
+/// before 0.7.0.</summary>
 public sealed record CallStartedMessage(
     string CallId, string DoorName, DateTimeOffset StartedAt, bool UnlockAllowed, bool VideoAvailable = false,
     bool TalkAvailable = false, string DoorId = "") : IpcMessage;
 
-/// <summary>Dienst → App: Der Ruf ist beendet, das Fenster schliesst sich.</summary>
+/// <summary>Service → app: the call has ended, the window closes.</summary>
 public sealed record CallEndedMessage(string CallId, CallEndReason Reason) : IpcMessage;
 
-/// <summary>Dienst → App: Die Tür zum Ruf wurde geöffnet, OpenedBy ggf. nachgereicht.</summary>
+/// <summary>Service → app: the door of the call was unlocked, OpenedBy possibly arrives later.</summary>
 public sealed record DoorOpenedMessage(string CallId, string? OpenedBy) : IpcMessage;
 
-/// <summary>App → Dienst: Bitte die Tür zu diesem Ruf öffnen.</summary>
+/// <summary>App → service: please unlock the door of this call.</summary>
 public sealed record UnlockRequest(string CallId) : IpcMessage;
 
-/// <summary>Dienst → App: Ergebnis der Öffnen-Anfrage, nur an die anfragende App.</summary>
+/// <summary>Service → app: result of the unlock request, only to the requesting app.</summary>
 public sealed record UnlockResultMessage(string CallId, bool Success, string Message) : IpcMessage;
 
-/// <summary>App → Dienst: Livebild zu diesem Ruf anfordern.</summary>
+/// <summary>App → service: request the live view for this call.</summary>
 public sealed record VideoRequest(string CallId) : IpcMessage;
 
-/// <summary>Dienst → App: Einmal-Adresse (rtsp://127.0.0.1:…) für das Livebild, gültig bis kurz nach dem Rufende.</summary>
+/// <summary>Service → app: one-time address (rtsp://127.0.0.1:…) for the live view, valid until shortly after the call
+/// ends.</summary>
 public sealed record VideoReadyMessage(string CallId, string Url) : IpcMessage;
 
-/// <summary>Dienst → App: Kein Livebild, mit Grund zur Anzeige.</summary>
+/// <summary>Service → app: no live view, with a reason to display.</summary>
 public sealed record VideoUnavailableMessage(string CallId, string Reason) : IpcMessage;
 
 public sealed record DoorEntry(string DoorId, string Name);
 
-/// <summary>Dienst → App: Türen dieses PCs, für das Livebild ohne Klingeln und die Einstellung „Klingeln“ pro Tür.
-/// Enabled = Livebild ohne Klingeln auf diesem PC eingeschaltet. Eine Tür erscheint mit DoorCameras in der Konfiguration
-/// oder nach ihrem ersten Klingeln, weil erst dann ihre Kamera bekannt ist.</summary>
+/// <summary>Service → app: doors of this PC, for the live view without ringing and the per-door ring setting. Enabled =
+/// live view without ringing switched on for this PC. A door appears with DoorCameras in the configuration or after its
+/// first ring, because only then its camera is known.</summary>
 public sealed record DoorsMessage(bool Enabled, DoorEntry[] Doors) : IpcMessage
 {
     public bool Equals(DoorsMessage? other) => other is not null && Enabled == other.Enabled && Doors.SequenceEqual(other.Doors);
     public override int GetHashCode() => HashCode.Combine(Enabled, Doors.Length);
 }
 
-/// <summary>App → Dienst: Livebild einer Tür ohne Klingeln.</summary>
+/// <summary>App → service: live view of a door without ringing.</summary>
 public sealed record LiveViewRequest(string DoorId) : IpcMessage;
 
-/// <summary>Dienst → App: Einmal-Adresse für das Livebild, gültig bis Until.</summary>
+/// <summary>Service → app: one-time address for the live view, valid until Until.</summary>
 public sealed record LiveViewReadyMessage(string DoorId, string DoorName, string Url, DateTimeOffset Until) : IpcMessage;
 
-/// <summary>Dienst → App: Kein Livebild für diese Tür, mit Grund.</summary>
+/// <summary>Service → app: no live view for this door, with a reason.</summary>
 public sealed record LiveViewUnavailableMessage(string DoorId, string Reason) : IpcMessage;
 
-/// <summary>App → Dienst: Sprechtaste gedrückt (Start) oder losgelassen. Der Dienst holt die Talkback-Sitzung bei Protect
-/// und schickt den Ton selbst an die Türstation, die App erfährt deren Adresse nicht.</summary>
+/// <summary>App → service: talk button pressed (Start) or released. The service gets the talkback session from Protect
+/// and sends the audio to the door station itself, the app never learns its address.</summary>
 public sealed record TalkRequest(string CallId, bool Start) : IpcMessage;
 
-/// <summary>Dienst → App: Antwort auf den Start. SampleRate: so kodiert die App (Opus, Mono, 20 ms). MaxSeconds: so lange
-/// höchstens am Stück.</summary>
+/// <summary>Service → app: answer to the start. SampleRate: how the app encodes (Opus, mono, 20 ms). MaxSeconds: the
+/// maximum in one go.</summary>
 public sealed record TalkResultMessage(string CallId, bool Granted, string Message, int SampleRate = 0, int MaxSeconds = 0)
     : IpcMessage;
 
-/// <summary>App → Dienst: ein Opus-Paket von 20 ms, Base64. Gilt nur, solange der Dienst das Sprechen freigegeben hat.</summary>
+/// <summary>App → service: one Opus packet of 20 ms, Base64. Only valid while the service has granted
+/// talking.</summary>
 public sealed record TalkAudioMessage(string CallId, string Opus) : IpcMessage;
 
-/// <summary>Dienst → App: Sprechen beendet, ohne dass die Taste losgelassen wurde (Höchstdauer, Rufende, Fehler).</summary>
+/// <summary>Service → app: talking ended without the button being released (maximum duration, end of call,
+/// error).</summary>
 public sealed record TalkEndedMessage(string CallId, string Reason) : IpcMessage;
 
-/// <summary>App → Dienst: Prüfung mit den gespeicherten Zugängen (SIEntryDesk.exe --check).</summary>
+/// <summary>App → service: check with the stored credentials (SIEntryDesk.exe --check).</summary>
 public sealed record CheckRequest : IpcMessage;
 
-/// <summary>Dienst → App: Ergebnis der Prüfung, ohne Geheimnisse.</summary>
+/// <summary>Service → app: result of the check, without secrets.</summary>
 public sealed record CheckResultMessage(CheckItem[] Items) : IpcMessage;

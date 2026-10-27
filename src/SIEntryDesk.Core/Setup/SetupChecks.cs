@@ -11,12 +11,12 @@ using SIEntryDesk.Core.Security;
 
 namespace SIEntryDesk.Core.Setup;
 
-/// <summary>Erreichbarkeit eines Ports der Konsole und der Fingerabdruck seines Zertifikats.</summary>
+/// <summary>Reachability of a console port and the fingerprint of its certificate.</summary>
 public sealed record PortCheck(string Name, int Port, bool Reachable, string? Fingerprint, string? Problem);
 
 /// <summary>
-/// Ergebnis der Rechteprüfung eines Access-Tokens. Benötigt: Gerät anzeigen (Ereignisse), Standorte anzeigen (Türliste),
-/// Standorte bearbeiten (Öffnen). Excess nennt Rechte, die der Token hat, aber nicht braucht.
+/// Result of the permission check of an Access token. Needed: view devices (events), view sites (door list), edit sites
+/// (unlock). Excess names permissions the token has but does not need.
 /// </summary>
 public sealed record AccessRights(bool Events, bool Doors, bool Unlock, IReadOnlyList<string> Excess)
 {
@@ -24,19 +24,19 @@ public sealed record AccessRights(bool Events, bool Doors, bool Unlock, IReadOnl
     public bool Minimal => Complete && Excess.Count == 0;
 }
 
-/// <summary>Vergleich eines Ports der Konsole mit dem Pin einer bestehenden Konfiguration.</summary>
+/// <summary>Comparison of a console port with the pin of an existing configuration.</summary>
 public enum PinComparison
 {
-    /// <summary>Erreichbar, Fingerabdruck wie konfiguriert.</summary>
+    /// <summary>Reachable, fingerprint as configured.</summary>
     Match,
 
-    /// <summary>Erreichbar, aber ein anderer Fingerabdruck als konfiguriert.</summary>
+    /// <summary>Reachable, but a different fingerprint than configured.</summary>
     Mismatch,
 
-    /// <summary>Erreichbar, in der Konfiguration steht kein Pin.</summary>
+    /// <summary>Reachable, the configuration contains no pin.</summary>
     NotConfigured,
 
-    /// <summary>Nicht erreichbar, kein Vergleich möglich.</summary>
+    /// <summary>Not reachable, no comparison possible.</summary>
     Unreachable,
 }
 
@@ -47,10 +47,11 @@ public enum FindingLevel
     Fail,
 }
 
-/// <summary>Ergebnis beim Vergleich einer bestehenden Konfiguration mit der Anlage.</summary>
+/// <summary>Result of comparing an existing configuration with the installation.</summary>
 public sealed record ConfigFinding(FindingLevel Level, string Text);
 
-/// <summary>Prüfungen für den Einrichtungsassistenten. Alle lesend, mit Ausnahme von <see cref="ProtectApiClient.CreateStreamAsync"/>.</summary>
+/// <summary>Checks for the setup wizard. All read-only, except <see
+/// cref="ProtectApiClient.CreateStreamAsync"/>.</summary>
 public static class SetupChecks
 {
     public static readonly (string Name, int Port)[] Ports =
@@ -75,7 +76,7 @@ public static class SetupChecks
         return await Task.WhenAll(checks).ConfigureAwait(false);
     }
 
-    /// <summary>Rechte, die ein Betriebs-Token nicht haben soll, je mit einem rein lesenden Aufruf.</summary>
+    /// <summary>Permissions an operational token should not have, each with a purely reading call.</summary>
     private static readonly (string Name, HttpMethod Method, string Path)[] ExcessProbes =
     [
         ("Benutzer und Gruppe", HttpMethod.Get, "/api/v1/developer/users?page_num=1&page_size=1"),
@@ -89,8 +90,8 @@ public static class SetupChecks
     private const string NonexistentDoor = "00000000-0000-4000-8000-000000000000";
 
     /// <summary>
-    /// Prüft die Rechte eines Access-Tokens, ohne etwas zu ändern. Das Recht zum Öffnen wird mit einer Tür geprüft,
-    /// die es nicht gibt: ohne Recht antwortet Access mit CODE_UNAUTHORIZED, mit Recht mit CODE_NOT_EXISTS.
+    /// Checks the permissions of an Access token without changing anything. The unlock permission is checked with a
+    /// door that does not exist: without permission Access answers CODE_UNAUTHORIZED, with permission CODE_NOT_EXISTS.
     /// </summary>
     public static async Task<AccessRights> CheckAccessTokenAsync(AccessApiClient api, CancellationToken ct)
     {
@@ -103,7 +104,7 @@ public static class SetupChecks
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var (name, method, path) in ExcessProbes)
         {
-            // Beim Systemprotokoll nur eine Minute und ein Eintrag, damit keine Daten mitkommen.
+            // For the system log only one minute and one entry, so that no data comes along.
             object? body = method == HttpMethod.Post
                 ? new Dictionary<string, object> { ["topic"] = "critical", ["since"] = now - 60, ["until"] = now }
                 : null;
@@ -114,8 +115,8 @@ public static class SetupChecks
     }
 
     /// <summary>
-    /// Schlägt zu jeder Tür die Kamera mit dem passenden Namen vor, z. B. Tür „Eingang Nord HUB“ und Kamera
-    /// „Eingang Nord“. Nur eindeutige Treffer, den Rest ordnet der Admin selbst zu.
+    /// Suggests for each door the camera with the matching name, e.g. door "Eingang Nord HUB" and camera "Eingang
+    /// Nord". Only unambiguous matches, the admin maps the rest.
     /// </summary>
     public static IReadOnlyDictionary<string, string> SuggestDoorCameras(
         IEnumerable<AccessDoor> doors, IReadOnlyDictionary<string, string> cameras)
@@ -137,7 +138,7 @@ public static class SetupChecks
         return suggestions;
     }
 
-    /// <summary>Kleinbuchstaben, nur Buchstaben und Ziffern, ohne Füllwörter wie „HUB“, „Tür“, „Door“.</summary>
+    /// <summary>Lowercase, letters and digits only, without filler words such as "HUB", "Tür", "Door".</summary>
     internal static string NameKey(string name)
     {
         var words = name.ToLowerInvariant()
@@ -160,7 +161,8 @@ public static class SetupChecks
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
-    /// <summary>Liest eine bestehende sientrydesk.json. Kommentare und unbekannte Felder sind erlaubt wie beim Dienst.</summary>
+    /// <summary>Reads an existing sientrydesk.json. Comments and unknown fields are allowed, as in the
+    /// service.</summary>
     public static EntryDeskOptions ParseConfigJson(string json)
     {
         var options = JsonSerializer.Deserialize<EntryDeskOptions>(json, ConfigReadOptions)
@@ -175,7 +177,7 @@ public static class SetupChecks
         return options;
     }
 
-    /// <summary>Pin, den eine Konfiguration für diesen Port vorgibt, oder leer.</summary>
+    /// <summary>Pin that a configuration specifies for this port, or empty.</summary>
     public static string ConfiguredPin(EntryDeskOptions options, int port) => port switch
     {
         AccessApiClient.Port => options.AccessPin,
@@ -204,17 +206,17 @@ public static class SetupChecks
     }
 
     /// <summary>
-    /// True, wenn die Konsole genau die Zertifikate der Konfiguration zeigt: Access erreichbar und gleich, jeder andere
-    /// erreichbare Port ebenfalls gleich. Dann gibt es nichts neu zu bestätigen. Ein Port ohne Pin in der Konfiguration
-    /// zählt als neu, weil Speichern ihn übernehmen würde.
+    /// True if the console shows exactly the certificates of the configuration: Access reachable and equal, every other
+    /// reachable port equal as well. Then there is nothing new to confirm. A port without a pin in the configuration
+    /// counts as new, because saving would take it over.
     /// </summary>
     public static bool PinsUnchanged(EntryDeskOptions options, IReadOnlyList<PortCheck> ports) =>
         ports.Any(p => p.Port == AccessApiClient.Port && ComparePin(p, options.AccessPin) == PinComparison.Match) &&
         ports.All(p => ComparePin(p, ConfiguredPin(options, p.Port)) is PinComparison.Match or PinComparison.Unreachable);
 
     /// <summary>
-    /// Vergleicht Türen und Kamerazuordnung einer bestehenden Konfiguration mit dem, was Access und Protect melden.
-    /// <paramref name="cameras"/> ist null, solange der Protect-Schlüssel nicht geprüft ist.
+    /// Compares doors and camera mapping of an existing configuration with what Access and Protect report.
+    /// <paramref name="cameras"/> is null as long as the Protect key has not been checked.
     /// </summary>
     public static IReadOnlyList<ConfigFinding> CompareDoors(
         EntryDeskOptions options, IReadOnlyList<AccessDoor> doors, IReadOnlyDictionary<string, string>? cameras)
@@ -253,7 +255,8 @@ public static class SetupChecks
             string.Equals(entry.Trim(), door.Name, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Anlagen-Konfiguration als Text für sientrydesk.json, mit Kopfkommentar auf eigenen Zeilen.</summary>
+    /// <summary>Installation configuration as text for sientrydesk.json, with a header comment on separate
+    /// lines.</summary>
     public static string ToConfigJson(EntryDeskOptions options, DateTime created)
     {
         var config = new Dictionary<string, object?>

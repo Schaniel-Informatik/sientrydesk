@@ -1,6 +1,6 @@
-# Build und Tests bei jedem Push, die beiden Pakete als Download (14 Tage). Eine Versionsmarke v<Version> legt
-# zusätzlich einen Release-Entwurf mit beiden ZIP-Dateien an, Marcel veröffentlicht ihn nach Durchsicht.
-# Läuft auf Linux, das .NET SDK baut die Windows-Programme dank EnableWindowsTargeting auch dort (wie auf dem Mac).
+# Build and tests on every push, both packages as a download (14 days). A version tag v<Version> also creates a
+# draft release with both ZIP files, Marcel publishes it after review.
+# Runs on Linux, thanks to EnableWindowsTargeting the .NET SDK builds the Windows programs there too (as on the Mac).
 name: build
 
 on:

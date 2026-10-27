@@ -44,7 +44,7 @@ function Find-IntuneWinAppUtil([string] $Given) {
            'herunterladen und neben den Paketordner legen, oder mit -IntuneWinAppUtil <Pfad> angeben.')
 }
 
-# Dateiauswahl, wenn das Skript per Doppelklick (prepare-intune.cmd) läuft. Ohne Fenster (z. B. über SSH) null.
+# File dialog when the script runs by double-click (prepare-intune.cmd). Without a window (e.g. via SSH) null.
 function Select-File([string] $Title, [string] $Filter) {
     if (-not [Environment]::UserInteractive) { return $null }
     try {
@@ -79,7 +79,7 @@ if (-not (Test-Path $configFile)) {
     Copy-Item $picked $configFile
     Write-Host "    sientrydesk.json übernommen aus $picked"
 }
-# Windows PowerShell 5.1 liest kein JSON mit Kommentaren, ganze Kommentarzeilen werden für die Prüfung entfernt.
+# Windows PowerShell 5.1 does not read JSON with comments, whole comment lines are removed for the check.
 $configText = (Get-Content -Raw -Encoding UTF8 $configFile) -replace '(?m)^\s*//.*$', ''
 try { $config = $configText | ConvertFrom-Json }
 catch { throw "sientrydesk.json ist kein gültiges JSON (Kommentare nur auf eigenen Zeilen): $($_.Exception.Message)" }
@@ -90,7 +90,7 @@ $fileVersion = (Get-Item (Join-Path $package 'App\SIEntryDesk.exe')).VersionInfo
 if (-not $fileVersion) { throw 'Version von SIEntryDesk.exe nicht lesbar.' }
 $version = [version] $fileVersion
 $shortVersion = $version.ToString(3)
-# Mit .NET statt Get-FileHash: Das Cmdlet fehlt in Windows PowerShell, wenn es aus PowerShell 7 heraus gestartet wird.
+# With .NET instead of Get-FileHash: the cmdlet is missing in Windows PowerShell when started from PowerShell 7.
 $sha = [System.Security.Cryptography.SHA256]::Create()
 try { $hash = ($sha.ComputeHash([System.IO.File]::ReadAllBytes($configFile)) | ForEach-Object { $_.ToString('X2') }) -join '' }
 finally { $sha.Dispose() }
@@ -98,7 +98,7 @@ Write-Host "    Version $shortVersion, Konsole $($config.Host)"
 
 Write-Host '2/4 Erkennungsskript detect.ps1'
 $created = Get-Date -Format 'yyyy-MM-dd HH:mm'
-# Nur ASCII, damit Intune und Windows PowerShell 5.1 das Skript ohne Kodierungsfragen ausführen.
+# ASCII only, so that Intune and Windows PowerShell 5.1 run the script without encoding issues.
 $detection = @"
 # SI EntryDesk: Erkennungsskript fuer die Intune-App "SI EntryDesk".
 # Erzeugt am $created mit prepare-intune.ps1 fuer Version $version und die sientrydesk.json dieses Pakets.

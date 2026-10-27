@@ -21,9 +21,9 @@ using SIEntryDesk.Core.Video;
 namespace SIEntryDesk.App;
 
 /// <summary>
-/// Einrichtungsassistent für Admins (SIEntryDesk.exe --setup [Datei]). Prüft Konsole, Zugänge und Streams und speichert die
-/// sientrydesk.json. Eine bestehende lässt sich laden, dann zeigt er Abweichungen der Anlage davon. Tokens bleiben nur
-/// im Speicher dieses Fensters und werden nirgends abgelegt.
+/// Setup wizard for admins (SIEntryDesk.exe --setup [file]). Checks console, credentials and streams and saves the
+/// sientrydesk.json. An existing one can be loaded, then it shows how the installation differs from it. Tokens stay
+/// only in the memory of this window and are stored nowhere.
 /// </summary>
 public partial class SetupWindow : Window
 {
@@ -72,7 +72,8 @@ public partial class SetupWindow : Window
             Loaded += async (_, _) => await LoadConfigAsync(configPath);
     }
 
-    /// <summary>Die geladene Konfiguration, solange sie zur geprüften Konsole gehört. Sonst wird nichts verglichen.</summary>
+    /// <summary>The loaded configuration, as long as it belongs to the checked console. Otherwise nothing is
+    /// compared.</summary>
     private EntryDeskOptions? Reference =>
         _loaded is { } loaded && string.Equals(loaded.Host.Trim(), _host, StringComparison.OrdinalIgnoreCase) ? loaded : null;
 
@@ -89,11 +90,12 @@ public partial class SetupWindow : Window
 
     private string? Pin(int port) => _ports.FirstOrDefault(p => p.Port == port)?.Fingerprint;
 
-    /// <summary>Pin zum Speichern: der geprüfte Fingerabdruck, bei einem gerade nicht erreichbaren Port der bisherige.</summary>
+    /// <summary>Pin to save: the checked fingerprint, for a port that is currently unreachable the previous
+    /// one.</summary>
     private string? PinForSave(int port) =>
         Pin(port) ?? (Reference is { } reference && SetupChecks.ConfiguredPin(reference, port) is { Length: > 0 } pin ? pin : null);
 
-    // ---------------------------------------------------------------- 0. Bestehende Konfiguration
+    // ---------------------------------------------------------------- 0. Existing configuration
 
     private async void OnLoadInstalled(object sender, RoutedEventArgs e) => await LoadConfigAsync(InstalledConfigPath);
 
@@ -139,7 +141,7 @@ public partial class SetupWindow : Window
         var lines = DescribeLoaded(path, options);
         ShowLines(LoadResult, lines);
         await CheckHostAsync();
-        // Ergebnis der Fingerabdrücke gleich oben, die Einzelheiten stehen unter 1. Konsole.
+        // Result of the fingerprints right at the top, the details are under 1. Console.
         if (Reference is not null && _ports.Count > 0)
         {
             lines.Insert(1, PinSummary(options));
@@ -183,7 +185,7 @@ public partial class SetupWindow : Window
         return lines;
     }
 
-    // ---------------------------------------------------------------- 1. Konsole
+    // ---------------------------------------------------------------- 1. Console
 
     private async void OnCheckHost(object sender, RoutedEventArgs e) => await CheckHostAsync();
 
@@ -221,7 +223,7 @@ public partial class SetupWindow : Window
         ShowLines(HostResult, lines);
         PinsConfirmed.IsEnabled = accessOk;
 
-        // Zeigt die Konsole genau die Zertifikate der geladenen Datei, gibt es nichts neu zu bestätigen.
+        // If the console shows exactly the certificates of the loaded file, there is nothing new to confirm.
         if (reference is not null && SetupChecks.PinsUnchanged(reference, _ports))
             PinsConfirmed.IsChecked = true;
     }
@@ -308,7 +310,7 @@ public partial class SetupWindow : Window
 
     private static void ShowLine(TextBlock target, Mark mark, string text) => ShowLines(target, [(mark, text)]);
 
-    /// <summary>Ergebniszeilen mit farbigem Zeichen: ✓ grün, ✗ rot, ⚠ orange.</summary>
+    /// <summary>Result lines with a colored mark: ✓ green, ✗ red, ⚠ orange.</summary>
     private static void ShowLines(TextBlock target, IEnumerable<(Mark Mark, string Text)> lines)
     {
         target.Inlines.Clear();
@@ -366,7 +368,7 @@ public partial class SetupWindow : Window
         UpdateSaveButton();
     }
 
-    // ---------------------------------------------------------------- 4. Türen und Kameras
+    // ---------------------------------------------------------------- 4. Doors and cameras
 
     private void BuildDoorRows()
     {
@@ -378,7 +380,7 @@ public partial class SetupWindow : Window
         if (_doors is null)
             return;
 
-        // Mit geladener Konfiguration gilt deren Zuordnung, Vorschläge erscheinen nur als Hinweis.
+        // With a loaded configuration its mapping applies, suggestions appear only as a hint.
         var reference = Reference;
         var suggestions = reference is not null
             ? reference.DoorCameras
@@ -460,7 +462,7 @@ public partial class SetupWindow : Window
         UpdateStreamHint();
     }
 
-    /// <summary>Hinweis, wo man einen fehlenden Stream anlegt, sobald einer Tür mit Kamera der Stream fehlt.</summary>
+    /// <summary>Hint where to create a missing stream, as soon as a door with a camera lacks a stream.</summary>
     private void UpdateStreamHint()
     {
         StreamHint.Visibility = _rows.Any(r => r.Create.IsEnabled) ? Visibility.Visible : Visibility.Collapsed;
@@ -489,7 +491,7 @@ public partial class SetupWindow : Window
         await RefreshStreamAsync(row);
     }
 
-    /// <summary>Spielt das Livebild über denselben geprüften Weg wie die App: Stream-Proxy mit Pin, LibVLC.</summary>
+    /// <summary>Plays the live view via the same checked path as the app: stream proxy with pin, LibVLC.</summary>
     private async Task TestLiveViewAsync(DoorRow row)
     {
         if (_protect is null || SelectedCamera(row) is not { } camera || Pin(7441) is not { } streamPin)
@@ -516,7 +518,7 @@ public partial class SetupWindow : Window
         window.PlayVideo(libVlc, url, autoSound: false);
     }
 
-    // ---------------------------------------------------------------- 5./6. Speichern
+    // ---------------------------------------------------------------- 5./6. Save
 
     private void UpdateSaveButton() =>
         SaveButton.IsEnabled = PinsConfirmed.IsChecked == true && _rights is { Events: true } && _doors is not null;
@@ -561,7 +563,7 @@ public partial class SetupWindow : Window
             Filter = "SI EntryDesk Konfiguration (*.json)|*.json",
             OverwritePrompt = true,
         };
-        // Neben der geladenen Datei vorschlagen, ausser bei der installierten: die überschreibt das nächste Update.
+        // Suggest next to the loaded file, except for the installed one: the next update overwrites it.
         if (_loadedPath is not null && !string.Equals(_loadedPath, InstalledConfigPath, StringComparison.OrdinalIgnoreCase))
             dialog.InitialDirectory = Path.GetDirectoryName(_loadedPath);
         if (dialog.ShowDialog(this) != true)

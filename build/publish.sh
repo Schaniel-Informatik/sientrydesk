@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Baut die Pakete für Windows (x64) auf dem Mac: Tests, dann Dienst und App als eigenständige .exe.
-# Zwei getrennte Pakete, damit Zugänge nie ins Programmpaket geraten:
-#   SIEntryDesk-<Version>-win-x64.zip   Programm und Installationsskripte (Intune-App „SI EntryDesk“)
-#   SIEntryDesk-Zugaenge-<Version>.zip  Skript und Vorlage für die Zugänge (Intune-App „SI EntryDesk Zugänge“),
-#                                       eigene Version aus build/zugaenge.txt
+# Builds the packages for Windows (x64) on the Mac: tests, then service and app as self-contained .exe.
+# Two separate packages, so that credentials never end up in the program package:
+#   SIEntryDesk-<Version>-win-x64.zip   program and install scripts (Intune app "SI EntryDesk")
+#   SIEntryDesk-Zugaenge-<Version>.zip  script and template for the credentials (Intune app "SI EntryDesk Zugänge"),
+#                                       own version from build/zugaenge.txt
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
@@ -11,7 +11,7 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
 name="SIEntryDesk-$version-win-x64"
 out="artifacts/$name"
-# Zugänge mit eigener Version (build/zugaenge.txt), nur neu, wenn sich deploy/zugaenge wirklich geändert hat.
+# Credentials package with its own version (build/zugaenge.txt), only new if deploy/zugaenge really changed.
 read -r tokensVersion tokensHash < <(grep -v '^#' build/zugaenge.txt | grep -v '^$' | tail -1)
 currentHash=$(cd deploy/zugaenge && find . -type f ! -name '.*' -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -c1-64)
 if [[ "$currentHash" != "$tokensHash" ]]; then
@@ -28,30 +28,30 @@ dotnet test tests/SIEntryDesk.Core.Tests --nologo -v quiet
 common=(-c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:DebugType=none --nologo -v quiet)
 dotnet publish src/SIEntryDesk.Service "${common[@]}" -o "$out/Service"
 dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
-# deploy/ enthält nur ausgelieferte Dateien, die Anleitungen für Admins kommen aus docs/admin nach Doku/.
+# deploy/ contains only shipped files, the admin guides come from docs/admin into Doku/.
 cp deploy/programm/* "$out/"
 mkdir -p "$out/Doku" "$tokensOut"
 cp docs/admin/*.md THIRD-PARTY-NOTICES.md "$out/Doku/"
 cp deploy/zugaenge/* "$tokensOut/"
 
-# Sicherung: Die ZIP-Dateien sind für alle Anlagen gleich und können später öffentlich werden. Die sientrydesk.json
-# einer Anlage und die tokens.txt legt der Admin erst beim Packen für Intune in den entpackten Ordner.
+# Safeguard: the ZIP files are the same for all installations and are public. The sientrydesk.json of an
+# installation and the tokens.txt are put into the unpacked folder by the admin only when packing for Intune.
 if find "$out" "$tokensOut" \( -name tokens.txt -o -name sientrydesk.json \) | grep -q .; then
   echo "ABBRUCH: tokens.txt oder sientrydesk.json im Paket" >&2
   exit 1
 fi
 
 (cd artifacts && zip -qr "$name.zip" "$name" && zip -qr "$tokens.zip" "$tokens")
-# Von den Zugängen nur die aktuelle Version behalten.
+# Keep only the current version of the credentials package.
 for zip in artifacts/SIEntryDesk-Zugaenge-*.zip; do
   [[ "$zip" == "artifacts/$tokens.zip" ]] || rm -f "$zip"
 done
 
-# Nur die ZIP-Dateien behalten, die entpackten Ordner braucht es nach dem Packen nicht mehr.
+# Keep only the ZIP files, the unpacked folders are not needed after packing.
 rm -rf "$out" "$tokensOut"
 
-# Ältere Pakete als die zuletzt erfolgreich getestete Version löschen. Diese steht in artifacts/GETESTET (lokal,
-# wird nach einem bestandenen Test gesetzt). Ohne die Datei bleibt alles. Alte Versionen lassen sich aus Git neu bauen.
+# Delete packages older than the last successfully tested version. It is in artifacts/GETESTET (local, set after a
+# passed test). Without the file everything stays. Old versions can be rebuilt from Git.
 if [[ -f artifacts/GETESTET ]]; then
   tested=$(tr -d '[:space:]' < artifacts/GETESTET)
   for zip in artifacts/SIEntryDesk-[0-9]*.zip; do

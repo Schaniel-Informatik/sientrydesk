@@ -1,6 +1,6 @@
 namespace SIEntryDesk.Core.Calls;
 
-/// <summary>Warum ein Klingelruf endet. Die Werte entsprechen dem reason_code von access.remote_view.change.</summary>
+/// <summary>Why a doorbell call ends. The values match the reason_code of access.remote_view.change.</summary>
 public enum CallEndReason
 {
     Unknown = 0,
@@ -10,7 +10,7 @@ public enum CallEndReason
     Cancelled = 108,
     AnsweredElsewhere = 400,
 
-    /// <summary>Kein Ende von Access erhalten, der Ruf wurde nach der Höchstdauer verworfen.</summary>
+    /// <summary>No end received from Access, the call was discarded after the maximum duration.</summary>
     Expired = -1,
 }
 

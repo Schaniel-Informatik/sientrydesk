@@ -138,7 +138,7 @@ public class TalkTests
     [Fact]
     public void Microphone_audio_becomes_twenty_millisecond_frames_at_the_door_rate()
     {
-        // 48 kHz Stereo wie ein typisches Windows-Mikrofon, 1 s Ton bei 440 Hz.
+        // 48 kHz stereo like a typical Windows microphone, 1 s of tone at 440 Hz.
         var framer = new VoiceFramer(48000, 2, 24000);
         var input = new float[48000 * 2];
         for (var i = 0; i < 48000; i++)
@@ -173,7 +173,7 @@ public class TalkTests
             decoded.AddRange(output);
         }
 
-        // Nach dem Einschwingen: Pegel und Frequenz (Nulldurchgänge) wie beim Original.
+        // After settling: level and frequency (zero crossings) as in the original.
         var steady = decoded.Skip(4800).ToArray();
         var rms = MathF.Sqrt(steady.Sum(s => s * s) / steady.Length);
         Assert.InRange(rms, 0.25f, 0.45f);

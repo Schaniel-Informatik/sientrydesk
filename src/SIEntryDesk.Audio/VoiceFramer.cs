@@ -4,8 +4,8 @@ using Concentus;
 namespace SIEntryDesk.Audio;
 
 /// <summary>
-/// Macht aus Mikrofondaten (beliebige Abtastrate, ein oder mehrere Kanäle, interleavte float-Samples) Mono-Rahmen von
-/// 20 ms in der Abtastrate der Türstation. Ein Rahmen ist das, was Opus pro Paket kodiert.
+/// Turns microphone data (any sample rate, one or more channels, interleaved float samples) into mono frames of 20 ms
+/// at the door station's sample rate. A frame is what Opus encodes per packet.
 /// </summary>
 public sealed class VoiceFramer
 {
@@ -37,7 +37,7 @@ public sealed class VoiceFramer
 
     public int FrameSamples => OutputRate * FrameMilliseconds / 1000;
 
-    /// <summary>Nimmt interleavte Samples entgegen und ruft <paramref name="onFrame"/> für jeden vollen Rahmen.</summary>
+    /// <summary>Takes interleaved samples and calls <paramref name="onFrame"/> for every full frame.</summary>
     public void Push(ReadOnlySpan<float> interleaved, Action<ReadOnlySpan<float>> onFrame)
     {
         var count = interleaved.Length / _channels;
@@ -87,7 +87,7 @@ public sealed class VoiceFramer
         }
     }
 
-    /// <summary>Verwirft einen angefangenen Rahmen, z. B. beim Loslassen der Sprechtaste.</summary>
+    /// <summary>Discards a started frame, e.g. when the talk button is released.</summary>
     public void Reset()
     {
         _filled = 0;

@@ -7,13 +7,13 @@ using SIEntryDesk.Core.Ipc;
 
 namespace SIEntryDesk.Service;
 
-/// <summary>Eine verbundene App: Verbindungsnummer und Windows-Benutzer.</summary>
+/// <summary>A connected app: connection number and Windows user.</summary>
 internal sealed record PipeClient(int Id, string User);
 
 /// <summary>
-/// Lokale Named Pipe für die Tray-Apps der angemeldeten Benutzer. Zugriff haben nur interaktiv angemeldete
-/// Benutzer (lesen/schreiben), SYSTEM, Administratoren und der Dienst selbst. Den Benutzernamen liefert Windows,
-/// er landet als Auslöser im Access-Protokoll.
+/// Local named pipe for the tray apps of the logged-on users. Access only for interactively logged-on users
+/// (read/write), SYSTEM, administrators and the service itself. Windows provides the user name, it ends up as the
+/// initiator in the Access log.
 /// </summary>
 internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : BackgroundService
 {
@@ -21,10 +21,10 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     private readonly ConcurrentDictionary<int, ClientConnection> _clients = new();
     private int _nextId;
 
-    /// <summary>(Anfrage der App, App) → Antwort an diese App. Wird vom Koordinator gesetzt.</summary>
+    /// <summary>(Request of the app, app) → answer to this app. Set by the coordinator.</summary>
     public Func<IpcMessage, PipeClient, CancellationToken, Task<IpcMessage?>>? RequestHandler { get; set; }
 
-    /// <summary>Eine App hat die Verbindung getrennt (Nummer wie in <see cref="PipeClient.Id"/>).</summary>
+    /// <summary>An app has disconnected (number as in <see cref="PipeClient.Id"/>).</summary>
     public event Action<int>? ClientDisconnected;
 
     public void Broadcast(IpcMessage message)
@@ -33,7 +33,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             client.Send(message);
     }
 
-    /// <summary>Nachricht nur an eine App, sofern sie noch verbunden ist.</summary>
+    /// <summary>Message to one app only, if it is still connected.</summary>
     public void Send(int clientId, IpcMessage message)
     {
         if (_clients.TryGetValue(clientId, out var client))
@@ -42,7 +42,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        // Die erste Instanz muss uns gehören. Hat ein anderer Prozess den Namen schon belegt, wird das gemeldet.
+        // The first instance must be ours. If another process already holds the name, this is reported.
         var firstInstance = true;
         while (!ct.IsCancellationRequested)
         {
@@ -138,7 +138,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
         {
             security.AddAccessRule(new PipeAccessRule(self.User!, PipeAccessRights.FullControl, AccessControlType.Allow));
         }
-        // Angemeldete Benutzer dürfen verbinden, aber keine eigenen Instanzen dieser Pipe anlegen.
+        // Logged-on users may connect, but not create their own instances of this pipe.
         security.AddAccessRule(new PipeAccessRule(
             new SecurityIdentifier(WellKnownSidType.InteractiveSid, null),
             PipeAccessRights.ReadWrite | PipeAccessRights.Synchronize, AccessControlType.Allow));

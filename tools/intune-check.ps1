@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Zeigt Einstellungen und Installationsstatus der SI-EntryDesk-Apps in Intune. Nur lesende Abfragen.
+    Shows settings and installation status of the SI EntryDesk apps in Intune. Read-only queries.
 
 .DESCRIPTION
-    Braucht das Modul Microsoft.Graph.Authentication 2.36.1 (neuere Versionen verlangen PowerShell mit .NET 10).
-    Beim ersten Aufruf Anmeldung mit Gerätecode (2 Minuten Zeit), danach still aus dem Schlüsselbund.
-    Verwendet nur GET und den Bericht retrieveDeviceAppInstallationStatusReport, ändert nichts in Intune.
+    Needs the module Microsoft.Graph.Authentication 2.36.1 (newer versions require PowerShell with .NET 10).
+    On first use, sign-in with a device code (2 minutes), afterwards silently from the keychain.
+    Uses only GET and the report retrieveDeviceAppInstallationStatusReport, changes nothing in Intune.
 
 .EXAMPLE
     pwsh -NoProfile -File tools/intune-check.ps1

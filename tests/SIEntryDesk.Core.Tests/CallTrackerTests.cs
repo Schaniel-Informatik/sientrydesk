@@ -81,8 +81,8 @@ public class CallTrackerTests
     }
 
     [Theory]
-    [InlineData(400)] // anderswo angenommen: jemand kümmert sich
-    [InlineData(106)] // abgelehnt: bewusst entschieden
+    [InlineData(400)] // answered elsewhere: someone takes care of it
+    [InlineData(106)] // declined: a deliberate decision
     [InlineData(107)]
     public void No_unlock_after_the_call_was_handled(int reason)
     {
@@ -95,8 +95,8 @@ public class CallTrackerTests
     }
 
     [Theory]
-    [InlineData(108)] // Besucher hat abgebrochen, z. B. zweimal gedrückt
-    [InlineData(105)] // niemand hat abgenommen
+    [InlineData(108)] // visitor cancelled, e.g. pressed twice
+    [InlineData(105)] // nobody answered
     public void Unlock_still_possible_shortly_after_cancel_or_timeout(int reason)
     {
         var time = new ManualTime();
@@ -135,7 +135,7 @@ public class CallTrackerTests
     [Fact]
     public void Unlock_in_progress_survives_the_end_of_the_call()
     {
-        // Nach dem Öffnen über die API endet der Ruf mit 108. Das darf kein zweites Öffnen freigeben.
+        // After unlocking via the API the call ends with 108. That must not allow a second unlock.
         var tracker = new CallTracker(new ManualTime());
         tracker.Apply(Ring());
         Assert.Equal(UnlockDecision.Allowed, tracker.TryBeginUnlock("req-1", out _));
@@ -172,7 +172,7 @@ public class CallTrackerTests
     [Fact]
     public void Opening_after_the_end_is_reported_with_the_person()
     {
-        // Reihenfolge wie im Test beobachtet: Ende 400, dann remote_unlock, dann Protokoll mit Namen.
+        // Order as observed in the test: end 400, then remote_unlock, then log with name.
         var time = new ManualTime();
         var tracker = new CallTracker(time);
         tracker.Apply(Ring());
