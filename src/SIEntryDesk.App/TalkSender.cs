@@ -22,7 +22,9 @@ namespace SIEntryDesk.App;
 internal sealed class TalkSender : IDisposable
 {
     public static readonly TimeSpan PreRollLimit = TimeSpan.FromSeconds(2);
-    public static readonly TimeSpan Tail = TimeSpan.FromMilliseconds(600);
+    /// <summary>Nachlauf nach dem Loslassen: 0,6 s in 0.7.x, ab 0.8.0 0,3 s, weil mit Lautsprechern der Ton der Tür so lange
+    /// stumm bleibt und die Antwort des Besuchers sonst verloren geht (Rückmeldung 27.10.).</summary>
+    public static readonly TimeSpan Tail = TimeSpan.FromMilliseconds(300);
 
     private readonly object _gate = new();
     private readonly WasapiRecorder _recorder;
@@ -38,6 +40,7 @@ internal sealed class TalkSender : IDisposable
     private bool _recording = true;
     private Func<Task>? _afterLast;
     private Action? _finished;
+    private Action? _recordingEnded;
     private int _disposed;
 
     private TalkSender(WasapiRecorder recorder, Action<string> onError)
@@ -118,15 +121,16 @@ internal sealed class TalkSender : IDisposable
         _ = PumpAsync(send, _stop.Token);
     }
 
-    /// <summary>Taste losgelassen: noch <see cref="Tail"/> aufnehmen, dann stoppen. <paramref name="afterLast"/> läuft nach
-    /// dem letzten gesendeten Paket (nur nach <see cref="Begin"/>), <paramref name="finished"/> danach bzw. sofort, wenn
-    /// nichts zu senden ist.</summary>
-    public void Finish(Func<Task> afterLast, Action finished)
+    /// <summary>Taste losgelassen: noch <see cref="Tail"/> aufnehmen, dann stoppen. <paramref name="recordingEnded"/> läuft,
+    /// sobald das Mikrofon aus ist (ab dann darf der Ton der Tür wieder laufen), <paramref name="afterLast"/> nach dem
+    /// letzten gesendeten Paket (nur nach <see cref="Begin"/>), <paramref name="finished"/> danach.</summary>
+    public void Finish(Action recordingEnded, Func<Task> afterLast, Action finished)
     {
         lock (_gate)
         {
             if (!_recording || _tailTimer is not null)
                 return;
+            _recordingEnded = recordingEnded;
             _afterLast = afterLast;
             _finished = finished;
             _tailTimer = new System.Threading.Timer(_ => EndRecording(), null, Tail, Timeout.InfiniteTimeSpan);
@@ -143,6 +147,7 @@ internal sealed class TalkSender : IDisposable
                 return false;
             _tailTimer.Dispose();
             _tailTimer = null;
+            _recordingEnded = null;
             _afterLast = null;
             _finished = null;
             return true;
@@ -151,6 +156,7 @@ internal sealed class TalkSender : IDisposable
 
     private void EndRecording()
     {
+        Action? recordingEnded;
         lock (_gate)
         {
             if (!_recording || _tailTimer is null)
@@ -161,7 +167,9 @@ internal sealed class TalkSender : IDisposable
             StopRecorder();
             if (_framer is not null)
                 Complete();
+            recordingEnded = _recordingEnded;
         }
+        recordingEnded?.Invoke();
     }
 
     /// <summary>Nach dem letzten Paket: Ende melden, dann fertig. Ohne Freigabe gibt es nichts zu senden.</summary>

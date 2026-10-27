@@ -37,6 +37,7 @@ public partial class App : Application
     private string _missedDoor = string.Empty;
 
     private bool _autoSound;
+    private ListenMode _listenMode;
 
     // Klingeln pro Tür: Einstellung dieses Benutzers, Türen vom Dienst und aus Rufen dieser Sitzung, verzögerte Rufe.
     private RingPreferences _ringPrefs = null!;
@@ -135,10 +136,12 @@ public partial class App : Application
         _libVlc = Task.Run(LoadLibVlc);
         _ringtone = new Ringtone();
         _autoSound = LoadAutoSound();
+        _listenMode = TalkAudio.LoadMode();
         _ringPrefs = new RingPreferences();
         _tray = new TrayIcon(new TrayActions(ShowTestRing, RequestLiveView, Pause, () => Resume(manual: true), SetAutoSound,
-            StartCheck, Shutdown, SetRingMode, ShowPendingNow));
+            StartCheck, Shutdown, SetRingMode, ShowPendingNow, SetListenMode, TalkAudio.HeadsetDetected));
         _tray.SetAutoSound(_autoSound);
+        _tray.SetListenMode(_listenMode);
         UpdateRingDoors();
         _alarmTimer.Tick += (_, _) => NotifyAlarm();
         _pauseTimer.Tick += (_, _) => Resume(manual: false);
@@ -421,7 +424,7 @@ public partial class App : Application
         _talkTimer.Start();
     }
 
-    /// <summary>Taste losgelassen: Nachlauf aufnehmen, nach dem letzten Paket das Ende melden, dann Ton der Tür wieder an.</summary>
+    /// <summary>Taste losgelassen: Nachlauf aufnehmen, dann Ton der Tür wieder an, nach dem letzten Paket das Ende melden.</summary>
     private void OnTalkReleased(string callId)
     {
         if (_talk is not { } talk || talk.CallId != callId)
@@ -431,6 +434,12 @@ public partial class App : Application
         }
         var client = _client;
         talk.Sender.Finish(
+            () => Dispatcher.InvokeAsync(() =>
+            {
+                // Mikrofon aus: kein Echo mehr möglich, der Ton der Tür darf wieder laufen.
+                if (_talk == talk)
+                    talk.Window.ShowTalkIdle();
+            }),
             async () =>
             {
                 if (client is not null)
@@ -539,9 +548,12 @@ public partial class App : Application
     {
         var libVlc = _libVlc is null ? null : await _libVlc;
         if (libVlc is null)
+        {
             window.ShowVideoProblem("Videoplayer konnte nicht geladen werden");
-        else
-            window.PlayVideo(libVlc, url, _autoSound);
+            return;
+        }
+        window.SetTalkAudio(TalkAudio.Resolve(_listenMode));
+        window.PlayVideo(libVlc, url, _autoSound);
     }
 
     private bool IsPaused => _pausedUntil is { } until && until > DateTimeOffset.Now;
@@ -582,6 +594,7 @@ public partial class App : Application
             return;
         var state = TrayStatus.Evaluate(_status?.Connected ?? true, _status?.Service, _pausedUntil, DateTimeOffset.Now);
         _tray.Update(state, _status?.Service?.ServiceVersion);
+        _tray.SetTalkEnabled(_status?.Service?.TalkEnabled == true);
         _tray.SetPause(IsPaused ? _pausedUntil : null, MissedText());
 
         if (!state.Alarm)
@@ -624,6 +637,12 @@ public partial class App : Application
     {
         using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
         return key?.GetValue("AutoDoorSound") is int value && value != 0;
+    }
+
+    private void SetListenMode(ListenMode mode)
+    {
+        _listenMode = mode;
+        TalkAudio.SaveMode(mode);
     }
 
     private void SetAutoSound(bool on)

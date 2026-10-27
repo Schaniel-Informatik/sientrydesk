@@ -10,7 +10,7 @@ namespace SIEntryDesk.App;
 internal static class LocalChecks
 {
     /// <summary>Einzeln, damit das Fenster jeden Punkt zeigt, sobald er fertig ist. Das Mikrofon zuletzt, es dauert am längsten.</summary>
-    public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, SoundOutput, Microphone];
+    public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, SoundOutput, Microphone, TalkSound];
 
     public static CheckItem Item(string name, CheckLevel level, string detail) => new(CheckReport.ThisPc, name, level, detail);
 
@@ -77,6 +77,10 @@ internal static class LocalChecks
             return Item("Tonausgabe", CheckLevel.Warn, "nicht lesbar");
         }
     }
+
+    /// <summary>Ob der Ton der Tür beim Sprechen hörbar bleibt (Headset) und über welches Gerät. Nur ein Hinweis.</summary>
+    private static CheckItem TalkSound() =>
+        Item("Ton beim Sprechen", CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
 
     /// <summary>Öffnet das Mikrofon kurz, so wie beim Sprechen. Nur fürs Gegensprechen nötig, deshalb höchstens orange.</summary>
     private static CheckItem Microphone()

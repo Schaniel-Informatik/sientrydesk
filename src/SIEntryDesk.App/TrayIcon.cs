@@ -18,7 +18,9 @@ internal sealed record TrayActions(
     Action Check,
     Action Exit,
     Action<RingDoor, RingMode> RingModeChanged,
-    Action ShowPendingNow);
+    Action ShowPendingNow,
+    Action<ListenMode> ListenModeChanged,
+    Func<bool> HeadsetDetected);
 
 /// <summary>Eine Tür im Untermenü „Klingeln“ mit der Einstellung dieses Benutzers.</summary>
 internal sealed record RingDoor(string DoorId, string Name, RingMode Mode);
@@ -54,6 +56,8 @@ internal sealed class TrayIcon : IDisposable
     private DateTimeOffset? _pausedUntil;
     private string? _missed;
     private bool _autoSound;
+    private ListenMode _listenMode;
+    private bool _talkEnabled;
     private IReadOnlyList<RingDoor> _ringDoors = [];
     private string? _pending;
 
@@ -144,6 +148,11 @@ internal sealed class TrayIcon : IDisposable
     }
 
     public void SetAutoSound(bool on) => _autoSound = on;
+
+    public void SetListenMode(ListenMode mode) => _listenMode = mode;
+
+    /// <summary>Gegensprechen auf diesem PC eingerichtet: erst dann gibt es „Tür beim Sprechen hören“.</summary>
+    public void SetTalkEnabled(bool on) => _talkEnabled = on;
 
     public void Notify(string title, string text) =>
         _icon.ShowBalloonTip(5000, title, text, Forms.ToolTipIcon.Info);
@@ -241,6 +250,8 @@ internal sealed class TrayIcon : IDisposable
             _actions.AutoSoundChanged(autoSound.Checked);
         };
         menu.Items.Add(autoSound);
+        if (_talkEnabled)
+            menu.Items.Add(ListenMenu());
         menu.Items.Add("Testklingeln (nur dieser PC)", null, (_, _) => _actions.TestRing());
         menu.Items.Add("Prüfen …", null, (_, _) => _actions.Check());
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -280,6 +291,25 @@ internal sealed class TrayIcon : IDisposable
             }
             menu.Items.Add(item);
         }
+    }
+
+    /// <summary>„Tür beim Sprechen hören“: automatisch (Headset erkannt?), immer oder nie.</summary>
+    private Forms.ToolStripMenuItem ListenMenu()
+    {
+        var item = new Forms.ToolStripMenuItem($"Tür beim Sprechen hören: {TalkAudio.Label(_listenMode)}");
+        foreach (var mode in Enum.GetValues<ListenMode>())
+        {
+            var choice = mode;
+            var label = mode == ListenMode.Auto
+                ? $"automatisch ({(_actions.HeadsetDetected() ? "Headset erkannt" : "kein Headset erkannt")})"
+                : TalkAudio.Label(mode);
+            item.DropDownItems.Add(new Forms.ToolStripMenuItem(label, null, (_, _) =>
+            {
+                _listenMode = choice;
+                _actions.ListenModeChanged(choice);
+            }) { Checked = _listenMode == mode });
+        }
+        return item;
     }
 
     /// <summary>"&" wäre im Menü ein Tastenkürzel.</summary>

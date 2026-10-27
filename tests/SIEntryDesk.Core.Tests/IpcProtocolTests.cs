@@ -9,6 +9,7 @@ public class IpcProtocolTests
     public static TheoryData<IpcMessage> Messages() =>
     [
         new StatusMessage(true, "", "0.1.0"),
+        new StatusMessage(true, "", "0.8.0", LinkHealth.Ready, TalkEnabled: true),
         new CallStartedMessage("req-1", "Tür 1", new DateTimeOffset(2026, 9, 28, 14, 0, 0, TimeSpan.Zero), true),
         new CallEndedMessage("req-1", CallEndReason.AnsweredElsewhere),
         new DoorOpenedMessage("req-1", "A. Muster"),

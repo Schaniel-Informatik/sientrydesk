@@ -57,6 +57,11 @@ Stand 2026-10-05, umgesetzt. Opus/RTP an beiden Türstationen bestätigt, mit W1
   verloren. 0.7.0: Mikrofon öffnet beim Drücken (Vorlauf bis 2 s bis zur Freigabe), 0,6 s Nachlauf nach dem Loslassen,
   Ende an den Dienst erst nach dem letzten Paket, Senden im 20-ms-Takt. Die rund 1 s bis zur Antwort (Ton über das
   Livebild) bleibt.
+- 2026-10-27, Rückmeldung: Mit Headset (fast alle Benutzer) ist die Antwort meist schon vorbei, wenn man sie hört.
+  Ursache: Der Ton der Tür war beim Sprechen und im Nachlauf stumm, nicht verzögert; was der Besucher dann sagte, ging
+  verloren. 0.8.0: Mit Headset bleibt der Ton an (kein Echo, weil er im Ohr bleibt) und läuft über das
+  Kommunikationsgerät, mit Lautsprechern Nachlauf 0,3 s. Entscheid Marcel: Sprechtaste weiter halten, Lautsprecher wie
+  bisher, Nachlauf kürzer.
 1. Vom Mac aus, ohne Windows: `dotnet run --project tools/SIEntryDesk.DevCli -- talk <kamera-id> 3` schickt einen
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,

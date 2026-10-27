@@ -47,6 +47,9 @@ public partial class RingWindow : Window
     private MediaPlayer? _player;
     private bool _talkAvailable;
     private bool _talking;
+    // Mit Headset (0.8.0): Ton der Tür beim Sprechen nicht stumm, Ausgabe über das Kommunikationsgerät.
+    private bool _listenWhileTalking;
+    private string? _outputDevice;
 
     private static readonly Brush TalkIdle = new SolidColorBrush(Color.FromRgb(0x1F, 0x6F, 0xEB));
     private static readonly Brush TalkActive = new SolidColorBrush(Color.FromRgb(0xD2, 0x99, 0x22));
@@ -121,9 +124,19 @@ public partial class RingWindow : Window
         TalkButton.IsEnabled = true;
     }
 
-    /// <summary>Sprechtaste gedrückt: Das Mikrofon läuft sofort, bis zur Freigabe wird zwischengespeichert. Der Ton der Tür
-    /// ist so lange stumm, sonst gibt es Echo. Danach will man die Antwort hören, deshalb ist „Ton an“ ab jetzt
-    /// eingeschaltet.</summary>
+    /// <summary>Vor dem Livebild: Ton der Tür beim Sprechen hören (Headset) und auf welchem Gerät.</summary>
+    internal void SetTalkAudio(TalkAudioPlan plan)
+    {
+        _listenWhileTalking = plan.ListenWhileTalking;
+        _outputDevice = plan.OutputDeviceId;
+    }
+
+    /// <summary>Stumm nur, solange mit Lautsprechern gesprochen wird, sonst gäbe es Echo.</summary>
+    private bool PlayerMuted => _muted || (_talking && !_listenWhileTalking);
+
+    /// <summary>Sprechtaste gedrückt: Das Mikrofon läuft sofort, bis zur Freigabe wird zwischengespeichert. Mit
+    /// Lautsprechern ist der Ton der Tür so lange stumm, mit Headset bleibt er an. Man will die Antwort hören, deshalb ist
+    /// „Ton an“ ab jetzt eingeschaltet.</summary>
     public void ShowTalking()
     {
         _talking = true;
@@ -132,19 +145,19 @@ public partial class RingWindow : Window
         if (SoundButton.IsEnabled)
             SoundButton.Content = "Ton aus";
         if (_player is not null)
-            _player.Mute = true;
-        TalkButton.Content = "Sie sprechen – loslassen zum Hören";
+            _player.Mute = PlayerMuted;
+        TalkButton.Content = _listenWhileTalking ? "Sie sprechen – Tür bleibt hörbar" : "Sie sprechen – loslassen zum Hören";
         TalkButton.Background = TalkActive;
     }
 
-    /// <summary>Sprechen ganz zu Ende (nach dem Nachlauf, bei Fehlern): Ton der Tür wieder wie eingestellt.</summary>
+    /// <summary>Mikrofon aus (nach dem Nachlauf, bei Fehlern): Ton der Tür wieder wie eingestellt.</summary>
     public void ShowTalkIdle()
     {
         if (TalkHeld)
             return;
-        if (_talking && _player is not null)
-            _player.Mute = _muted;
         _talking = false;
+        if (_player is not null)
+            _player.Mute = PlayerMuted;
         ShowTalkButtonIdle();
     }
 
@@ -233,8 +246,11 @@ public partial class RingWindow : Window
         {
             if (_player is null)
                 return;
-            // Während gesprochen wird, bleibt der Ton der Tür stumm, sonst gibt es Echo.
-            _player.Mute = _muted || _talking;
+            // Ton der Tür auf das Kommunikationsgerät (Headset). Geht erst, wenn die Wiedergabe läuft.
+            if (_outputDevice is not null)
+                _player.SetOutputDevice(_outputDevice);
+            // Während mit Lautsprechern gesprochen wird, bleibt der Ton der Tür stumm, sonst gibt es Echo.
+            _player.Mute = PlayerMuted;
             VideoText.Text = "Livebild";
             SoundButton.IsEnabled = true;
             SoundButton.Content = _muted ? "Ton an" : "Ton aus";
@@ -278,7 +294,7 @@ public partial class RingWindow : Window
         if (_player is null)
             return;
         _muted = !_muted;
-        _player.Mute = _muted;
+        _player.Mute = PlayerMuted;
         SoundButton.Content = _muted ? "Ton an" : "Ton aus";
         // Wer die Tür hören will, braucht den Klingelton nicht mehr.
         if (!_muted)

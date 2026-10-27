@@ -43,14 +43,16 @@ public enum LinkHealth
 }
 
 /// <summary>Dienst → App: Verbindungszustand. Problem erklärt Unreachable/Error, Warning betrifft Nebensachen
-/// wie das Livebild oder bald ablaufende Schlüssel.</summary>
+/// wie das Livebild oder bald ablaufende Schlüssel. TalkEnabled: Gegensprechen auf diesem PC eingerichtet (ab 0.8.0,
+/// für die Einstellung „Tür beim Sprechen hören“ im Menü).</summary>
 public sealed record StatusMessage(
     bool AccessConnected,
     string Problem,
     string ServiceVersion,
     LinkHealth Health = LinkHealth.Starting,
     string Warning = "",
-    string ExpiryNotice = "") : IpcMessage;
+    string ExpiryNotice = "",
+    bool TalkEnabled = false) : IpcMessage;
 
 /// <summary>Dienst → App: Es klingelt. VideoAvailable: Die App kann ein Livebild anfordern. TalkAvailable: Gegensprechen
 /// ist auf diesem PC eingerichtet und die Tür hat eine bekannte Kamera. DoorId: für die Einstellung „Klingeln“ pro Tür,

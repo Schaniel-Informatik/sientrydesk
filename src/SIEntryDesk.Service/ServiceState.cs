@@ -81,7 +81,7 @@ internal sealed class ServiceState
     {
         lock (_gate)
             return new StatusMessage(_health == LinkHealth.Ready, _problem, Version, _health,
-                string.Join(", ", new[] { _warning, _expiryNotice }.Where(w => w.Length > 0)), _expiryNotice);
+                string.Join(", ", new[] { _warning, _expiryNotice }.Where(w => w.Length > 0)), _expiryNotice, TalkEnabled);
     }
 
     public IEnumerable<IpcMessage> Snapshot()

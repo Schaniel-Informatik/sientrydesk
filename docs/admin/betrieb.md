@@ -26,15 +26,19 @@ Tür auf einem PC gar nicht verfügbar sein (auch nicht zum Öffnen), gehört si
 Fenster 10 s offen. Hat der Besucher abgebrochen (z. B. zweimal gedrückt) oder niemand abgenommen, lässt sich in
 dieser Zeit noch öffnen.
 
-**Gegensprechen:** „Sprechen – gedrückt halten“ drücken und halten, sprechen, loslassen, um die Antwort zu hören.
-Man kann sofort beim Drücken losreden, nichts geht verloren, bis die Verbindung zur Tür steht. Nach dem Loslassen nimmt
-das Mikrofon noch 0,6 s auf, damit das letzte Wort nicht abgeschnitten wird. Die Antwort kommt etwa 1 s verzögert,
-also nach dem Loslassen kurz warten. Solange gesprochen wird, ist der Ton der Tür am PC stumm, sonst gäbe es Echo.
-Nach 60 s am Stück endet das Sprechen von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn jemand anders angenommen oder
-abgelehnt hat. Die PCs stimmen sich nicht ab: Sprechen zwei gleichzeitig, kommen beide Stimmen an der Tür an. Wer
-spricht, hört die andere Stimme beim Loslassen über den Ton der Tür. Die Mobile-Apps klingeln weiter, bis jemand
-öffnet oder der Ruf endet. Während einer Teams-Besprechung kann Windows andere Töne dämpfen (Sound → Weitere
-Soundeinstellungen → Kommunikation).
+**Gegensprechen:** „Sprechen – gedrückt halten“ drücken und halten, sprechen, loslassen. Man kann sofort beim Drücken
+losreden, nichts geht verloren, bis die Verbindung zur Tür steht. Nach dem Loslassen nimmt das Mikrofon noch 0,3 s
+auf, damit das letzte Wort nicht abgeschnitten wird. Der Ton der Tür kommt etwa 1 s verzögert. **Mit Headset** bleibt
+der Ton der Tür beim Sprechen an und läuft ins Headset (Kommunikationsgerät von Windows, wie bei Teams), man hört den
+Besucher also auch, wenn beide gleichzeitig reden. Der Klingelton bleibt auf dem Standardgerät. **Mit Lautsprechern**
+ist der Ton der Tür stumm, solange das Mikrofon aufnimmt, sonst hörte der Besucher sich selbst als Echo. Was er in
+dieser Zeit sagt, ist am PC nicht zu hören, also nach dem Loslassen kurz warten. Ob ein Headset erkannt wird, zeigt
+„Prüfen …“ (Zeile „Ton beim Sprechen“). Manche USB-Headsets melden sich bei Windows als Lautsprecher, dann im Menü
+(Rechtsklick) „Tür beim Sprechen hören“ auf „immer“ stellen. „nie“ schaltet es ab, z. B. wenn der Besucher ein Echo
+hört. Nach 60 s am Stück endet das Sprechen von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn
+jemand anders angenommen oder abgelehnt hat. Die PCs stimmen sich nicht ab: Sprechen zwei gleichzeitig, kommen beide
+Stimmen an der Tür an. Die Mobile-Apps klingeln weiter, bis jemand öffnet oder der Ruf endet. Während einer
+Teams-Besprechung kann Windows andere Töne dämpfen (Sound → Weitere Soundeinstellungen → Kommunikation).
 
 | Symbol | Bedeutung |
 |---|---|
@@ -70,7 +74,8 @@ Von Hand:
 
 ## Störungen
 **Zuerst prüfen:** Rechtsklick auf das Symbol → „Prüfen …“ oder `SIEntryDesk.exe --check`. Das Fenster zeigt je
-Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Tonausgabe, Mikrofon,
+Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Tonausgabe, Mikrofon, Ton
+beim Sprechen (Headset erkannt?),
 Verbindung zum Dienst und Version auf dem PC; Konfiguration (mit Datum der sientrydesk.json, mit der der Dienst läuft),
 Zugänge, Access und Protect (erreichbar, Zertifikat, Token und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür,
 Gegensprechen und Ablaufdaten für die Anlage. Der Dienst liest die sientrydesk.json nur beim Start. Ist sie seither
@@ -92,6 +97,8 @@ ein Ticket oder eine Mail. Ob der Ton beim Gegensprechen an der Tür ankommt, ka
 | „Kein Mikrofon gefunden“ | Mikrofon oder Headset anschliessen, in Windows als Standardgerät für Kommunikation festlegen |
 | Taste geht, an der Tür kommt nichts an | UDP 7004 vom PC zur Türstation blockiert; im Protokoll steht die Adresse der Türstation |
 | „Protect-Schlüssel abgelehnt“ / „Protect nicht erreichbar“ | wie beim Livebild |
+| Besucher hört sich selbst als Echo | Ton der Tür kommt aus Lautsprechern, Headset aber nicht erkannt bzw. „immer“ gewählt: „Tür beim Sprechen hören“ auf „nie“ oder Headset verwenden |
+| Antwort des Besuchers fehlt teilweise | Mit Lautsprechern normal (Tür stumm beim Sprechen). Mit Headset: „Prüfen …“, Zeile „Ton beim Sprechen“; nicht erkannt → „immer“ |
 
 **Livebild schwarz oder stumm:** Das Protokoll des Videoplayers liegt beim Benutzer unter
 `%LOCALAPPDATA%\SIEntryDesk\vlc.log`. „no … module matched“ heisst, dass ein Teil des Players fehlt.
