@@ -35,6 +35,22 @@ public sealed class StreamProxy : IAsyncDisposable
         public DateTimeOffset Expires { get; } = expires;
         public CancellationTokenSource Closed { get; } = new();
         public int Connections;
+
+        /// <summary>Ends running connections and releases the token source (review 2026-10-23: no handle leak).
+        /// A connection that still reads <see cref="Closed"/> afterwards gets an ObjectDisposedException, which
+        /// HandleAsync treats like a closed connection.</summary>
+        public void End()
+        {
+            try
+            {
+                Closed.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+            Closed.Dispose();
+        }
     }
 
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
@@ -84,7 +100,7 @@ public sealed class StreamProxy : IAsyncDisposable
             return;
         }
         if (_sessions.TryRemove(token, out _))
-            session.Closed.Cancel();
+            session.End();
     }
 
     /// <summary>Closes all addresses and running connections of a call.</summary>
@@ -93,7 +109,7 @@ public sealed class StreamProxy : IAsyncDisposable
         foreach (var (token, session) in _sessions.Where(s => s.Value.Key == key).ToList())
         {
             if (_sessions.TryRemove(token, out _))
-                session.Closed.Cancel();
+                session.End();
         }
     }
 
@@ -102,7 +118,7 @@ public sealed class StreamProxy : IAsyncDisposable
         await _stop.CancelAsync().ConfigureAwait(false);
         _listener.Stop();
         foreach (var session in _sessions.Values)
-            session.Closed.Cancel();
+            session.End();
         _sessions.Clear();
         if (_acceptLoop is not null)
             await _acceptLoop.ConfigureAwait(false);
@@ -118,9 +134,24 @@ public sealed class StreamProxy : IAsyncDisposable
             {
                 client = await _listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or SocketException)
+            catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException || ct.IsCancellationRequested)
             {
                 break;
+            }
+            catch (SocketException ex)
+            {
+                // A single failed accept (e.g. a client that resets right away) must not stop the proxy for the rest of
+                // the service's lifetime (review 2026-10-23). Short pause against a tight loop on a persistent error.
+                _log.LogWarning("Video: Verbindungsannahme fehlgeschlagen: {Message}", ex.Message);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), _time, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                continue;
             }
             _ = HandleAsync(client, ct);
         }
@@ -299,7 +330,7 @@ public sealed class StreamProxy : IAsyncDisposable
         foreach (var (token, session) in _sessions.Where(s => s.Value.Expires <= now).ToList())
         {
             if (_sessions.TryRemove(token, out _))
-                session.Closed.Cancel();
+                session.End();
         }
     }
 

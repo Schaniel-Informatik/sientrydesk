@@ -25,6 +25,20 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
+## 0.8.1 (umgesetzt 27.10., noch nicht gebaut, wartet auf die Rückmeldung zu 0.8.0)
+Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):
+- Video-Proxy: Ein einzelner Fehler beim Annehmen einer Verbindung beendet die Annahme nicht mehr für die ganze
+  Laufzeit des Dienstes (protokolliert, kurz gewartet, weiter). Test mit Clients, die sofort zurücksetzen.
+- CancellationTokenSource freigegeben: pro Livebild-Adresse (`Session.End`) und für die Entprellung der
+  Access-Verbindung.
+- Pipe: Liest eine App nicht mehr und laufen 100 Meldungen auf, trennt der Dienst sie (Warnung im Protokoll), statt
+  stillschweigend z. B. „Ruf beendet“ zu verwerfen. Die App verbindet sich neu und bekommt den aktuellen Stand.
+- secrets.dat: Erbt der Datenordner noch die Rechte von ProgramData (Zugänge vor install.ps1 gesetzt), bekommt er
+  dieselben geschützten Rechte wie von install.ps1.
+- Prüfen: Dienst direkt per Name statt alle Dienste aufzulisten. `global.json` verlangt .NET SDK 10.
+- Nicht übernommen: gepoolte Puffer im Videostrom und binäre Tonnachrichten (Aufwand und Risiko grösser als der
+  Nutzen, wie im Bericht selbst eingeschätzt).
+
 ## 0.8.0 (27.10. gebaut, an der Tür zu testen)
 - **Gegensprechen mit Headset wie am Telefon** (Rückmeldung 27.10.: die meisten nutzen Headsets, die Antwort des
   Besuchers ging verloren, weil der Ton der Tür beim Sprechen und im Nachlauf stumm war): Ist das Kommunikationsgerät

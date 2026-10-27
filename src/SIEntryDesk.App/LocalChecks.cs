@@ -19,12 +19,16 @@ internal static class LocalChecks
     {
         try
         {
-            using var service = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "SIEntryDesk");
-            if (service is null)
-                return Item("Dienst", CheckLevel.Fail, "nicht installiert. install.ps1 ausführen bzw. Intune-App zuweisen");
+            // Directly by name instead of listing all services (review 2026-10-23).
+            using var service = new ServiceController("SIEntryDesk");
             return service.Status == ServiceControllerStatus.Running
                 ? Item("Dienst", CheckLevel.Ok, "läuft")
                 : Item("Dienst", CheckLevel.Fail, $"{German(service.Status)}. Als Administrator: Start-Service SIEntryDesk, Protokoll unter C:\\ProgramData\\SIEntryDesk\\logs");
+        }
+        catch (InvalidOperationException ex) when (ex.InnerException is System.ComponentModel.Win32Exception { NativeErrorCode: 1060 })
+        {
+            // ERROR_SERVICE_DOES_NOT_EXIST
+            return Item("Dienst", CheckLevel.Fail, "nicht installiert. install.ps1 ausführen bzw. Intune-App zuweisen");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {

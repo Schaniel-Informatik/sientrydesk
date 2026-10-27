@@ -8,6 +8,8 @@
 > Note: UniFi Access user permissions do not apply, the official API only offers site-wide tokens, so access control
 > is the choice of PCs it runs on (see SECURITY.md).
 > Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
+> An independent code review by bee it (October 2026, version 0.6.1) rated the code base 5 out of 5 overall; its
+> findings are addressed in version 0.8.1.
 > Security reports: see [SECURITY.md](SECURITY.md). **Contributions welcome**, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows-App von Schaniel Informatik für Türsprechstellen mit UniFi Protect und UniFi Access. Wenn es klingelt,
@@ -19,6 +21,8 @@ Protect Integration API).
 
 Stand: Pilot, seit Oktober 2026 an einer Anlage im Einsatz (Version 0.6.1, verteilt über Intune). Downloads unter
 [Releases](https://github.com/Schaniel-Informatik/sientrydesk/releases).
+Unabhängiger Code-Review durch bee it im Oktober 2026 (Version 0.6.1), Gesamturteil 5 von 5 Sternen. Die Befunde
+sind in 0.8.1 behoben.
 
 ## Wo was steht
 **Für Admins** (`docs/admin/`, kommt auch als `Doku\` ins Paket):

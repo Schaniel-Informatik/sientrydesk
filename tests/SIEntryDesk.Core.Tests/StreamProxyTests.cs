@@ -123,6 +123,26 @@ public sealed class StreamProxyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Proxy_keeps_accepting_after_clients_reset_right_away()
+    {
+        await using var proxy = NewProxy(CertificatePin.Parse(Convert.ToHexString(SHA256.HashData(_certificate.RawData))));
+        var url = proxy.Open("ruf-1", new StreamSource("127.0.0.1", ServerPort, StreamPath), TimeSpan.FromMinutes(1));
+
+        // Clients that reset the connection immediately (RST), like a port scanner (review 2026-10-23).
+        for (var i = 0; i < 5; i++)
+        {
+            using var rude = new TcpClient { LingerState = new LingerOption(true, 0) };
+            await rude.ConnectAsync(IPAddress.Loopback, proxy.Port);
+            rude.Close();
+        }
+
+        using var client = new TcpClient();
+        await client.ConnectAsync(IPAddress.Loopback, proxy.Port);
+        await Send(client.GetStream(), $"DESCRIBE {url} RTSP/1.0\r\nCSeq: 2\r\n\r\n");
+        Assert.IsType<RtspText>(await new RtspReader(client.GetStream()).ReadAsync(Timeout()));
+    }
+
+    [Fact]
     public async Task Probe_reads_the_presented_fingerprint()
     {
         var fingerprint = await CertificateProbe.FetchFingerprintAsync("127.0.0.1", ServerPort, TimeSpan.FromSeconds(5), CancellationToken.None);

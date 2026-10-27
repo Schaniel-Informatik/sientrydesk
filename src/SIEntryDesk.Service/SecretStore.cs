@@ -1,4 +1,6 @@
+using System.Security.AccessControl;
 using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text.Json;
 
 namespace SIEntryDesk.Service;
@@ -35,7 +37,7 @@ internal static class SecretStore
 
     public static void Save(Secrets secrets)
     {
-        Directory.CreateDirectory(ServicePaths.DataDirectory);
+        EnsureProtectedDirectory();
         var plain = JsonSerializer.SerializeToUtf8Bytes(secrets);
         try
         {
@@ -48,5 +50,39 @@ internal static class SecretStore
         {
             CryptographicOperations.ZeroMemory(plain);
         }
+    }
+
+    /// <summary>
+    /// Defense in depth (review 2026-10-23): install.ps1 restricts the data folder before credentials are stored. If
+    /// set-secrets ever runs first, the folder would inherit the permissions of ProgramData, where standard users may
+    /// read, and the machine key of DPAPI would let them decrypt secrets.dat. So a folder that still inherits gets the
+    /// same protected permissions as from install.ps1: SYSTEM and administrators full control, the service read.
+    /// </summary>
+    private static void EnsureProtectedDirectory()
+    {
+        var folder = new DirectoryInfo(ServicePaths.DataDirectory);
+        if (folder.Exists && folder.GetAccessControl().AreAccessRulesProtected)
+            return;
+        var security = new DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        const InheritanceFlags inherit = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+        security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+            FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null),
+            FileSystemRights.FullControl, inherit, PropagationFlags.None, AccessControlType.Allow));
+        try
+        {
+            var service = new NTAccount("NT SERVICE", ServicePaths.ServiceName).Translate(typeof(SecurityIdentifier));
+            security.AddAccessRule(new FileSystemAccessRule(service,
+                FileSystemRights.ReadAndExecute, inherit, PropagationFlags.None, AccessControlType.Allow));
+        }
+        catch (IdentityNotMappedException)
+        {
+            // Service not installed yet: install.ps1 grants its access later.
+        }
+        if (folder.Exists)
+            folder.SetAccessControl(security);
+        else
+            folder.Create(security);
     }
 }

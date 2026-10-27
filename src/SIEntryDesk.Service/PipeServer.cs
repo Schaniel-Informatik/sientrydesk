@@ -30,14 +30,27 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     public void Broadcast(IpcMessage message)
     {
         foreach (var client in _clients.Values)
-            client.Send(message);
+            Deliver(client, message);
     }
 
     /// <summary>Message to one app only, if it is still connected.</summary>
     public void Send(int clientId, IpcMessage message)
     {
         if (_clients.TryGetValue(clientId, out var client))
-            client.Send(message);
+            Deliver(client, message);
+    }
+
+    /// <summary>
+    /// An app that does not read anymore (frozen UI, standby) fills its outbox. Instead of silently dropping messages
+    /// such as "call ended" (review 2026-10-23), the service disconnects it: the app reconnects and receives the
+    /// current state.
+    /// </summary>
+    private void Deliver(ClientConnection client, IpcMessage message)
+    {
+        if (client.Send(message) || client.Closed)
+            return;
+        log.LogWarning("App {User} liest nicht mehr, Verbindung wird getrennt", client.User);
+        client.Dispose();
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -90,7 +103,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
         try
         {
             foreach (var message in state.Snapshot())
-                client.Send(message);
+                Deliver(client, message);
             var writer = client.RunWriterAsync(ct);
             var reader = new IpcReader(client.Pipe);
             var who = new PipeClient(client.Id, client.User);
@@ -98,7 +111,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             {
                 if (RequestHandler is { } handler &&
                     await handler(message, who, ct).ConfigureAwait(false) is { } reply)
-                    client.Send(reply);
+                    Deliver(client, reply);
             }
             client.Dispose();
             await writer.ConfigureAwait(false);
@@ -151,13 +164,14 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     private sealed class ClientConnection(int id, NamedPipeServerStream pipe, string user) : IDisposable
     {
         private readonly Channel<IpcMessage> _outbox = Channel.CreateBounded<IpcMessage>(
-            new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
+            new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.Wait, SingleReader = true });
 
         public int Id => id;
         public string User => user;
         public NamedPipeServerStream Pipe => pipe;
 
-        public void Send(IpcMessage message) => _outbox.Writer.TryWrite(message);
+        /// <summary>False if the outbox is full (the app does not read) or the connection is closed.</summary>
+        public bool Send(IpcMessage message) => _outbox.Writer.TryWrite(message);
 
         public async Task RunWriterAsync(CancellationToken ct)
         {
@@ -171,8 +185,11 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             }
         }
 
+        public bool Closed { get; private set; }
+
         public void Dispose()
         {
+            Closed = true;
             _outbox.Writer.TryComplete();
             pipe.Dispose();
         }

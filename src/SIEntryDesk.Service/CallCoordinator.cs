@@ -195,22 +195,37 @@ internal sealed class CallCoordinator(
                 return;
 
             var cts = _pendingDegrade = CancellationTokenSource.CreateLinkedTokenSource(_stopping);
+            // The task owns the linked token source and releases it at the end (review 2026-10-23: the link to
+            // _stopping would otherwise stay registered until the service stops). Cancel happens only under
+            // _linkGate while the task still waits, never after the release.
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(LinkDebounce, time, cts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-                lock (_linkGate)
-                {
-                    if (_pendingDegrade != cts)
+                    try
+                    {
+                        await Task.Delay(LinkDebounce, time, cts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
                         return;
-                    _pendingDegrade = null;
-                    ApplyLink(_pendingLink.Health, _pendingLink.Problem);
+                    }
+                    lock (_linkGate)
+                    {
+                        if (_pendingDegrade != cts)
+                            return;
+                        _pendingDegrade = null;
+                        ApplyLink(_pendingLink.Health, _pendingLink.Problem);
+                    }
+                }
+                finally
+                {
+                    lock (_linkGate)
+                    {
+                        if (_pendingDegrade == cts)
+                            _pendingDegrade = null;
+                    }
+                    cts.Dispose();
                 }
             });
         }
