@@ -38,6 +38,9 @@ Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):
 - Prüfen: Dienst direkt per Name statt alle Dienste aufzulisten. `global.json` verlangt .NET SDK 10.
 - Nicht übernommen: gepoolte Puffer im Videostrom und binäre Tonnachrichten (Aufwand und Risiko grösser als der
   Nutzen, wie im Bericht selbst eingeschätzt).
+- Paket der Zugänge heisst neu `SIEntryDesk-Tokens-<Version>.zip` (Ordner `deploy/tokens`, Version in
+  `build/tokens-version.txt`). Inhalt und Version 1.0 unverändert, in Intune nichts neu hochladen. Die `.intunewin`
+  heisst weiter `SIEntryDesk-Zugaenge-<Kennung>`, bis sich `deploy/tokens` wieder ändert.
 
 ## 0.8.0 (27.10. gebaut, an der Tür zu testen)
 - **Gegensprechen mit Headset wie am Telefon** (Rückmeldung 27.10.: die meisten nutzen Headsets, die Antwort des

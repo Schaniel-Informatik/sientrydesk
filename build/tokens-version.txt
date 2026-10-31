@@ -1,0 +1,4 @@
+# Paket der Zugänge (deploy/tokens): eigene Version, unabhängig vom Programm, weil es sich selten ändert und ein
+# verteiltes Paket zu neuen Programmversionen passt. Ändert sich deploy/tokens, bricht publish.sh ab und nennt den
+# neuen Hash: dann Version erhöhen und eine Zeile "<Version> <Hash>" anfügen. Die letzte Zeile gilt.
+1.0 d7c6aa327eeec3b7e2ba85ce2024a0ac9df1d380f430d8a9b5da170b2d9f875b

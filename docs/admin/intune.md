@@ -9,7 +9,7 @@ liegen und die App für jeden Benutzer dieser Geräte startet:
 | Intune-App | Aus der Datei | Dazu kommt | Wird erneuert |
 |---|---|---|---|
 | **SI EntryDesk** | `SIEntryDesk-<Version>-win-x64.zip` | `sientrydesk.json` der Anlage | bei jedem Software-Update |
-| **SI EntryDesk Zugänge** | `SIEntryDesk-Zugaenge-<Version>.zip` (eigene Version, z. B. 1.0) | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
+| **SI EntryDesk Zugänge** | `SIEntryDesk-Tokens-<Version>.zip` (eigene Version, z. B. 1.0) | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
 
 Zwei ZIP-Dateien, zwei Ordner, je ein Vorbereitungsskript (`prepare-intune.ps1`). Das Paket der Zugänge hat eine eigene Version
 und ändert sich selten. Ein verteiltes Paket der Zugänge passt auch zu neuen Programmversionen, es wird nur bei der
@@ -56,7 +56,7 @@ Intune startet den Installationsbefehl als 32-Bit-Prozess. Die Skripte wechseln 
 der Befehl bleibt deshalb einfach `powershell.exe …`.
 
 ## App 2: SI EntryDesk Zugänge
-1. `SIEntryDesk-Zugaenge-<Version>.zip` entpacken, am besten auf einem vertrauenswürdigen Admin-PC.
+1. `SIEntryDesk-Tokens-<Version>.zip` entpacken, am besten auf einem vertrauenswürdigen Admin-PC.
 2. Im entpackten Ordner `tokens.example.txt` als `tokens.txt` kopieren und die Werte direkt hinter `access=` und
    `protect=` einsetzen, ohne Leerzeichen, Anführungszeichen oder `<>`. Die Zeilen mit `#` dürfen bleiben:
    ```
@@ -103,7 +103,7 @@ Problem. Ein Testgerät sofort aktualisieren: Sperre zurücksetzen wie unter
 „SI EntryDesk“.
 
 ## Zugänge jährlich erneuern
-1. Neue Zugänge anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen)). Aus dem aktuellen `SIEntryDesk-Zugaenge-<Version>.zip` wie oben ein
+1. Neue Zugänge anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen)). Aus dem aktuellen `SIEntryDesk-Tokens-<Version>.zip` wie oben ein
    neues Paket mit `prepare-intune.ps1 -Label 2027-09` erstellen, App „SI EntryDesk Zugänge 2027-09“.
 2. In Intune als neue App anlegen, die „SI EntryDesk Zugänge 2026-09“ per **Ablösung** ersetzt, *ohne* Deinstallation.
 3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen, siehe

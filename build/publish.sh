@@ -2,8 +2,8 @@
 # Builds the packages for Windows (x64) on the Mac: tests, then service and app as self-contained .exe.
 # Two separate packages, so that credentials never end up in the program package:
 #   SIEntryDesk-<Version>-win-x64.zip   program and install scripts (Intune app "SI EntryDesk")
-#   SIEntryDesk-Zugaenge-<Version>.zip  script and template for the credentials (Intune app "SI EntryDesk Zugänge"),
-#                                       own version from build/zugaenge.txt
+#   SIEntryDesk-Tokens-<Version>.zip    script and template for the credentials (Intune app "SI EntryDesk Zugänge"),
+#                                       own version from build/tokens-version.txt
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
@@ -11,15 +11,15 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
 name="SIEntryDesk-$version-win-x64"
 out="artifacts/$name"
-# Credentials package with its own version (build/zugaenge.txt), only new if deploy/zugaenge really changed.
-read -r tokensVersion tokensHash < <(grep -v '^#' build/zugaenge.txt | grep -v '^$' | tail -1)
-currentHash=$(cd deploy/zugaenge && find . -type f ! -name '.*' -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -c1-64)
+# Credentials package with its own version (build/tokens-version.txt), only new if deploy/tokens really changed.
+read -r tokensVersion tokensHash < <(grep -v '^#' build/tokens-version.txt | grep -v '^$' | tail -1)
+currentHash=$(cd deploy/tokens && find . -type f ! -name '.*' -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256 | cut -c1-64)
 if [[ "$currentHash" != "$tokensHash" ]]; then
-  echo "ABBRUCH: deploy/zugaenge hat sich geändert, Zugänge-Version $tokensVersion aber nicht." >&2
-  echo "Version erhöhen und in build/zugaenge.txt anfügen: <neue Version> $currentHash" >&2
+  echo "ABBRUCH: deploy/tokens hat sich geändert, Zugänge-Version $tokensVersion aber nicht." >&2
+  echo "Version erhöhen und in build/tokens-version.txt anfügen: <neue Version> $currentHash" >&2
   exit 1
 fi
-tokens="SIEntryDesk-Zugaenge-$tokensVersion"
+tokens="SIEntryDesk-Tokens-$tokensVersion"
 tokensOut="artifacts/$tokens"
 rm -rf "$out" "artifacts/$name.zip" "$tokensOut" "artifacts/$tokens.zip"
 
@@ -32,7 +32,7 @@ dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
 cp deploy/programm/* "$out/"
 mkdir -p "$out/Doku" "$tokensOut"
 cp docs/admin/*.md THIRD-PARTY-NOTICES.md "$out/Doku/"
-cp deploy/zugaenge/* "$tokensOut/"
+cp deploy/tokens/* "$tokensOut/"
 
 # Safeguard: the ZIP files are the same for all installations and are public. The sientrydesk.json of an
 # installation and the tokens.txt are put into the unpacked folder by the admin only when packing for Intune.
@@ -43,7 +43,7 @@ fi
 
 (cd artifacts && zip -qr "$name.zip" "$name" && zip -qr "$tokens.zip" "$tokens")
 # Keep only the current version of the credentials package.
-for zip in artifacts/SIEntryDesk-Zugaenge-*.zip; do
+for zip in artifacts/SIEntryDesk-Tokens-*.zip; do
   [[ "$zip" == "artifacts/$tokens.zip" ]] || rm -f "$zip"
 done
 
@@ -55,7 +55,7 @@ rm -rf "$out" "$tokensOut"
 if [[ -f artifacts/GETESTET ]]; then
   tested=$(tr -d '[:space:]' < artifacts/GETESTET)
   for zip in artifacts/SIEntryDesk-[0-9]*.zip; do
-    v=$(basename "$zip" .zip | sed -e 's/^SIEntryDesk-Zugaenge-//' -e 's/^SIEntryDesk-//' -e 's/-win-x64$//')
+    v=$(basename "$zip" .zip | sed -e 's/^SIEntryDesk-Tokens-//' -e 's/^SIEntryDesk-//' -e 's/-win-x64$//')
     if [[ "$v" != "$tested" && "$(printf '%s\n%s\n' "$v" "$tested" | sort -V | head -1)" == "$v" ]]; then
       rm -f "$zip"
     fi

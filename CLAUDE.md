@@ -47,11 +47,11 @@ Auf dem Handy funktioniert es gut, am PC nicht.
 - Vor jedem Einrichtungsschritt prüfen, ob das Werkzeug mit nicht-interaktiver Bash funktioniert.
 - **Sprache:** Kommentare in Code, Skripten und Projektdateien auf Englisch (Entscheid 2026-10-27, Repository ist
   öffentlich). Oberfläche, Protokoll, Admin-Doku (`docs/admin`), Hilfe der Admin-Skripte (`.SYNOPSIS`) und
-  `docs/entwicklung` bleiben Deutsch. `deploy/zugaenge` erst bei der nächsten echten Änderung umstellen, sonst braucht
-  es nur dafür ein neues Paket der Zugänge in Intune.
+  `docs/entwicklung` bleiben Deutsch. `deploy/tokens` (Kommentare und Name der `.intunewin`) erst bei der nächsten
+  echten Änderung umstellen, sonst braucht es nur dafür ein neues Paket der Zugänge in Intune.
 - Was Admins für Einrichtung und Betrieb wissen müssen, gehört in `docs/admin/` (`installation.md`, `intune.md`,
   `betrieb.md`), nicht nur in den Chat. Der Build legt diese Dateien als `Doku\` ins Paket.
-- Ablage: `deploy/` nur ausgelieferte Dateien (`programm/`, `zugaenge/`), keine Anleitungen.
+- Ablage: `deploy/` nur ausgelieferte Dateien (`programm/`, `tokens/`), keine Anleitungen.
   `docs/entwicklung/` für Unterlagen zur Weiterentwicklung (Machbarkeitstest, API, Architektur, Backlog).
 
 ## Sicherheit

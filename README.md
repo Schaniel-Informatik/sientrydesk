@@ -49,7 +49,7 @@ sind in 0.8.1 behoben.
 | Pfad | Inhalt |
 |---|---|
 | [deploy/programm/](deploy/programm/) | Was ins Programmpaket kommt: `install.ps1`, `uninstall.ps1`, `set-tokens.ps1`, `prepare-intune.ps1`, Beispiel-Konfiguration |
-| [deploy/zugaenge/](deploy/zugaenge/) | Was ins Paket der Zugänge für Intune kommt: `set-tokens-intune.ps1`, `prepare-intune.ps1`, `tokens.example.txt` |
+| [deploy/tokens/](deploy/tokens/) | Was ins Paket der Zugänge für Intune kommt: `set-tokens-intune.ps1`, `prepare-intune.ps1`, `tokens.example.txt` |
 | `src/` | Quellcode: `SIEntryDesk.Core` (gemeinsame Logik), `.Service` (Windows-Dienst), `.App` (Tray-App) |
 | `tests/` | Automatische Tests der gemeinsamen Logik |
 | [LICENSE](LICENSE), [SECURITY.md](SECURITY.md) | MIT-Lizenz, Meldung von Schwachstellen |
@@ -59,7 +59,7 @@ sind in 0.8.1 behoben.
 
 ## Bauen
 Auf dem Mac oder unter Windows mit dem .NET SDK 10: `./build/publish.sh` testet und erzeugt zwei getrennte Pakete:
-`artifacts/SIEntryDesk-<Version>-win-x64.zip` (Programm) und `artifacts/SIEntryDesk-Zugaenge-<Version>.zip` (Skript
+`artifacts/SIEntryDesk-<Version>-win-x64.zip` (Programm) und `artifacts/SIEntryDesk-Tokens-<Version>.zip` (Skript
 und Vorlage für die Zugänge per Intune).
 
 ## Mitmachen
