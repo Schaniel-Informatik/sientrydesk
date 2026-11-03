@@ -14,6 +14,15 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   (Variante A, Risiko zur Kenntnis genommen).
 
 ## Nächste Version
+- **0.9.0, beschlossen 03.11., noch nicht umsetzen: Anzeigen, wer ein Gespräch angenommen hat** (Rückmeldung: oft
+  sprechen mehrere gleichzeitig mit dem Besucher). Ersetzt Entscheid 3 in `gegensprechen.md` (keine Abstimmung
+  zwischen PCs; damals war ein Server im Gespräch). Angenommen = erstes Drücken von „Sprechen“ bei diesem Ruf, kein
+  eigener Knopf. Der Dienst meldet Tür, Benutzer und PC per UDP im lokalen Netz, signiert mit einem gemeinsamen
+  Schlüssel aus dem Paket der Zugänge (dann Tokens 1.1, dabei Kommentare und Name der `.intunewin` umstellen).
+  `install.ps1` öffnet den UDP-Port in der Firewall. Die anderen PCs zeigen im Klingelfenster
+  „● Maria Muster spricht (PC EMPFANG-01)“ (orange), „Sprechen“ und „Öffnen“ bleiben möglich. Mobile-App wie bisher
+  über 400 „Anderswo angenommen“. Noch offen: Klingelton auf den anderen PCs dann aus? Sind die PCs beim Kunden im
+  selben Netzsegment (UDP-Broadcast)?
 - **Beobachtung, noch nicht weiter verfolgen** (22.10.): Mit Headset scheint das Verbinden beim Sprechen etwas langsam.
   Erst eine genaue Beschreibung abwarten (wie lange, welches Headset, beim ersten oder jedem Drücken). Ohne Headset ist
   das Sprechen mit 0.7.1 besser als mit 0.6.1.
