@@ -35,7 +35,7 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
-## 0.8.1 (umgesetzt 27.10., noch nicht gebaut, wartet auf die Rückmeldung zu 0.8.0)
+## 0.8.1 (umgesetzt 27.10., kein eigener Build, kommt mit 0.9.0, entschieden 03.11.)
 Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):
 - Video-Proxy: Ein einzelner Fehler beim Annehmen einer Verbindung beendet die Annahme nicht mehr für die ganze
   Laufzeit des Dienstes (protokolliert, kurz gewartet, weiter). Test mit Clients, die sofort zurücksetzen.
@@ -68,8 +68,9 @@ Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):
   Lautsprecher? Menü und Prüfen: „Headset (erkannt)“? Mit Lautsprechern: Antwort nach dem Loslassen schneller hörbar?
 - **Rückmeldung 03.11.:** Antwort hörbar, Ton im Headset und Klingelton auf dem Lautsprecher, „Headset (erkannt)“
   und Lautsprecher-Betrieb passen. **Echo:** Mit Headset hört man die eigene Stimme etwa 1 s verzögert aus der Tür
-  zurück (Lautsprecher der Türstation → Mikrofon der Türstation → Livebild). Offen: Stört es? Auch in der Mobile-App?
-  Möglich: Ton der Tür beim Sprechen auf etwa 30 % statt stumm, Lautstärke der Türstation in Protect senken.
+  zurück (Lautsprecher der Türstation → Mikrofon der Türstation → Livebild). In der UniFi-App auch nicht gut gelöst.
+  Release v0.8.0 mit dem Echo als bekannter Einschränkung. Möglich: Ton der Tür beim Sprechen leiser statt stumm,
+  Lautstärke der Türstation in Protect senken.
 
 ## 0.7.1 (22.10. an der Tür getestet und freigegeben, Release v0.7.1)
 - Klingeln pro Tür direkt im Rechtsklick-Menü (Rückmeldung zum Test von 0.7.0): kein Untermenü „Klingeln“ mehr, jede
