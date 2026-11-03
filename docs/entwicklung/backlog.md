@@ -66,6 +66,10 @@ Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):
 - **Marcel testet an der Tür mit Headset:** Antwort hörbar, auch wenn beide gleichzeitig reden? Hört man die eigene
   Stimme verzögert aus der Tür zurück (Echounterdrückung der Türstation)? Ton der Tür im Headset, Klingelton auf dem
   Lautsprecher? Menü und Prüfen: „Headset (erkannt)“? Mit Lautsprechern: Antwort nach dem Loslassen schneller hörbar?
+- **Rückmeldung 03.11.:** Antwort hörbar, Ton im Headset und Klingelton auf dem Lautsprecher, „Headset (erkannt)“
+  und Lautsprecher-Betrieb passen. **Echo:** Mit Headset hört man die eigene Stimme etwa 1 s verzögert aus der Tür
+  zurück (Lautsprecher der Türstation → Mikrofon der Türstation → Livebild). Offen: Stört es? Auch in der Mobile-App?
+  Möglich: Ton der Tür beim Sprechen auf etwa 30 % statt stumm, Lautstärke der Türstation in Protect senken.
 
 ## 0.7.1 (22.10. an der Tür getestet und freigegeben, Release v0.7.1)
 - Klingeln pro Tür direkt im Rechtsklick-Menü (Rückmeldung zum Test von 0.7.0): kein Untermenü „Klingeln“ mehr, jede
