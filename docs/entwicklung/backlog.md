@@ -21,8 +21,9 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Schlüssel aus dem Paket der Zugänge (dann Tokens 1.1, dabei Kommentare und Name der `.intunewin` umstellen).
   `install.ps1` öffnet den UDP-Port in der Firewall. Die anderen PCs zeigen im Klingelfenster
   „● Maria Muster spricht (PC EMPFANG-01)“ (orange), „Sprechen“ und „Öffnen“ bleiben möglich. Mobile-App wie bisher
-  über 400 „Anderswo angenommen“. Noch offen: Klingelton auf den anderen PCs dann aus? Sind die PCs beim Kunden im
-  selben Netzsegment (UDP-Broadcast)?
+  über 400 „Anderswo angenommen“. Klingelton auf den anderen PCs hört dann auf (entschieden 03.11.). Voraussetzung:
+  alle PCs mit der App im selben Netzsegment, weil Router den Broadcast nicht weiterleiten (die meisten sind es,
+  Marcel klärt es als Muss beim Kunden). In die Admin-Doku aufnehmen.
 - **Beobachtung, noch nicht weiter verfolgen** (22.10.): Mit Headset scheint das Verbinden beim Sprechen etwas langsam.
   Erst eine genaue Beschreibung abwarten (wie lange, welches Headset, beim ersten oder jedem Drücken). Ohne Headset ist
   das Sprechen mit 0.7.1 besser als mit 0.6.1.
