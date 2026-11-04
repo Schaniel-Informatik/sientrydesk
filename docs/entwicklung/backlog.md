@@ -14,16 +14,6 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   (Variante A, Risiko zur Kenntnis genommen).
 
 ## Nächste Version
-- **0.9.0, beschlossen 03.11., noch nicht umsetzen: Anzeigen, wer ein Gespräch angenommen hat** (Rückmeldung: oft
-  sprechen mehrere gleichzeitig mit dem Besucher). Ersetzt Entscheid 3 in `gegensprechen.md` (keine Abstimmung
-  zwischen PCs; damals war ein Server im Gespräch). Angenommen = erstes Drücken von „Sprechen“ bei diesem Ruf, kein
-  eigener Knopf. Der Dienst meldet Tür, Benutzer und PC per UDP im lokalen Netz, signiert mit einem gemeinsamen
-  Schlüssel aus dem Paket der Zugänge (dann Tokens 1.1, dabei Kommentare und Name der `.intunewin` umstellen).
-  `install.ps1` öffnet den UDP-Port in der Firewall. Die anderen PCs zeigen im Klingelfenster
-  „● Maria Muster spricht (PC EMPFANG-01)“ (orange), „Sprechen“ und „Öffnen“ bleiben möglich. Mobile-App wie bisher
-  über 400 „Anderswo angenommen“. Klingelton auf den anderen PCs hört dann auf (entschieden 03.11.). Voraussetzung:
-  alle PCs mit der App im selben Netzsegment, weil Router den Broadcast nicht weiterleiten (die meisten sind es,
-  Marcel klärt es als Muss beim Kunden). In die Admin-Doku aufnehmen.
 - **Beobachtung, noch nicht weiter verfolgen** (22.10.): Mit Headset scheint das Verbinden beim Sprechen etwas langsam.
   Erst eine genaue Beschreibung abwarten (wie lange, welches Headset, beim ersten oder jedem Drücken). Ohne Headset ist
   das Sprechen mit 0.7.1 besser als mit 0.6.1.
@@ -34,6 +24,21 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   `intune.md` nachführen. (2) `tools/intune-check.ps1`: rote Zeile, wenn die Version im Namen der Paketdatei nicht zur
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
+
+## 0.9.0 (umgesetzt 04.11., noch nicht gebaut)
+- **Anzeigen, wer ein Gespräch angenommen hat** (Rückmeldung: oft sprechen mehrere gleichzeitig mit dem Besucher;
+  ersetzt Entscheid 3 in `gegensprechen.md`, Einzelheiten dort). Angenommen = erstes erteiltes „Sprechen“ eines
+  Benutzers bei diesem Ruf. Der Dienst meldet Ruf, Benutzer und PC per signiertem UDP-Broadcast (Port 47801) ins
+  lokale Netz. Schlüssel aus dem Access-Token abgeleitet (Variante A, entschieden 04.11.): kein neues Paket der
+  Zugänge, Tokens bleibt 1.0, in Intune nur das Programm neu hochladen. Die anderen PCs zeigen im Klingelfenster
+  „● mmuster spricht (PC EMPFANG-01)“ (orange), der Klingelton hört auf, „Sprechen“ und „Öffnen“ bleiben. Bei „nach
+  10 s“ erscheint nichts. Angezeigt wird, wer zuerst gedrückt hat. Mobile-App wie bisher über 400.
+- `install.ps1` legt die Firewall-Regel „SI EntryDesk: Abstimmung zwischen PCs“ an (UDP 47801 eingehend, nur Dienst,
+  nur lokales Subnetz), `uninstall.ps1` entfernt sie. Prüfen: neue Zeile „Abstimmung mit anderen PCs“.
+- Voraussetzung: alle PCs im selben Netzsegment (installation.md). Enthält die Korrekturen aus 0.8.1.
+- **Marcel testet mit zwei PCs im selben Segment:** An PC A sprechen → PC B zeigt „… spricht (PC A)“, Klingelton aus;
+  PC B mit „nach 10 s“ → nichts erscheint; Prüfen auf beiden: Abstimmung grün; Protokoll des Dienstes: „Gespräch
+  angenommen …“ auf beiden PCs.
 
 ## 0.8.1 (umgesetzt 27.10., kein eigener Build, kommt mit 0.9.0, entschieden 03.11.)
 Befunde aus dem Code-Review von bee it (23.10.2026, geprüft wurde 0.6.1):

@@ -165,7 +165,7 @@ internal sealed class TalkRelay(TimeProvider time, ILogger log, Action<int, IpcM
     }
 
     /// <summary>"DOMAIN\anna" → "anna" for display.</summary>
-    private static string ShortName(string user) => user.Contains('\\') ? user[(user.LastIndexOf('\\') + 1)..] : user;
+    internal static string ShortName(string user) => user.Contains('\\') ? user[(user.LastIndexOf('\\') + 1)..] : user;
 
     public void Dispose()
     {

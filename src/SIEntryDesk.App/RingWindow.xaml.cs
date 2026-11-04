@@ -201,6 +201,17 @@ public partial class RingWindow : Window
         CloseAfter(LingerAfterEnd);
     }
 
+    /// <summary>Someone else answered the call by talking: show who, stop the ringtone. Talking and unlocking stay
+    /// possible, in case that person walks away.</summary>
+    public void ShowAnswered(string user, string pc)
+    {
+        if (Mode != WindowMode.Ring)
+            return;
+        StopRinging();
+        AnsweredText.Text = $"● {user} spricht (PC {pc})";
+        AnsweredText.Visibility = Visibility.Visible;
+    }
+
     public void ShowOpened(string? openedBy)
     {
         _opened = true;

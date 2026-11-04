@@ -3,6 +3,7 @@ using System.ServiceProcess;
 using Microsoft.Win32;
 using NAudio.CoreAudioApi;
 using SIEntryDesk.Core.Diagnostics;
+using SIEntryDesk.Core.Peers;
 
 namespace SIEntryDesk.App;
 
@@ -11,7 +12,10 @@ internal static class LocalChecks
 {
     /// <summary>One by one, so that the window shows each item as soon as it is done. The microphone last, it takes
     /// longest.</summary>
-    public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, SoundOutput, Microphone, TalkSound];
+    public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, PeerFirewall, SoundOutput, Microphone, TalkSound];
+
+    /// <summary>Name of the rule from install.ps1 that lets the other PCs' messages in.</summary>
+    private const string PeerFirewallRule = "SI EntryDesk: Abstimmung zwischen PCs";
 
     public static CheckItem Item(string name, CheckLevel level, string detail) => new(CheckReport.ThisPc, name, level, detail);
 
@@ -66,6 +70,40 @@ internal static class LocalChecks
         return running
             ? Item("App", CheckLevel.Ok, "läuft in dieser Sitzung")
             : Item("App", CheckLevel.Fail, "läuft nicht, dieser Benutzer bekommt kein Klingeln. Über das Startmenü starten");
+    }
+
+    /// <summary>Without the rule the window does not show who already talks at another PC. Everything else works,
+    /// therefore at most orange. Whether the service receives, it checks itself.</summary>
+    private static CheckItem PeerFirewall()
+    {
+        const string name = "Abstimmung mit anderen PCs";
+        try
+        {
+            var start = new ProcessStartInfo("netsh.exe")
+            {
+                ArgumentList = { "advfirewall", "firewall", "show", "rule", $"name={PeerFirewallRule}" },
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+            };
+            using var netsh = Process.Start(start);
+            if (netsh is null)
+                return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+            _ = netsh.StandardOutput.ReadToEndAsync();
+            if (!netsh.WaitForExit(5000))
+            {
+                netsh.Kill();
+                return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+            }
+            // netsh: 0 = rule found, 1 = no rule with this name.
+            return netsh.ExitCode == 0
+                ? Item(name, CheckLevel.Ok, $"UDP {PeerCodec.Port}, Firewall offen")
+                : Item(name, CheckLevel.Warn, "Firewall-Regel fehlt. install.ps1 erneut ausführen");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+        }
     }
 
     private static CheckItem SoundOutput()

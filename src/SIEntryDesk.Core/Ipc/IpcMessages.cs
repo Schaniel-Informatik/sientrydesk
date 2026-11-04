@@ -14,6 +14,7 @@ namespace SIEntryDesk.Core.Ipc;
 [JsonDerivedType(typeof(CallStartedMessage), "callStarted")]
 [JsonDerivedType(typeof(CallEndedMessage), "callEnded")]
 [JsonDerivedType(typeof(DoorOpenedMessage), "doorOpened")]
+[JsonDerivedType(typeof(CallAnsweredMessage), "callAnswered")]
 [JsonDerivedType(typeof(UnlockRequest), "unlock")]
 [JsonDerivedType(typeof(UnlockResultMessage), "unlockResult")]
 [JsonDerivedType(typeof(VideoRequest), "video")]
@@ -67,6 +68,10 @@ public sealed record CallEndedMessage(string CallId, CallEndReason Reason) : Ipc
 
 /// <summary>Service → app: the door of the call was unlocked, OpenedBy possibly arrives later.</summary>
 public sealed record DoorOpenedMessage(string CallId, string? OpenedBy) : IpcMessage;
+
+/// <summary>Service → app: someone answered the call by talking, on this or another PC (from 0.9.0). Sent again if an
+/// earlier answer becomes known. The app ignores its own user on its own PC.</summary>
+public sealed record CallAnsweredMessage(string CallId, string User, string Pc) : IpcMessage;
 
 /// <summary>App → service: please unlock the door of this call.</summary>
 public sealed record UnlockRequest(string CallId) : IpcMessage;

@@ -24,7 +24,7 @@ Stand 2026-10-05, umgesetzt. Opus/RTP an beiden Türstationen bestätigt, mit W1
 |---|---|---|---|
 | 1 | **Bedienung** | **Taste halten zum Sprechen** (abweichend von der Empfehlung „Klick ein und aus“) | Gesprochen wird nur, solange der Knopf „Sprechen“ gedrückt ist. Solange ist der Ton der Tür am PC stumm, sonst gibt es Echo über Lautsprecher und Mikrofon. Loslassen beendet sofort. Schutz gegen eine hängende Taste: nach 60 s am Stück endet das Sprechen von selbst |
 | 2 | **Wann** | nur während eines Klingelrufs, plus 10 s Nachfrist | Erzwingt der Dienst, wie beim Öffnen. Beim Livebild ohne Klingeln gibt es keinen Knopf „Sprechen“ |
-| 3 | **Mehrere PCs** | ursprünglich „immer nur einer“; **geändert 2026-10-02:** alle PCs dürfen sprechen, pro PC abschaltbar | Jeder PC hat seinen eigenen Dienst, eine Stelle zwischen den PCs gibt es nicht, und weder Access noch Protect melden, dass an einer Kamera gesprochen wird. Abstimmung zwischen PCs ginge nur mit eigenem Netzprotokoll, das ist verworfen. Auf einem PC spricht immer nur einer. Abschalten wie beim Livebild: `"Talkback": false` in der sientrydesk.local.json bzw. `-NoTalk` |
+| 3 | **Mehrere PCs** | ursprünglich „immer nur einer“; **geändert 2026-10-02:** alle PCs dürfen sprechen, pro PC abschaltbar | Jeder PC hat seinen eigenen Dienst, eine Stelle zwischen den PCs gibt es nicht, und weder Access noch Protect melden, dass an einer Kamera gesprochen wird. Abstimmung zwischen PCs ginge nur mit eigenem Netzprotokoll, das ist verworfen. Auf einem PC spricht immer nur einer. Abschalten wie beim Livebild: `"Talkback": false` in der sientrydesk.local.json bzw. `-NoTalk`. **Geändert 2026-11-03 (0.9.0):** Die Dienste melden einander per signiertem UDP-Broadcast, wer angenommen hat (siehe unten). Sprechen bleibt auf allen PCs erlaubt |
 | 4 | **Mikrofon** | Windows-Standard für Kommunikation | Keine Auswahl in der App. Die Mikrofonfreigabe von Windows für Desktop-Apps muss an sein |
 | 5 | **Protokoll** | ja | Jede Sprechphase mit Benutzer, PC, Tür und Dauer im Dienstprotokoll |
 
@@ -66,3 +66,21 @@ Stand 2026-10-05, umgesetzt. Opus/RTP an beiden Türstationen bestätigt, mit W1
    Wechselton mit derselben Opus- und RTP-Umsetzung. Jemand an der Tür sagt, ob er ankommt.
 2. Unter Windows: Verständlichkeit, Lautstärke, Verzögerung, Echo mit Lautsprechern und mit Headset; was passiert,
    wenn gleichzeitig jemand über die Mobile-App spricht; ob die PCs im Büronetz die Türstationen per UDP erreichen.
+
+## Anzeige, wer angenommen hat (0.9.0, Entscheid 2026-11-03)
+Rückmeldung: Oft sprechen mehrere gleichzeitig mit dem Besucher. Access und Protect melden nicht, dass an einer
+Kamera gesprochen wird, also melden es sich die Dienste selbst. Ein Server war früher im Gespräch, verworfen zugunsten
+von UDP im lokalen Netz.
+- **Angenommen** heisst: erstes erteiltes „Sprechen“ eines Benutzers bei diesem Ruf. Kein eigener Knopf.
+- Der Dienst sendet `PeerCodec`-Meldungen (Ruf = Access-`request_id`, Benutzer ohne Domäne, PC, Zeit in ms) an die
+  Broadcast-Adresse jedes IPv4-Netzes, UDP 47801, sofort und nach 1 und 3 s. Format `SIED1`, HMAC-SHA256, JSON.
+- **Schlüssel** per HKDF aus dem Access-Token (Variante A): kein zusätzliches Geheimnis, kein neues Paket der Zugänge.
+  Nach einem Tokenwechsel fehlt die Anzeige, bis alle PCs das neue Token haben.
+- Empfänger verwerfen: falsche Signatur, mehr als 60 s Zeitabweichung, unbekannter Ruf oder Ruf, bei dem nicht mehr
+  gesprochen werden kann. Namen wie alle Eingaben von aussen bereinigt und gekürzt.
+- **Wer zuerst:** `CallAnswers` ordnet nach Zeit, dann PC, dann Benutzer, damit alle PCs dieselbe Person zeigen.
+- App: Fenster zeigt „● <Benutzer> spricht (PC <Name>)“, Klingelton aus, Sprechen und Öffnen bleiben. Bei „nach 10 s“
+  erscheint nichts. Der eigene Benutzer am eigenen PC wird nicht angezeigt.
+- Firewall: `install.ps1` erlaubt UDP 47801 eingehend nur für den Dienst und nur aus `LocalSubnet`, Profil beliebig.
+  Prüfen zeigt die Regel (App, per `netsh`) und ob der Dienst den Port bekommen hat.
+- Voraussetzung: alle PCs im selben Netzsegment (Muss beim Kunden, Marcel klärt).

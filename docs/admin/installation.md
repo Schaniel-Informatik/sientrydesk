@@ -31,6 +31,12 @@ der Anlage, nicht hierher.
   Gegensprechen zusätzlich **UDP 7004 direkt zu den Türstationen**, nicht zur Konsole: Protect nennt die Türstation
   als Ziel für den Ton. Dieser Ton ist unverschlüsselt, so hat Ubiquiti die Schnittstelle gebaut. Die App braucht
   keine eingehenden Verbindungen, der Installer sperrt sie in der Windows-Firewall.
+- **Alle PCs mit SI EntryDesk im selben Netzsegment (Subnetz).** Ab 0.9.0 melden sich die Dienste per
+  UDP-Broadcast auf **Port 47801**, wer ein Gespräch angenommen hat. Router leiten Broadcasts nicht weiter: Ein PC in
+  einem anderen Segment klingelt und öffnet normal, zeigt aber nicht an, wer an einem anderen PC spricht, und wird
+  selbst nicht angezeigt. Der Installer erlaubt den Port in der Windows-Firewall nur aus dem lokalen Subnetz und nur
+  für den Dienst. Die Meldungen sind mit einem Schlüssel signiert, der aus dem Access-Token abgeleitet ist. Alle PCs
+  brauchen deshalb dasselbe Access-Token (wie mit dem Paket der Zugänge üblich).
 
 ## Wer öffnen darf: der PC, nicht die Person
 **Die Personen, Rollen und Türberechtigungen aus UniFi Access gelten für SI EntryDesk nicht.** Die offizielle Access
@@ -166,8 +172,9 @@ Das Skript richtet ein:
 5. legt `C:\ProgramData\SIEntryDesk` an, lesbar nur für SYSTEM, Administratoren und den Dienst
 6. übernimmt die `sientrydesk.json` dorthin
 7. speichert die Zugänge (mit `-SetTokens`) oder lässt vorhandene stehen
-8. trägt den Autostart für alle Benutzer ein, sperrt eingehende Verbindungen der App in der Firewall, legt den
-   Eintrag im Startmenü an und startet Dienst und App
+8. trägt den Autostart für alle Benutzer ein, sperrt eingehende Verbindungen der App in der Firewall, erlaubt dem
+   Dienst UDP 47801 aus dem lokalen Subnetz (Regel „SI EntryDesk: Abstimmung zwischen PCs“), legt den Eintrag im
+   Startmenü an und startet Dienst und App
 
 | Fall | Befehl |
 |---|---|

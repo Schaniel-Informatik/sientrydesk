@@ -10,6 +10,8 @@
     - Tokens nur mit -SetTokens (fragt verdeckt) oder separat mit set-tokens.ps1. Ohne -SetTokens fragt das Skript
       nichts und eignet sich für Intune. Vorhandene Tokens bleiben bei einem Update erhalten.
     - Tray-App startet bei jeder Anmeldung, Eintrag im Startmenü, Firewall-Sperre für eingehende Verbindungen
+    - Firewall-Freigabe UDP 47801 nur aus dem lokalen Subnetz, nur für den Dienst: Abstimmung zwischen den PCs,
+      wer ein Gespräch angenommen hat
     - -NoLiveView bzw. -NoTalk schalten Livebild ohne Klingeln bzw. Gegensprechen nur auf diesem PC ab
 
 .EXAMPLE
@@ -144,6 +146,12 @@ New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Na
 $firewallRule = 'SI EntryDesk: kein eingehender Zugriff'
 Get-NetFirewallRule -DisplayName $firewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName $firewallRule -Direction Inbound -Program $appExe -Action Block -Profile Any | Out-Null
+# Coordination between PCs (0.9.0): the services tell each other by signed UDP broadcast who answered a call. Only from
+# the local subnet and only for the service. Any profile, because Entra-joined PCs often see the office as public.
+$peerRule = 'SI EntryDesk: Abstimmung zwischen PCs'
+Get-NetFirewallRule -DisplayName $peerRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+New-NetFirewallRule -DisplayName $peerRule -Direction Inbound -Program $serviceExe -Protocol UDP -LocalPort 47801 `
+    -RemoteAddress LocalSubnet -Action Allow -Profile Any | Out-Null
 # Start menu entry for all users, in case the app was closed.
 $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk'))
 $shortcut.TargetPath = $appExe

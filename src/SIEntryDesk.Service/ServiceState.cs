@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
+using SIEntryDesk.Core.Peers;
 
 namespace SIEntryDesk.Service;
 
@@ -19,6 +20,13 @@ internal sealed class ServiceState
     private string _expiryNotice = string.Empty;
 
     public CallTracker? Tracker { get; set; }
+
+    /// <summary>Who answered which call first, on this PC or another one (from 0.9.0).</summary>
+    public CallAnswers Answers { get; } = new();
+
+    /// <summary>Why the coordination with other PCs does not work, for the check. Null if it runs or is not set
+    /// up.</summary>
+    public Func<string?> PeerProblem { get; set; } = () => null;
 
     /// <summary>State of the configuration files at startup. The service reads them only then, so the check shows which
     /// version it runs with and whether a newer one has appeared since.</summary>
@@ -89,8 +97,14 @@ internal sealed class ServiceState
         yield return Status();
         yield return Doors;
         foreach (var call in Tracker?.ActiveCalls() ?? [])
+        {
             yield return ToMessage(call);
+            if (Answers.Find(call.CallId) is { } answer)
+                yield return ToMessage(answer);
+        }
     }
+
+    public static CallAnsweredMessage ToMessage(PeerAnnouncement answer) => new(answer.CallId, answer.User, answer.Pc);
 
     public CallStartedMessage ToMessage(CallInfo call) =>
         new(call.CallId, DisplayName(call.CameraId, call.DoorName), call.StartedAt, call.UnlockAllowed,

@@ -10,12 +10,16 @@ Klingel-Symbol unten rechts, eventuell unter dem Pfeil ^ in der Taskleiste.
 - **Rechtsklick:** Version, Status, jede Tür mit ihrer Einstellung fürs Klingeln, „Klingel pausieren“, „Ton der Tür(en) automatisch einschalten“, Testklingeln, Prüfen, Beenden.
 
 Beim Klingeln erscheint ein Fenster über allen anderen, mit Klingelton, Livebild und Knopf „Öffnen“. Nimmt jemand
-anders ab (Mobile-App, anderer PC), schliesst es sich überall.
+in der Mobile-App ab, schliesst es sich überall („Anderswo angenommen“). **Spricht jemand an einem anderen PC** (ab
+0.9.0), zeigen die übrigen PCs in Orange „● mmuster spricht (PC EMPFANG-01)“, und der Klingelton hört auf. Das Fenster
+bleibt offen, Sprechen und Öffnen gehen weiter, falls die Person weggeht. Angezeigt wird, wer zuerst gedrückt hat. Am
+PC, an dem gesprochen wird, ändert sich nichts. Das geht nur zwischen PCs im selben Netzsegment
+([installation.md](installation.md#voraussetzungen)).
 
 **Klingeln pro Tür** (Rechtsklick oder Linksklick → Einstellungen …, dann Tür → Auswahl; gilt für den angemeldeten
 Benutzer): je Tür „sofort“ (Standard), „nach 10 s“ oder „aus“. Die Einstellung steht im Menü bei der Tür, z. B.
 „Tür 2: aus“. Bei „nach 10 s“ blinkt zuerst das Symbol, nach 10 s erscheinen Fenster und Klingelton. Nimmt in dieser Zeit
-jemand anders ab oder bricht der Besucher ab, erscheint nichts. Mit Klick aufs Symbol → „Jetzt anzeigen“ kommt das
+jemand anders ab (auch durch Sprechen an einem anderen PC) oder bricht der Besucher ab, erscheint nichts. Mit Klick aufs Symbol → „Jetzt anzeigen“ kommt das
 Fenster sofort. Bei „aus“ erscheint für diese Tür nichts, das Livebild ohne Klingeln bleibt im Menü. Rufe, die so
 nicht gezeigt wurden, gelten nicht als verpasst. Abweichungen stehen auch im Text am Symbol (Maus darauf). Beispiel:
 Am Empfang klingelt die Haupttür sofort, eine Nebentür nach 10 s. Das ist eine Bequemlichkeit, keine Sperre. Soll eine
@@ -37,8 +41,8 @@ Menü (Rechtsklick) bei „Sprechen mit: Headset (erkannt)“ bzw. „Lautsprech
 USB-Headsets melden sich bei Windows als Lautsprecher, dann dort „Headset – Tür beim Sprechen hören“ wählen.
 „Lautsprecher – Tür beim Sprechen stumm“ hilft, wenn der Besucher ein Echo hört. Nach 60 s am Stück endet das Sprechen
 von selbst. Möglich während des Rufs und in den 10 s danach, nicht wenn jemand anders angenommen oder abgelehnt hat.
-Die PCs stimmen sich nicht ab: Sprechen zwei gleichzeitig, kommen beide Stimmen an der Tür an. Die Mobile-Apps
-klingeln weiter, bis jemand öffnet oder der Ruf endet. Während einer Teams-Besprechung kann Windows andere Töne
+Sprechen trotz der Anzeige zwei gleichzeitig, kommen beide Stimmen an der Tür an. Die Mobile-Apps erfahren nicht,
+dass am PC gesprochen wird, und klingeln weiter, bis jemand öffnet oder der Ruf endet. Während einer Teams-Besprechung kann Windows andere Töne
 dämpfen (Sound → Weitere Soundeinstellungen → Kommunikation).
 
 | Symbol | Bedeutung |
@@ -61,6 +65,7 @@ dämpfen (Sound → Weitere Soundeinstellungen → Kommunikation).
 7. **Pause:** 15 Minuten pausieren, klingeln lassen. Es erscheint nichts, danach steht der Ruf im Menü.
 8. **Gegensprechen**, nur mit jemandem an der Tür: Sprechtaste halten, sprechen, loslassen, Antwort hören. Einmal mit
    Lautsprechern, einmal mit Headset.
+9. **Zwei PCs:** An einem PC sprechen. Am anderen erscheint „… spricht (PC …)“ und der Klingelton hört auf.
 
 ## Zugänge jährlich erneuern
 Ohne Unterbruch, weil der alte Zugang bis zum Schluss gültig bleibt. Per Intune: [intune.md](intune.md#zugänge-jährlich-erneuern).
@@ -75,8 +80,8 @@ Von Hand:
 
 ## Störungen
 **Zuerst prüfen:** Rechtsklick auf das Symbol → „Prüfen …“ oder `SIEntryDesk.exe --check`. Das Fenster zeigt je
-Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Tonausgabe, Mikrofon, Sprechen
-mit (Headset oder Lautsprecher),
+Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Abstimmung mit anderen
+PCs (Firewall-Regel für UDP 47801), Tonausgabe, Mikrofon, Sprechen mit (Headset oder Lautsprecher),
 Verbindung zum Dienst und Version auf dem PC; Konfiguration (mit Datum der sientrydesk.json, mit der der Dienst läuft),
 Zugänge, Access und Protect (erreichbar, Zertifikat, Token und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür,
 Gegensprechen und Ablaufdaten für die Anlage. Der Dienst liest die sientrydesk.json nur beim Start. Ist sie seither
@@ -99,6 +104,7 @@ ein Ticket oder eine Mail. Ob der Ton beim Gegensprechen an der Tür ankommt, ka
 | Taste geht, an der Tür kommt nichts an | UDP 7004 vom PC zur Türstation blockiert; im Protokoll steht die Adresse der Türstation |
 | „Protect-Schlüssel abgelehnt“ / „Protect nicht erreichbar“ | wie beim Livebild |
 | Besucher hört sich selbst als Echo | Ton der Tür kommt aus Lautsprechern, aber „Headset“ gewählt oder fälschlich erkannt: im Menü „Sprechen mit“ → „Lautsprecher – Tür beim Sprechen stumm“ |
+| Anderer PC zeigt nicht an, wer spricht | „Prüfen …“ auf beiden PCs: Firewall-Regel fehlt → install.ps1 erneut ausführen. Sonst anderes Netzsegment, anderes Access-Token oder Uhrzeit der PCs weicht mehr als 60 s ab (steht im Protokoll des Dienstes) |
 | Antwort des Besuchers fehlt teilweise | Mit Lautsprechern normal (Tür stumm beim Sprechen). Mit Headset: Menü „Sprechen mit“ zeigt „Lautsprecher (erkannt)“ → „Headset – Tür beim Sprechen hören“ wählen |
 
 **Livebild schwarz oder stumm:** Das Protokoll des Videoplayers liegt beim Benutzer unter
@@ -120,5 +126,8 @@ Es enthält Türnamen, aber keine Tokens und keine Stream-Adressen. Installation
 - Die App öffnet nur während eines Rufs oder bis 10 s danach (nach „Besucher hat abgebrochen“ oder „Niemand hat
   abgenommen“). Das erzwingt der Dienst. Wer einen Token ausserhalb der App verwendet, ist daran nicht gebunden.
 - Jede Öffnung steht im Access-Protokoll mit Benutzer und PC, jeder Livebild-Abruf im Protokoll des Dienstes.
+- Die Meldung „… spricht“ geht unverschlüsselt ins lokale Netz und enthält Benutzer, PC und Ruf, aber keine Tür und
+  keine Geheimnisse. Sie ist signiert: Fälschen kann sie nur, wer das Access-Token hat, und damit könnte man ohnehin
+  öffnen. Mehr als die Anzeige und das Abstellen des Klingeltons bewirkt sie nicht.
 - Das Livebild läuft nur über die geprüfte TLS-Verbindung des Dienstes. Die App bekommt eine Einmal-Adresse auf
   127.0.0.1, die mit dem Ruf bzw. nach der eingestellten Dauer endet.

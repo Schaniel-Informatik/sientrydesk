@@ -240,6 +240,15 @@ public partial class App : Application
             case CallEndedMessage end when _windows.TryGetValue(end.CallId, out var window):
                 window.EndCall(end.Reason);
                 break;
+            case CallAnsweredMessage answered when IsSelf(answered):
+                break;
+            case CallAnsweredMessage answered when _pending.ContainsKey(answered.CallId):
+                // Delayed call that someone already answered: nothing appears on this PC, as with "answered elsewhere".
+                CancelPending(answered.CallId);
+                break;
+            case CallAnsweredMessage answered when _windows.TryGetValue(answered.CallId, out var window):
+                window.ShowAnswered(answered.User, answered.Pc);
+                break;
             case DoorOpenedMessage opened when _windows.TryGetValue(opened.CallId, out var window):
                 window.ShowOpened(opened.OpenedBy);
                 break;
@@ -261,6 +270,12 @@ public partial class App : Application
                 break;
         }
     }
+
+    /// <summary>The user of this app on this PC: the service names the user without domain, like Windows
+    /// here.</summary>
+    private static bool IsSelf(CallAnsweredMessage answered) =>
+        string.Equals(answered.Pc, Environment.MachineName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(answered.User, Environment.UserName, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Ring according to this user's setting for the door: immediately, after 10 s or not at all.</summary>
     private void OnCallStarted(CallStartedMessage call)

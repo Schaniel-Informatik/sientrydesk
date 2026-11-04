@@ -13,6 +13,7 @@ public class IpcProtocolTests
         new CallStartedMessage("req-1", "Tür 1", new DateTimeOffset(2026, 9, 28, 14, 0, 0, TimeSpan.Zero), true),
         new CallEndedMessage("req-1", CallEndReason.AnsweredElsewhere),
         new DoorOpenedMessage("req-1", "A. Muster"),
+        new CallAnsweredMessage("req-1", "amuster", "PC-01"),
         new UnlockRequest("req-1"),
         new UnlockResultMessage("req-1", false, "Ruf bereits beendet"),
         new CallStartedMessage("req-2", "Tür 2", new DateTimeOffset(2026, 9, 28, 15, 0, 0, TimeSpan.Zero), true, VideoAvailable: true),

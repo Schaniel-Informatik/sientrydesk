@@ -133,6 +133,10 @@ internal sealed class Diagnostics(
                 ? Item("Gegensprechen", CheckLevel.Ok, "eingerichtet. Ob der Ton an der Tür ankommt, zeigt nur ein Test mit jemandem dort")
                 : Item("Gegensprechen", CheckLevel.Warn, "braucht Protect-Schlüssel und ProtectPin"));
 
+        // The firewall rule is checked by the app. Here only whether the service itself receives.
+        if (state.PeerProblem() is { } peerProblem)
+            items.Add(new CheckItem(CheckReport.ThisPc, "Abstimmung mit anderen PCs", CheckLevel.Warn, peerProblem));
+
         items.Add(Expiry(opt));
         return items;
     }

@@ -8,6 +8,7 @@ using SIEntryDesk.Core;
 using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
+using SIEntryDesk.Core.Peers;
 using SIEntryDesk.Core.Protect;
 using SIEntryDesk.Core.Security;
 using SIEntryDesk.Core.Video;
@@ -49,6 +50,9 @@ internal sealed class CallCoordinator(
     private ProtectApiClient? _protectApi;
     private StreamProxy? _proxy;
     private TalkRelay? _talk;
+    private PeerLink? _peers;
+    /// <summary>Calls this PC has announced, per user: only the first talk turn is announced.</summary>
+    private readonly ConcurrentDictionary<(string CallId, string User), byte> _announced = new();
     private Diagnostics? _diagnostics;
     private CancellationToken _stopping;
 
@@ -84,6 +88,8 @@ internal sealed class CallCoordinator(
         _accessApi = new AccessApiClient(host, secrets.AccessToken, pin);
         SetUpVideo(opt, secrets, host);
         SetUpTalk(opt);
+        _peers = new PeerLink(PeerCodec.DeriveKey(secrets.AccessToken), time, log);
+        state.PeerProblem = () => _peers?.Problem;
         _doors = new DoorDirectory(ServicePaths.DoorsFile);
         foreach (var (doorId, cameraId) in opt.DoorCameras)
             _doors.Seed(doorId, cameraId);
@@ -99,6 +105,7 @@ internal sealed class CallCoordinator(
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5), time);
             var expiry = ExpireLoopAsync(timer, _tracker, ct);
             var health = HealthLoopAsync(ct);
+            var peers = _peers.RunAsync(OnPeerAnnouncement, ct);
             var stream = new AccessEventStream(host, secrets.AccessToken, pin, log);
             await stream.RunAsync(
                 (ev, _) =>
@@ -110,9 +117,11 @@ internal sealed class CallCoordinator(
                 ct).ConfigureAwait(false);
             await expiry.ConfigureAwait(false);
             await health.ConfigureAwait(false);
+            await peers.ConfigureAwait(false);
         }
         finally
         {
+            _peers.Dispose();
             _talk?.Dispose();
             if (_proxy is not null)
                 await _proxy.DisposeAsync().ConfigureAwait(false);
@@ -308,6 +317,11 @@ internal sealed class CallCoordinator(
             {
                 Publish(tracker.Expire());
                 _talk?.Expire();
+                // Answers are kept as long as talking is possible (call and grace period).
+                bool Over(string callId) => tracker.CanTalk(callId, out _) != TalkDecision.Allowed;
+                state.Answers.RemoveWhere(Over);
+                foreach (var key in _announced.Keys.Where(k => Over(k.CallId)))
+                    _announced.TryRemove(key, out _);
             }
         }
         catch (OperationCanceledException)
@@ -384,8 +398,41 @@ internal sealed class CallCoordinator(
             return new TalkResultMessage(callId, false, "Der Ruf ist beendet");
         if (call.CameraId.Length == 0)
             return new TalkResultMessage(callId, false, "Zu dieser Tür ist keine Kamera bekannt");
-        return await _talk.StartAsync(call, call.CameraId, state.DisplayName(call.CameraId, call.DoorName),
+        var result = await _talk.StartAsync(call, call.CameraId, state.DisplayName(call.CameraId, call.DoorName),
             client.Id, client.User, _protectApi, ct).ConfigureAwait(false);
+        if (result.Granted)
+            Announce(call, client.User);
+        return result;
+    }
+
+    /// <summary>First talk turn of a user at this call: the call counts as answered, on this PC and on the
+    /// others.</summary>
+    private void Announce(CallInfo call, string user)
+    {
+        if (!_announced.TryAdd((call.CallId, user), 0))
+            return;
+        var answer = PeerAnnouncement.Create(call.CallId, UntrustedText.Clean(TalkRelay.ShortName(user), PeerCodec.MaxNameLength),
+            UntrustedText.Clean(Environment.MachineName, PeerCodec.MaxNameLength), time.GetUtcNow());
+        OfferAnswer(answer, local: true);
+        _peers?.Announce(answer, _stopping);
+    }
+
+    /// <summary>From another PC: only for a call this PC knows and while talking is possible.</summary>
+    private void OnPeerAnnouncement(PeerAnnouncement answer)
+    {
+        if (_tracker?.CanTalk(answer.CallId, out _) == TalkDecision.Allowed)
+            OfferAnswer(answer, local: false);
+    }
+
+    /// <summary>Tells the apps only if this is the first answer known for the call.</summary>
+    private void OfferAnswer(PeerAnnouncement answer, bool local)
+    {
+        if (!state.Answers.Offer(answer))
+            return;
+        var door = _tracker?.CanTalk(answer.CallId, out var call) == TalkDecision.Allowed ? call!.DoorName : "?";
+        log.LogInformation("Gespräch angenommen: {Door} von {User} an {Pc}{Where} (Ruf {Call})",
+            door, answer.User, answer.Pc, local ? " (dieser PC)" : string.Empty, answer.CallId);
+        pipes.Broadcast(ServiceState.ToMessage(answer));
     }
 
     /// <summary>

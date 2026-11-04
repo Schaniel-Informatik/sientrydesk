@@ -28,6 +28,7 @@ if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk') -ErrorAction SilentlyContinue
 Get-NetFirewallRule -DisplayName 'SI EntryDesk: kein eingehender Zugriff' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+Get-NetFirewallRule -DisplayName 'SI EntryDesk: Abstimmung zwischen PCs' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 Remove-Item -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $env:ProgramFiles 'SIEntryDesk') -ErrorAction SilentlyContinue
 # Remove leftovers of an installation by the 32-bit PowerShell (Intune with 0.5.0).

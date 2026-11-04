@@ -1,20 +1,21 @@
 # SI EntryDesk
 
 > **English summary.** SI EntryDesk is a Windows 11 tray app for UniFi door stations (UniFi Protect + UniFi Access):
-> when someone rings, a window with ringtone, live video, talkback and a large "Open" button pops up on selected PCs,
-> and closes everywhere once someone else answers. It uses only the official UniFi Access Developer API and UniFi
-> Protect Integration API. Not affiliated with Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry
-> and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
+> when someone rings, a window with ringtone, live video, talkback and a large "Open" button pops up on selected PCs.
+> The other PCs show who is already talking, and the window closes everywhere once someone answers on the mobile app.
+> It uses only the official UniFi Access Developer API and UniFi Protect Integration API. Not affiliated with
+> Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
 > Note: UniFi Access user permissions do not apply, the official API only offers site-wide tokens, so access control
 > is the choice of PCs it runs on (see SECURITY.md).
 > Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
 > An independent code review by bee it (October 2026, version 0.6.1) rated the code base 5 out of 5 overall; its
-> findings are addressed in version 0.8.1.
+> findings are addressed in version 0.9.0.
 > Security reports: see [SECURITY.md](SECURITY.md). **Contributions welcome**, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows-App von Schaniel Informatik für Türsprechstellen mit UniFi Protect und UniFi Access. Wenn es klingelt,
-erscheint auf den gewünschten PCs sofort ein Fenster mit Klingelton, Livebild und dem Knopf „Öffnen“. Nimmt jemand
-anders ab, schliesst es sich überall.
+erscheint auf den gewünschten PCs sofort ein Fenster mit Klingelton, Livebild und dem Knopf „Öffnen“. Spricht jemand
+an einem PC mit dem Besucher, zeigen die anderen PCs, wer. Nimmt jemand in der Mobile-App ab, schliesst es sich
+überall.
 
 **Not affiliated with Ubiquiti.** Nutzt ausschliesslich die offiziellen Schnittstellen (Access Developer API,
 Protect Integration API).
@@ -22,7 +23,7 @@ Protect Integration API).
 Stand: Pilot, seit Oktober 2026 an einer Anlage im Einsatz (Version 0.6.1, verteilt über Intune). Downloads unter
 [Releases](https://github.com/Schaniel-Informatik/sientrydesk/releases).
 Unabhängiger Code-Review durch bee it im Oktober 2026 (Version 0.6.1), Gesamturteil 5 von 5 Sternen. Die Befunde
-sind in 0.8.1 behoben.
+sind in 0.9.0 behoben.
 
 ## Wo was steht
 **Für Admins** (`docs/admin/`, kommt auch als `Doku\` ins Paket):

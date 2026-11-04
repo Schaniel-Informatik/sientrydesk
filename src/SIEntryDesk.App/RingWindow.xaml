@@ -43,7 +43,12 @@
                     Background="#4A4D55" Style="{StaticResource ActionButton}" IsEnabled="False" Click="OnSoundClick" />
         </Grid>
 
-        <TextBlock x:Name="StatusText" Grid.Row="3" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,12" MinHeight="20" />
+        <StackPanel Grid.Row="3" Margin="0,0,0,12">
+            <!-- Who already talks at another PC (0.9.0). Separate from the status line, which unlock and talk use. -->
+            <TextBlock x:Name="AnsweredText" FontSize="15" Foreground="#FFB74D" TextWrapping="Wrap" Margin="0,0,0,6"
+                       Visibility="Collapsed" />
+            <TextBlock x:Name="StatusText" FontSize="15" TextWrapping="Wrap" MinHeight="20" />
+        </StackPanel>
 
         <!-- Talkback: talk while pressed (decision 2026-10-02). The service decides whether it is possible right now. -->
         <Button x:Name="TalkButton" Grid.Row="4" Content="Sprechen – gedrückt halten" Height="52" FontSize="17"
