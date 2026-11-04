@@ -55,6 +55,42 @@ $stateDir       = Join-Path $dataDir 'state'
 $serviceExe     = Join-Path $installDir 'Service\SIEntryDesk.Service.exe'
 $appExe         = Join-Path $installDir 'App\SIEntryDesk.exe'
 
+# If the script fails after stopping the service, start it again: the PC keeps ringing with what is installed. With
+# break the error still ends the script with exit code 1, so Intune reports the failure.
+trap {
+    if ($serviceName -and (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
+        Start-Service $serviceName -ErrorAction SilentlyContinue
+    }
+    break
+}
+
+# Stop-Process does not wait. Until a process has really exited, Windows keeps its files locked (0.9.0 on some PCs:
+# "Zugriff verweigert" on a LibVLC plugin of the app). Therefore stop everything that runs from the install folder
+# and wait until it has exited: usually well under a second, at most 60 s.
+function Stop-Running {
+    $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name -in 'SIEntryDesk', 'SIEntryDesk.Service' -or
+        ($_.Path -and $_.Path.StartsWith("$installDir\", [StringComparison]::OrdinalIgnoreCase))
+    })
+    if ($running.Count -eq 0) { return }
+    $running | Stop-Process -Force -ErrorAction SilentlyContinue
+    $running | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
+}
+
+# Deletes a folder, retrying for up to 30 s if a file is still locked (process hanging, virus scanner). Raises the
+# chance that the update still goes through.
+function Remove-Folder([string] $Path) {
+    for ($attempt = 1; Test-Path $Path; $attempt++) {
+        try { Remove-Item -Recurse -Force $Path; return }
+        catch {
+            if ($attempt -ge 15) { throw "$Path lässt sich nicht löschen, eine Datei ist noch in Gebrauch: $($_.Exception.Message)" }
+            # Once more stop what runs from the folder, but only once: a hanging process would cost 60 s each time.
+            if ($attempt -eq 1) { Write-Host "    $Path noch gesperrt, warte …"; Stop-Running }
+            Start-Sleep -Seconds 2
+        }
+    }
+}
+
 function Invoke-Native([string] $Exe, [string[]] $Arguments) {
     & $Exe @Arguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments -join ' ') ist fehlgeschlagen (Code $LASTEXITCODE)" }
@@ -75,13 +111,13 @@ foreach ($required in 'Host', 'AccessPin') {
 
 Write-Host '2/8 Laufende Instanzen beenden'
 if (Get-Service $serviceName -ErrorAction SilentlyContinue) { Stop-Service $serviceName -Force }
-Get-Process -Name 'SIEntryDesk' -ErrorAction SilentlyContinue | Stop-Process -Force
+Stop-Running
 
 Write-Host '3/8 Dateien kopieren'
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 foreach ($part in 'Service', 'App') {
     $target = Join-Path $installDir $part
-    if (Test-Path $target) { Remove-Item -Recurse -Force $target }
+    Remove-Folder $target
     Copy-Item -Recurse -Force (Join-Path $PSScriptRoot $part) $target
 }
 # For admins at the device: renew and remove credentials, check like Intune (detect.ps1 from prepare-intune.ps1).
