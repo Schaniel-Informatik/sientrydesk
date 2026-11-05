@@ -25,7 +25,8 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
-## 0.9.1 (04.11. gebaut)
+## 0.9.1 (04.11. gebaut und über Intune verteilt)
+- **Rückmeldung 05.11.:** Die Anwender sind sehr zufrieden, „eine grosse Verbesserung in der Anwendung“.
 - **Update scheiterte auf einigen PCs** (0.9.0 über Intune, `0x80070001`): `install.ps1` beendete die App mit
   `Stop-Process`, wartete aber nicht. Beim Löschen des App-Ordners war ein LibVLC-Plugin noch gesperrt
   („Zugriff verweigert“). Der Dienst war schon ersetzt und blieb gestoppt, die App blieb halb gelöscht auf 0.8.0.
