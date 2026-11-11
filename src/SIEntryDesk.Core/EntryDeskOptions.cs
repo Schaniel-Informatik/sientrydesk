@@ -1,11 +1,19 @@
 using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core;
 
 /// <summary>Non-secret settings. Tokens do not belong here.</summary>
 public sealed class EntryDeskOptions
 {
+    /// <summary>Language for the users: "de" (default), "en" or "pl". Check and log are German for "de", otherwise
+    /// English (from 0.10.0).</summary>
+    public string Language { get; set; } = "de";
+
+    /// <summary>The language to use. Unknown values count as German, <see cref="Validate"/> reports them.</summary>
+    public UiLanguage UiLanguage => Tr.TryParse(Language, out var language) ? language : UiLanguage.De;
+
     /// <summary>Address of the UniFi console (IP or name).</summary>
     public string Host { get; set; } = string.Empty;
 
@@ -59,10 +67,13 @@ public sealed class EntryDeskOptions
         if (dates.Count == 0)
             return null;
         var next = dates.Min();
+        var date = Tr.Date(next);
         if (next < today.Date)
-            return $"Die Tokens von SI EntryDesk sind am {next:dd.MM.yyyy} abgelaufen";
+            return Tr.User($"Die Tokens von SI EntryDesk sind am {date} abgelaufen", $"The SI EntryDesk tokens expired on {date}",
+                $"Tokeny SI EntryDesk wygasły {date}");
         return (next - today.Date).TotalDays <= ExpiryWarningDays
-            ? $"Die Tokens von SI EntryDesk müssen bis am {next:dd.MM.yyyy} erneuert werden"
+            ? Tr.User($"Die Tokens von SI EntryDesk müssen bis am {date} erneuert werden",
+                $"The SI EntryDesk tokens must be renewed by {date}", $"Tokeny SI EntryDesk trzeba odnowić do {date}")
             : null;
     }
 
@@ -79,7 +90,7 @@ public sealed class EntryDeskOptions
         }
         catch (FormatException)
         {
-            return "ProtectPin oder StreamPin ist kein SHA-256-Fingerprint";
+            return Tr.Admin("ProtectPin oder StreamPin ist kein SHA-256-Fingerprint", "ProtectPin or StreamPin is not a SHA-256 fingerprint");
         }
         return null;
     }
@@ -90,17 +101,24 @@ public sealed class EntryDeskOptions
     public string? Validate()
     {
         if (string.IsNullOrWhiteSpace(Host) || Uri.CheckHostName(Host.Trim()) == UriHostNameType.Unknown)
-            return "Host fehlt oder ist ungültig";
+            return Tr.Admin("Host fehlt oder ist ungültig", "Host is missing or invalid");
         try
         {
             CertificatePin.Parse(AccessPin);
         }
         catch (FormatException)
         {
-            return "AccessPin fehlt oder ist kein SHA-256-Fingerprint";
+            return Tr.Admin("AccessPin fehlt oder ist kein SHA-256-Fingerprint", "AccessPin is missing or not a SHA-256 fingerprint");
         }
         return null;
     }
+
+    /// <summary>Unknown language, or null. Not part of <see cref="Validate"/>: with a typo the PC should still ring, in
+    /// German.</summary>
+    public string? ValidateLanguage() => Tr.TryParse(Language, out _)
+        ? null
+        : Tr.Admin($"Language „{UntrustedText.Clean(Language, 20)}“ ist unbekannt, möglich sind de, en und pl. Es gilt Deutsch",
+            $"Language \"{UntrustedText.Clean(Language, 20)}\" is unknown, possible are de, en and pl. German applies");
 
     public bool AcceptsDoor(AccessRingStarted ring) => AcceptsDoor(ring.DoorId, ring.DoorName);
 

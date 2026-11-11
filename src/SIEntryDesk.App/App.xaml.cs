@@ -6,6 +6,7 @@ using Microsoft.Win32;
 using SIEntryDesk.Core;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -65,7 +66,7 @@ public partial class App : Application
     private static readonly string[] HelpArgs = ["--help", "-h", "-?", "/?", "--hilfe"];
 
     // Lines at most about 45 characters, otherwise the message box wraps them itself and destroys the indentation.
-    private static readonly string HelpText =
+    private static string HelpText => Tr.Admin(
         $"""
         SI EntryDesk {TrayIcon.AppVersion}
 
@@ -91,11 +92,37 @@ public partial class App : Application
 
         Befehle des Dienstes:
             SIEntryDesk.Service.exe --help
-        """;
+        """,
+        $"""
+        SI EntryDesk {TrayIcon.AppVersion}
+
+        SIEntryDesk.exe
+            Tray app, starts by itself at sign-in.
+
+        SIEntryDesk.exe --setup
+            Setup wizard: create sientrydesk.json
+            or check an existing one.
+
+        SIEntryDesk.exe --setup <file>
+            Setup wizard with this file.
+            The installed file is readable only
+            as administrator.
+
+        SIEntryDesk.exe --check
+            Checks this PC and the connection
+            to the installation, green/orange/red.
+
+        SIEntryDesk.exe --help
+            This help.
+
+        Commands of the service:
+            SIEntryDesk.Service.exe --help
+        """);
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        AppLanguage.Load();
 
         if (e.Args.Any(a => HelpArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))
         {
@@ -117,6 +144,8 @@ public partial class App : Application
         var setup = Array.FindIndex(e.Args, a => string.Equals(a, "--setup", StringComparison.OrdinalIgnoreCase));
         if (setup >= 0)
         {
+            // For the admin at this PC: the language of Windows, not that of the installation.
+            Tr.Use(Tr.FromCulture(System.Globalization.CultureInfo.CurrentUICulture));
             var configPath = setup + 1 < e.Args.Length ? Path.GetFullPath(e.Args[setup + 1]) : null;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             _libVlc = Task.Run(LoadLibVlc);
@@ -152,12 +181,15 @@ public partial class App : Application
             if (_talk is not { } talk)
                 return;
             StopTalk(talk.CallId, notifyService: true);
-            talk.Window.ShowTalkProblem("Sprechen beendet: Höchstdauer erreicht");
+            talk.Window.ShowTalkProblem(Tr.User("Sprechen beendet: Höchstdauer erreicht", "Talking ended: maximum reached",
+                "Rozmowa zakończona: osiągnięto maksymalny czas"));
         };
         _expiryTimer.Start();
         _client = new ServiceClient(Dispatcher);
         _client.StatusChanged += status =>
         {
+            if (status.Service is { } service)
+                AppLanguage.Apply(service.Language);
             _status = status;
             UpdateTray();
             CheckExpiryNotice();
@@ -231,7 +263,7 @@ public partial class App : Application
                 ShowLiveView(live);
                 break;
             case LiveViewUnavailableMessage live:
-                _tray?.Notify("Kein Livebild", live.Reason);
+                _tray?.Notify(NoLiveView, live.Reason);
                 break;
             case CallEndedMessage end when _pending.ContainsKey(end.CallId):
                 // Delayed call, answered elsewhere or cancelled in the meantime: nothing appears on this PC.
@@ -266,7 +298,8 @@ public partial class App : Application
                 break;
             case TalkEndedMessage ended when _windows.TryGetValue(ended.CallId, out var window):
                 StopTalk(ended.CallId, notifyService: false);
-                window.ShowTalkProblem($"Sprechen beendet: {ended.Reason}");
+                window.ShowTalkProblem(Tr.User($"Sprechen beendet: {ended.Reason}", $"Talking ended: {ended.Reason}",
+                    $"Rozmowa zakończona: {ended.Reason}"));
                 break;
         }
     }
@@ -357,7 +390,8 @@ public partial class App : Application
     private void UpdatePending()
     {
         var doors = _pending.Values.Select(p => p.DoorName).Distinct().ToList();
-        _tray?.SetPending(doors.Count == 0 ? null : $"Es klingelt: {string.Join(", ", doors)}");
+        var list = string.Join(", ", doors);
+        _tray?.SetPending(doors.Count == 0 ? null : Tr.User($"Es klingelt: {list}", $"Ringing: {list}", $"Dzwoni: {list}"));
     }
 
     private void SetRingMode(RingDoor door, RingMode mode)
@@ -378,7 +412,7 @@ public partial class App : Application
         foreach (var door in _serviceDoors)
             names[door.DoorId] = door.Name;
         var doors = names
-            .Select(d => new RingDoor(d.Key, d.Value.Length > 0 ? d.Value : "Tür", _ringPrefs.Get(d.Key)))
+            .Select(d => new RingDoor(d.Key, d.Value.Length > 0 ? d.Value : Tr.User("Tür", "Door", "Drzwi"), _ringPrefs.Get(d.Key)))
             .OrderBy(d => d.Name, StringComparer.CurrentCulture)
             .ToList();
         _tray?.SetRingDoors(doors);
@@ -412,7 +446,7 @@ public partial class App : Application
         if (_client is null || !await _client.SendAsync(new TalkRequest(callId, true)))
         {
             StopTalk(callId, notifyService: false);
-            window.ShowTalkProblem("Dienst nicht erreichbar");
+            window.ShowTalkProblem(ServiceUnreachable);
         }
     }
 
@@ -498,7 +532,7 @@ public partial class App : Application
         window.UnlockRequested += async () =>
         {
             if (_client is null || !await _client.SendAsync(new UnlockRequest(callId)))
-                window.ShowUnlockResult(false, "Dienst nicht erreichbar");
+                window.ShowUnlockResult(false, ServiceUnreachable);
         };
         if (talkAvailable)
         {
@@ -518,7 +552,7 @@ public partial class App : Application
         _windows[callId] = window;
         window.Show();
         UpdateRingtone();
-        _tray?.Notify("Es klingelt", window.DoorText.Text);
+        _tray?.Notify(Tr.User("Es klingelt", "Doorbell", "Ktoś dzwoni"), window.DoorText.Text);
 
         if (videoAvailable)
             _ = RequestVideoAsync(window, callId);
@@ -542,7 +576,7 @@ public partial class App : Application
             return;
         }
         if (_client is null || !await _client.SendAsync(new LiveViewRequest(doorId)))
-            _tray?.Notify("Kein Livebild", "Dienst nicht erreichbar");
+            _tray?.Notify(NoLiveView, ServiceUnreachable);
     }
 
     private void ShowLiveView(LiveViewReadyMessage live)
@@ -561,7 +595,7 @@ public partial class App : Application
     private async Task RequestVideoAsync(RingWindow window, string callId)
     {
         if (_client is null || !await _client.SendAsync(new VideoRequest(callId)))
-            window.ShowVideoProblem("Dienst nicht erreichbar");
+            window.ShowVideoProblem(ServiceUnreachable);
     }
 
     private async Task PlayVideoAsync(RingWindow window, string url)
@@ -569,7 +603,8 @@ public partial class App : Application
         var libVlc = _libVlc is null ? null : await _libVlc;
         if (libVlc is null)
         {
-            window.ShowVideoProblem("Videoplayer konnte nicht geladen werden");
+            window.ShowVideoProblem(Tr.User("Videoplayer konnte nicht geladen werden", "Video player could not be loaded",
+                "Nie można załadować odtwarzacza wideo"));
             return;
         }
         window.SetTalkAudio(TalkAudio.Resolve(_listenMode));
@@ -600,13 +635,24 @@ public partial class App : Application
             return;
         _pausedUntil = null;
         if (_missedCount > 0)
-            _tray?.Notify(manual ? "Klingel wieder an" : "Pause beendet, Klingel wieder an", MissedText()!);
+            _tray?.Notify(manual
+                ? Tr.User("Klingel wieder an", "Doorbell on again", "Dzwonek znów włączony")
+                : Tr.User("Pause beendet, Klingel wieder an", "Pause over, doorbell on again", "Koniec przerwy, dzwonek znów włączony"),
+                MissedText()!);
         UpdateTray();
     }
 
     private string? MissedText() => _missedCount == 0
         ? null
-        : $"Während der Pause {_missedCount}× geklingelt, zuletzt {_missedLast:HH:mm} {_missedDoor}";
+        : Tr.User($"Während der Pause {_missedCount}× geklingelt, zuletzt {_missedLast:HH:mm} {_missedDoor}",
+            $"Rang {_missedCount}× during the pause, last at {_missedLast:HH:mm} {_missedDoor}",
+            $"Podczas przerwy dzwoniło {_missedCount}×, ostatnio o {_missedLast:HH:mm} {_missedDoor}");
+
+    private static string ServiceUnreachable => Tr.User("Dienst nicht erreichbar", "Service not reachable", "Usługa nieosiągalna");
+
+    private static string NoLiveView => Tr.User("Kein Livebild", "No live view", "Brak podglądu na żywo");
+
+    private static string TestRingName => Tr.User("Testklingeln", "Test ring", "Dzwonek testowy");
 
     private void UpdateTray()
     {
@@ -637,7 +683,8 @@ public partial class App : Application
         if (!state.Alarm || _alarmNotified)
             return;
         _alarmNotified = true;
-        _tray?.Notify("SI EntryDesk: dieser PC klingelt nicht", state.Text);
+        _tray?.Notify(Tr.User("SI EntryDesk: dieser PC klingelt nicht", "SI EntryDesk: this PC does not ring",
+            "SI EntryDesk: ten komputer nie dzwoni"), state.Text);
     }
 
     /// <summary>From 14 days before the keys expire, one notice per day, on every app.</summary>
@@ -651,7 +698,7 @@ public partial class App : Application
         if (key.GetValue("ExpiryNoticeShown") as string == today)
             return;
         key.SetValue("ExpiryNoticeShown", today);
-        _tray?.Notify("SI EntryDesk", $"{notice}. Bitte der IT melden.");
+        _tray?.Notify("SI EntryDesk", Tr.User($"{notice}. Bitte der IT melden.", $"{notice}. Please tell IT.", $"{notice}. Prosimy zgłosić to działowi IT."));
     }
 
     private static bool LoadAutoSound()
@@ -680,7 +727,7 @@ public partial class App : Application
         var callId = "test-" + Guid.NewGuid().ToString("N");
         void Show()
         {
-            ShowRing(callId, "Testklingeln", DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, WindowMode.Test);
+            ShowRing(callId, TestRingName, DateTimeOffset.Now, unlockAllowed: false, videoAvailable: false, WindowMode.Test);
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
             timer.Tick += (_, _) =>
             {
@@ -691,7 +738,7 @@ public partial class App : Application
             timer.Start();
         }
         if (_ringPrefs.Deviations.Values.Any(d => d.Mode == RingMode.Delayed))
-            Defer(callId, "Testklingeln", Show);
+            Defer(callId, TestRingName, Show);
         else
             Show();
     }

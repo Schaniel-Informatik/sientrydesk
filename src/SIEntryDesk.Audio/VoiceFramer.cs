@@ -24,7 +24,7 @@ public sealed class VoiceFramer
         if (channels is < 1 or > 16)
             throw new ArgumentOutOfRangeException(nameof(channels));
         if (!OpusVoiceEncoder.IsSupportedRate(outputRate))
-            throw new ArgumentOutOfRangeException(nameof(outputRate), "Opus kennt nur 8, 12, 16, 24 und 48 kHz");
+            throw new ArgumentOutOfRangeException(nameof(outputRate), "Opus supports only 8, 12, 16, 24 and 48 kHz");
         _inputRate = inputRate;
         _channels = channels;
         OutputRate = outputRate;

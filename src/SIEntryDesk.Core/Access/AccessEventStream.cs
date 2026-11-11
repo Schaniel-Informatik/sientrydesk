@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Access;
 
@@ -63,7 +64,7 @@ public sealed class AccessEventStream
                 {
                     if (_pin.Matches(certificate))
                         return true;
-                    rejectedFingerprint = certificate is null ? "kein Zertifikat" : CertificatePin.FingerprintOf(certificate);
+                    rejectedFingerprint = certificate is null ? Tr.Admin("kein Zertifikat", "no certificate") : CertificatePin.FingerprintOf(certificate);
                     return false;
                 };
                 ws.Options.Proxy = null;
@@ -78,10 +79,10 @@ public sealed class AccessEventStream
 
                 connected = true;
                 backoff = MinBackoff;
-                _log.LogInformation("Access-Ereignisse verbunden");
+                _log.LogInformation(Tr.Admin("Access-Ereignisse verbunden", "Access events connected"));
                 onStateChanged(AccessLinkState.Connected);
                 await ReceiveLoopAsync(ws, onEvent, ct).ConfigureAwait(false);
-                _log.LogWarning("Access hat die Verbindung geschlossen");
+                _log.LogWarning(Tr.Admin("Access hat die Verbindung geschlossen", "Access closed the connection"));
                 onStateChanged(AccessLinkState.Interrupted);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -94,27 +95,31 @@ public sealed class AccessEventStream
                 AccessLinkState state;
                 if (rejectedFingerprint is not null)
                 {
-                    _log.LogError(
+                    _log.LogError(Tr.Admin(
                         "Zertifikat der Konsole passt nicht zum Pin, Verbindung abgelehnt. Erhalten: {Fingerprint}. " +
-                        "Nur wenn die Konsole ihr Zertifikat nachweislich erneuert hat, den Pin anpassen", rejectedFingerprint);
+                        "Nur wenn die Konsole ihr Zertifikat nachweislich erneuert hat, den Pin anpassen",
+                        "Certificate of the console does not match the pin, connection rejected. Received: {Fingerprint}. " +
+                        "Only adjust the pin if the console has demonstrably renewed its certificate"), rejectedFingerprint);
                     backoff = MaxBackoff;
                     state = AccessLinkState.CertificateMismatch;
                 }
                 else if (status is 401 or 403)
                 {
-                    _log.LogError("Access lehnt den Token ab (HTTP {Status}). Token und Recht view:device prüfen", status);
+                    _log.LogError(Tr.Admin("Access lehnt den Token ab (HTTP {Status}). Token und Recht view:device prüfen",
+                        "Access rejects the token (HTTP {Status}). Check token and permission view:device"), status);
                     backoff = AuthFailureBackoff;
                     state = AccessLinkState.Rejected;
                 }
                 else if (!connected && IsUnreachable(ex))
                 {
-                    _log.LogWarning("Konsole nicht erreichbar: {Message}",
-                        ex is OperationCanceledException ? "keine Antwort innerhalb von 10 s" : ex.Message);
+                    _log.LogWarning(Tr.Admin("Konsole nicht erreichbar: {Message}", "Console not reachable: {Message}"),
+                        ex is OperationCanceledException ? Tr.Admin("keine Antwort innerhalb von 10 s", "no answer within 10 s") : ex.Message);
                     state = AccessLinkState.Unreachable;
                 }
                 else
                 {
-                    _log.LogWarning("Access-Verbindung unterbrochen: {Type}: {Message}", ex.GetType().Name, ex.Message);
+                    _log.LogWarning(Tr.Admin("Access-Verbindung unterbrochen: {Type}: {Message}", "Access connection interrupted: {Type}: {Message}"),
+                        ex.GetType().Name, ex.Message);
                     state = AccessLinkState.Interrupted;
                 }
                 onStateChanged(state);
@@ -166,13 +171,13 @@ public sealed class AccessEventStream
                     }
                     catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                     {
-                        throw new TimeoutException($"{IdleTimeout.TotalSeconds:0} s ohne Lebenszeichen von Access");
+                        throw new TimeoutException($"{IdleTimeout.TotalSeconds:0} s without a sign of life from Access");
                     }
                     if (result.MessageType == WebSocketMessageType.Close)
                         return;
                     message.Write(buffer, 0, result.Count);
                     if (message.Length > MaxMessageBytes)
-                        throw new InvalidDataException("Nachricht von Access zu gross");
+                        throw new InvalidDataException("Message from Access too large");
                 } while (!result.EndOfMessage);
             }
 
@@ -182,7 +187,8 @@ public sealed class AccessEventStream
             var ev = AccessEventParser.Parse(text);
             if (ev is null)
             {
-                _log.LogDebug("Unlesbare Nachricht von Access verworfen ({Length} Bytes)", message.Length);
+                _log.LogDebug(Tr.Admin("Unlesbare Nachricht von Access verworfen ({Length} Bytes)", "Unreadable message from Access discarded ({Length} bytes)"),
+                    message.Length);
                 continue;
             }
             await onEvent(ev, ct).ConfigureAwait(false);

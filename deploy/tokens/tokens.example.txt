@@ -1,11 +1,11 @@
-# SI EntryDesk: Zugänge für das Intune-Paket „SI EntryDesk Zugänge“
-# Als tokens.txt neben set-tokens-intune.ps1 speichern, dann prepare-intune.ps1 -Label JJJJ-MM ausführen.
-# Es prüft die Datei, erstellt das Intune-Paket und löscht tokens.txt danach.
-# Den Wert direkt hinter das Gleichheitszeichen kopieren, ohne Leerzeichen, Anführungszeichen oder <>.
-# Zeilen mit # zählen nicht.
+# SI EntryDesk: credentials for the Intune package "SI EntryDesk Tokens"
+# Save as tokens.txt next to set-tokens-intune.ps1, then run prepare-intune.ps1 -Label YYYY-MM.
+# It checks the file, creates the Intune package and deletes tokens.txt afterwards.
+# Copy the value right after the equals sign, without spaces, quotes or <>.
+# Lines with # do not count.
 
-# Access-Token: Access > Einstellungen > Allgemein > API Token. Pflicht.
+# Access token: Access > Settings > General > API Token. Required.
 access=
 
-# API-Schlüssel: UniFi OS > Einstellungen > Control Plane > Integrations. Leer lassen = kein Livebild.
+# API key: UniFi OS > Settings > Control Plane > Integrations. Leave empty = no live view.
 protect=

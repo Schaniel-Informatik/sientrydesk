@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using SIEntryDesk.Audio;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -52,7 +53,7 @@ internal sealed class TalkSender : IDisposable
         _recorder.RecordingStopped += (_, e) =>
         {
             if (e.Exception is not null && Volatile.Read(ref _disposed) == 0)
-                _onError("Mikrofon unterbrochen");
+                _onError(Tr.User("Mikrofon unterbrochen", "Microphone interrupted", "Mikrofon przerwany"));
         };
     }
 
@@ -66,7 +67,7 @@ internal sealed class TalkSender : IDisposable
             using var devices = new MMDeviceEnumerator();
             if (!devices.TryGetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications, out var device))
             {
-                problem = "Kein Mikrofon gefunden";
+                problem = Tr.User("Kein Mikrofon gefunden", "No microphone found", "Nie znaleziono mikrofonu");
                 return null;
             }
             // Event-driven with a short buffer, so that the audio reaches the door without noticeable delay.
@@ -79,7 +80,8 @@ internal sealed class TalkSender : IDisposable
                 .Build();
             if (!IsSupported(recorder.WaveFormat))
             {
-                problem = $"Mikrofonformat {recorder.WaveFormat.Encoding} wird nicht unterstützt";
+                problem = Tr.User($"Mikrofonformat {recorder.WaveFormat.Encoding} wird nicht unterstützt",
+                    $"Microphone format {recorder.WaveFormat.Encoding} is not supported", $"Format mikrofonu {recorder.WaveFormat.Encoding} nie jest obsługiwany");
                 recorder.Dispose();
                 return null;
             }
@@ -91,13 +93,15 @@ internal sealed class TalkSender : IDisposable
         catch (COMException ex) when ((uint)ex.HResult == 0x80070005)
         {
             recorder?.Dispose();
-            problem = "Kein Zugriff aufs Mikrofon. Windows: Einstellungen → Datenschutz → Mikrofon → Desktop-Apps zulassen";
+            problem = Tr.User("Kein Zugriff aufs Mikrofon. Windows: Einstellungen → Datenschutz → Mikrofon → Desktop-Apps zulassen",
+                "No access to the microphone. Windows: Settings → Privacy → Microphone → allow desktop apps",
+                "Brak dostępu do mikrofonu. Windows: Ustawienia → Prywatność → Mikrofon → zezwól aplikacjom klasycznym");
             return null;
         }
         catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
         {
             recorder?.Dispose();
-            problem = "Mikrofon lässt sich nicht öffnen";
+            problem = Tr.User("Mikrofon lässt sich nicht öffnen", "Microphone cannot be opened", "Nie można otworzyć mikrofonu");
             return null;
         }
     }

@@ -1,7 +1,7 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Entfernt SI EntryDesk. Mit -KeepData bleiben Konfiguration, Tokens und Protokolle erhalten.
+    Removes SI EntryDesk. With -KeepData configuration, tokens and logs are kept.
 #>
 param([switch] $KeepData)
 
@@ -30,8 +30,9 @@ $running | Stop-Process -Force -ErrorAction SilentlyContinue
 $running | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk') -ErrorAction SilentlyContinue
-Get-NetFirewallRule -DisplayName 'SI EntryDesk: kein eingehender Zugriff' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-Get-NetFirewallRule -DisplayName 'SI EntryDesk: Abstimmung zwischen PCs' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+# English names from 0.10.0, German ones before.
+Get-NetFirewallRule -DisplayName 'SI EntryDesk: no inbound access', 'SI EntryDesk: coordination between PCs',
+    'SI EntryDesk: kein eingehender Zugriff', 'SI EntryDesk: Abstimmung zwischen PCs' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 Remove-Item -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force (Join-Path $env:ProgramFiles 'SIEntryDesk') -ErrorAction SilentlyContinue
 # Remove leftovers of an installation by the 32-bit PowerShell (Intune with 0.5.0).
@@ -47,4 +48,4 @@ if (-not $KeepData) {
         Remove-Item "Registry::$($_.Name)\Software\SIEntryDesk" -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
-Write-Host 'SI EntryDesk entfernt.'
+Write-Host 'SI EntryDesk removed.'

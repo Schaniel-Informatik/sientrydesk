@@ -20,7 +20,7 @@ public sealed class OpusVoiceEncoder
     public OpusVoiceEncoder(int sampleRate, int bitrate = 32000)
     {
         if (!IsSupportedRate(sampleRate))
-            throw new ArgumentOutOfRangeException(nameof(sampleRate), "Opus kennt nur 8, 12, 16, 24 und 48 kHz");
+            throw new ArgumentOutOfRangeException(nameof(sampleRate), "Opus supports only 8, 12, 16, 24 and 48 kHz");
         SampleRate = sampleRate;
         FrameSamples = sampleRate * VoiceFramer.FrameMilliseconds / 1000;
         _encoder = OpusCodecFactory.CreateEncoder(sampleRate, 1, OpusApplication.OPUS_APPLICATION_VOIP, null);
@@ -42,7 +42,7 @@ public sealed class OpusVoiceEncoder
     public byte[] Encode(ReadOnlySpan<float> frame)
     {
         if (frame.Length != FrameSamples)
-            throw new ArgumentException($"Ein Rahmen hat {FrameSamples} Samples, nicht {frame.Length}", nameof(frame));
+            throw new ArgumentException($"A frame has {FrameSamples} samples, not {frame.Length}", nameof(frame));
         Span<byte> packet = stackalloc byte[MaxPacketBytes];
         var length = _encoder.Encode(frame, FrameSamples, packet, packet.Length);
         return packet[..length].ToArray();

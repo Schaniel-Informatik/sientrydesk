@@ -3,6 +3,7 @@ using System.Reflection;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
 using SIEntryDesk.Core.Peers;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Service;
 
@@ -15,7 +16,7 @@ internal sealed class ServiceState
 
     private readonly object _gate = new();
     private LinkHealth _health = LinkHealth.Starting;
-    private string _problem = "Dienst startet";
+    private string _problem = Tr.User("Dienst startet", "Service starting", "Usługa się uruchamia");
     private string _warning = string.Empty;
     private string _expiryNotice = string.Empty;
 
@@ -89,7 +90,8 @@ internal sealed class ServiceState
     {
         lock (_gate)
             return new StatusMessage(_health == LinkHealth.Ready, _problem, Version, _health,
-                string.Join(", ", new[] { _warning, _expiryNotice }.Where(w => w.Length > 0)), _expiryNotice, TalkEnabled);
+                string.Join(", ", new[] { _warning, _expiryNotice }.Where(w => w.Length > 0)), _expiryNotice, TalkEnabled,
+                Tr.Code(Tr.Language));
     }
 
     public IEnumerable<IpcMessage> Snapshot()

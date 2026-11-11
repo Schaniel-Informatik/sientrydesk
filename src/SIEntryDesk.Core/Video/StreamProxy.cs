@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Video;
 
@@ -142,7 +143,7 @@ public sealed class StreamProxy : IAsyncDisposable
             {
                 // A single failed accept (e.g. a client that resets right away) must not stop the proxy for the rest of
                 // the service's lifetime (review 2026-10-23). Short pause against a tight loop on a persistent error.
-                _log.LogWarning("Video: Verbindungsannahme fehlgeschlagen: {Message}", ex.Message);
+                _log.LogWarning(Tr.Admin("Video: Verbindungsannahme fehlgeschlagen: {Message}", "Video: accepting a connection failed: {Message}"), ex.Message);
                 try
                 {
                     await Task.Delay(TimeSpan.FromMilliseconds(100), _time, ct).ConfigureAwait(false);
@@ -196,11 +197,12 @@ public sealed class StreamProxy : IAsyncDisposable
                                            or InvalidDataException or AuthenticationException or ObjectDisposedException)
             {
                 if (ex is AuthenticationException)
-                    _log.LogError("Video: Zertifikat der Konsole passt nicht zum Pin, Stream abgelehnt");
+                    _log.LogError(Tr.Admin("Video: Zertifikat der Konsole passt nicht zum Pin, Stream abgelehnt",
+                        "Video: certificate of the console does not match the pin, stream rejected"));
                 else if (ex is SocketException)
-                    _log.LogWarning("Video: Konsole nicht erreichbar: {Message}", ex.Message);
+                    _log.LogWarning(Tr.Admin("Video: Konsole nicht erreichbar: {Message}", "Video: console not reachable: {Message}"), ex.Message);
                 else if (ex is not OperationCanceledException)
-                    _log.LogDebug("Video-Verbindung beendet: {Type}: {Message}", ex.GetType().Name, ex.Message);
+                    _log.LogDebug(Tr.Admin("Video-Verbindung beendet: {Type}: {Message}", "Video connection ended: {Type}: {Message}"), ex.GetType().Name, ex.Message);
             }
             finally
             {

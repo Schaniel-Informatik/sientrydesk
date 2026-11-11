@@ -1,25 +1,25 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Installiert oder aktualisiert SI EntryDesk: Dienst, Tray-App und Anlagen-Konfiguration.
+    Installs or updates SI EntryDesk: service, tray app and installation configuration.
 
 .DESCRIPTION
-    - Dienst "SIEntryDesk" unter dem virtuellen Konto "NT SERVICE\SIEntryDesk" (nicht SYSTEM)
-    - Daten unter %ProgramData%\SIEntryDesk, lesbar nur für SYSTEM, Administratoren und den Dienst
-    - Anlagen-Konfiguration aus sientrydesk.json (ohne Geheimnisse), siehe sientrydesk.example.json
-    - Tokens nur mit -SetTokens (fragt verdeckt) oder separat mit set-tokens.ps1. Ohne -SetTokens fragt das Skript
-      nichts und eignet sich für Intune. Vorhandene Tokens bleiben bei einem Update erhalten.
-    - Tray-App startet bei jeder Anmeldung, Eintrag im Startmenü, Firewall-Sperre für eingehende Verbindungen
-    - Firewall-Freigabe UDP 47801 nur aus dem lokalen Subnetz, nur für den Dienst: Abstimmung zwischen den PCs,
-      wer ein Gespräch angenommen hat
-    - -NoLiveView bzw. -NoTalk schalten Livebild ohne Klingeln bzw. Gegensprechen nur auf diesem PC ab
+    - Service "SIEntryDesk" under the virtual account "NT SERVICE\SIEntryDesk" (not SYSTEM)
+    - Data under %ProgramData%\SIEntryDesk, readable only by SYSTEM, administrators and the service
+    - Installation configuration from sientrydesk.json (without secrets), see sientrydesk.example.json
+    - Tokens only with -SetTokens (asks without echo) or separately with set-tokens.ps1. Without -SetTokens the script
+      asks nothing and suits Intune. Existing tokens are kept on an update.
+    - Tray app starts at every sign-in, Start menu entry, firewall block for inbound connections of the app
+    - Firewall exception UDP 47801 only from the local subnet, only for the service: coordination between the PCs,
+      who answered a call
+    - -NoLiveView or -NoTalk switch off the live view without ringing or talkback on this PC only
 
 .EXAMPLE
-    Erstinstallation von Hand:
+    First installation by hand:
     powershell -ExecutionPolicy Bypass -File .\install.ps1 -SetTokens
 
 .EXAMPLE
-    Update oder Intune (System-Kontext), Konfiguration liegt neben dem Skript:
+    Update or Intune (system context), configuration next to the script:
     powershell -ExecutionPolicy Bypass -File .\install.ps1
 #>
 param(
@@ -83,9 +83,9 @@ function Remove-Folder([string] $Path) {
     for ($attempt = 1; Test-Path $Path; $attempt++) {
         try { Remove-Item -Recurse -Force $Path; return }
         catch {
-            if ($attempt -ge 15) { throw "$Path lässt sich nicht löschen, eine Datei ist noch in Gebrauch: $($_.Exception.Message)" }
+            if ($attempt -ge 15) { throw "$Path cannot be deleted, a file is still in use: $($_.Exception.Message)" }
             # Once more stop what runs from the folder, but only once: a hanging process would cost 60 s each time.
-            if ($attempt -eq 1) { Write-Host "    $Path noch gesperrt, warte …"; Stop-Running }
+            if ($attempt -eq 1) { Write-Host "    $Path still locked, waiting …"; Stop-Running }
             Start-Sleep -Seconds 2
         }
     }
@@ -93,27 +93,30 @@ function Remove-Folder([string] $Path) {
 
 function Invoke-Native([string] $Exe, [string[]] $Arguments) {
     & $Exe @Arguments | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments -join ' ') ist fehlgeschlagen (Code $LASTEXITCODE)" }
+    if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments -join ' ') failed (code $LASTEXITCODE)" }
 }
 
-Write-Host '1/8 Konfiguration prüfen'
+Write-Host '1/8 Checking configuration'
 if (-not (Test-Path $ConfigFile)) {
-    throw "Konfiguration nicht gefunden: $ConfigFile. Vorlage: sientrydesk.example.json"
+    throw "Configuration not found: $ConfigFile. Template: sientrydesk.example.json"
 }
 # Windows PowerShell 5.1 does not read JSON with comments. Whole comment lines are removed for the check,
 # the service itself understands them.
 $configText = (Get-Content -Raw -Encoding UTF8 $ConfigFile) -replace '(?m)^\s*//.*$', ''
 try { $config = $configText | ConvertFrom-Json }
-catch { throw "sientrydesk.json ist kein gültiges JSON (Kommentare nur auf eigenen Zeilen): $($_.Exception.Message)" }
+catch { throw "sientrydesk.json is not valid JSON (comments only on lines of their own): $($_.Exception.Message)" }
 foreach ($required in 'Host', 'AccessPin') {
-    if (-not $config.$required) { throw "sientrydesk.json: '$required' fehlt." }
+    if (-not $config.$required) { throw "sientrydesk.json: '$required' is missing." }
 }
+# Language for the users (from 0.10.0). A typo would only show as German, better to stop here.
+$language = if ($config.Language) { "$($config.Language)".Trim().ToLowerInvariant() } else { 'de' }
+if ($language -notin 'de', 'en', 'pl') { throw "sientrydesk.json: Language '$($config.Language)' is unknown, possible are de, en and pl." }
 
-Write-Host '2/8 Laufende Instanzen beenden'
+Write-Host '2/8 Stopping running instances'
 if (Get-Service $serviceName -ErrorAction SilentlyContinue) { Stop-Service $serviceName -Force }
 Stop-Running
 
-Write-Host '3/8 Dateien kopieren'
+Write-Host '3/8 Copying files'
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 foreach ($part in 'Service', 'App') {
     $target = Join-Path $installDir $part
@@ -129,30 +132,30 @@ Get-ChildItem $installDir -Recurse -File | Unblock-File
 # Remove leftovers of an installation by the 32-bit PowerShell (Intune with 0.5.0).
 $x86Dir = Join-Path ${env:ProgramFiles(x86)} 'SIEntryDesk'
 Remove-Item -Recurse -Force $x86Dir -ErrorAction SilentlyContinue
-if (Test-Path $x86Dir) { Write-Warning "$x86Dir liess sich nicht ganz entfernen, Rest bitte von Hand löschen." }
+if (Test-Path $x86Dir) { Write-Warning "$x86Dir could not be removed completely, please delete the rest by hand." }
 Remove-ItemProperty -Path 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' -ErrorAction SilentlyContinue
 Remove-Item -Path 'HKLM:\SOFTWARE\WOW6432Node\SIEntryDesk' -Recurse -ErrorAction SilentlyContinue
 
-Write-Host '4/8 Dienst einrichten'
+Write-Host '4/8 Setting up the service'
 if (-not (Get-Service $serviceName -ErrorAction SilentlyContinue)) {
     New-Service -Name $serviceName -BinaryPathName "`"$serviceExe`"" -DisplayName 'SI EntryDesk' `
-        -Description 'Klingel-Ereignisse von UniFi Access, Öffnen nur während eines Rufs' -StartupType Automatic | Out-Null
+        -Description 'Doorbell events from UniFi Access, opening only during a call' -StartupType Automatic | Out-Null
 }
 # Always set the path: an existing service may still point elsewhere (e.g. Program Files (x86)).
 $change = Get-CimInstance Win32_Service -Filter "Name='$serviceName'" |
     Invoke-CimMethod -MethodName Change -Arguments @{ PathName = "`"$serviceExe`"" }
-if ($change.ReturnValue -ne 0) { throw "Programmpfad des Dienstes konnte nicht gesetzt werden (Code $($change.ReturnValue))" }
+if ($change.ReturnValue -ne 0) { throw "The program path of the service could not be set (code $($change.ReturnValue))" }
 Invoke-Native 'sc.exe' @('config', $serviceName, 'obj=', $serviceAccount, 'start=', 'auto')
 Invoke-Native 'sc.exe' @('failure', $serviceName, 'reset=', '86400', 'actions=', 'restart/5000/restart/5000/restart/30000')
 
-Write-Host '5/8 Datenordner und Rechte'
+Write-Host '5/8 Data folder and permissions'
 New-Item -ItemType Directory -Force -Path $dataDir, $logDir, $stateDir | Out-Null
 # Only SYSTEM (S-1-5-18), administrators (S-1-5-32-544) and the service account, no inheritance from ProgramData.
 Invoke-Native 'icacls.exe' @($dataDir, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', "${serviceAccount}:(OI)(CI)RX")
 Invoke-Native 'icacls.exe' @($logDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 Invoke-Native 'icacls.exe' @($stateDir, '/grant:r', "${serviceAccount}:(OI)(CI)M")
 
-Write-Host '6/8 Konfiguration übernehmen'
+Write-Host '6/8 Taking over the configuration'
 Copy-Item -Force $ConfigFile (Join-Path $dataDir 'sientrydesk.json')
 # Configuration up to 0.2.x, otherwise old values would be read as well.
 Remove-Item -Force (Join-Path $dataDir 'config.json') -ErrorAction SilentlyContinue
@@ -162,41 +165,42 @@ if ($NoLiveView) { $local['LiveView'] = $false }
 if ($NoTalk) { $local['Talkback'] = $false }
 if ($local.Count -gt 0) {
     $local | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $dataDir 'sientrydesk.local.json')
-    Write-Host "    Auf diesem PC abgeschaltet: $(@($local.Keys) -join ', ') (sientrydesk.local.json)."
+    Write-Host "    Switched off on this PC: $(@($local.Keys) -join ', ') (sientrydesk.local.json)."
 }
 
 Write-Host '7/8 Tokens'
 if ($SetTokens) {
     & (Join-Path $PSScriptRoot 'set-tokens.ps1') -ServiceExe $serviceExe -NoRestart
 } elseif (Test-Path (Join-Path $dataDir 'secrets.dat')) {
-    Write-Host '    Vorhandene Tokens bleiben.'
+    Write-Host '    Existing tokens are kept.'
 } else {
-    Write-Warning 'Noch keine Tokens gespeichert. Mit set-tokens.ps1 oder install.ps1 -SetTokens setzen, sonst klingelt nichts.'
+    Write-Warning 'No tokens stored yet. Set them with set-tokens.ps1 or install.ps1 -SetTokens, otherwise nothing rings.'
 }
 
-Write-Host '8/8 Autostart und Start'
+Write-Host '8/8 Autostart and start'
 New-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'SIEntryDesk' `
     -Value "`"$appExe`"" -PropertyType String -Force | Out-Null
 # The app needs no inbound access, the video comes via 127.0.0.1. The block rule prevents the firewall prompt
 # LibVLC would otherwise trigger, and takes precedence over an accidentally granted exception.
-$firewallRule = 'SI EntryDesk: kein eingehender Zugriff'
-Get-NetFirewallRule -DisplayName $firewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+# Rule names in English from 0.10.0, the German ones of earlier versions are removed.
+$firewallRule = 'SI EntryDesk: no inbound access'
+Get-NetFirewallRule -DisplayName $firewallRule, 'SI EntryDesk: kein eingehender Zugriff' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName $firewallRule -Direction Inbound -Program $appExe -Action Block -Profile Any | Out-Null
 # Coordination between PCs (0.9.0): the services tell each other by signed UDP broadcast who answered a call. Only from
 # the local subnet and only for the service. Any profile, because Entra-joined PCs often see the office as public.
-$peerRule = 'SI EntryDesk: Abstimmung zwischen PCs'
-Get-NetFirewallRule -DisplayName $peerRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+$peerRule = 'SI EntryDesk: coordination between PCs'
+Get-NetFirewallRule -DisplayName $peerRule, 'SI EntryDesk: Abstimmung zwischen PCs' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-NetFirewallRule -DisplayName $peerRule -Direction Inbound -Program $serviceExe -Protocol UDP -LocalPort 47801 `
     -RemoteAddress LocalSubnet -Action Allow -Profile Any | Out-Null
 # Start menu entry for all users, in case the app was closed.
 $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\SI EntryDesk.lnk'))
 $shortcut.TargetPath = $appExe
 $shortcut.WorkingDirectory = Split-Path $appExe
-$shortcut.Description = 'SI EntryDesk: Türsprechstelle'
+$shortcut.Description = @{ de = 'SI EntryDesk: Türsprechstelle'; en = 'SI EntryDesk: door intercom'; pl = 'SI EntryDesk: domofon' }[$language]
 $shortcut.Save()
 Start-Service $serviceName
 Start-Sleep -Seconds 3
-Write-Host "    Dienst: $((Get-Service $serviceName).Status)"
+Write-Host "    Service: $((Get-Service $serviceName).Status)"
 $version = (Get-Item $appExe).VersionInfo.ProductVersion.Split('+')[0]
 New-Item -Force -Path 'HKLM:\SOFTWARE\SIEntryDesk' | Out-Null
 Set-ItemProperty -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Name 'Version' -Value $version
@@ -324,9 +328,9 @@ public static class SIEntryDeskSessionLauncher
 }
 '@
         $started = [SIEntryDeskSessionLauncher]::StartInUserSessions($appExe, (Split-Path $appExe))
-        Write-Host "    App in $started angemeldeten Sitzung(en) gestartet."
+        Write-Host "    App started in $started signed-in session(s)."
     } catch {
-        Write-Warning "App konnte nicht in den Sitzungen gestartet werden, sie startet bei der nächsten Anmeldung: $($_.Exception.Message)"
+        Write-Warning "The app could not be started in the sessions, it starts at the next sign-in: $($_.Exception.Message)"
     }
 } else {
     # Installed by hand: start in the normal user context, not in this elevated session.
@@ -335,4 +339,4 @@ public static class SIEntryDeskSessionLauncher
 
 Write-Host "    Version: $version"
 Write-Host ''
-Write-Host 'Fertig. Protokoll des Dienstes:' $logDir
+Write-Host 'Done. Log of the service:' $logDir

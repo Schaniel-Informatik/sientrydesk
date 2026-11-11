@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using SIEntryDesk.Core.Peers;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Service;
 
@@ -35,13 +36,15 @@ internal sealed class PeerLink(byte[] key, TimeProvider time, ILogger log) : IDi
         }
         catch (SocketException ex)
         {
-            Problem = $"Dienst empfängt nicht, UDP {PeerCodec.Port} belegt ({ex.SocketErrorCode})";
-            log.LogError("Abstimmung mit anderen PCs aus: UDP {Port} nicht verfügbar: {Message}", PeerCodec.Port, ex.Message);
+            Problem = Tr.Admin($"Dienst empfängt nicht, UDP {PeerCodec.Port} belegt ({ex.SocketErrorCode})",
+                $"Service does not receive, UDP {PeerCodec.Port} in use ({ex.SocketErrorCode})");
+            log.LogError(Tr.Admin("Abstimmung mit anderen PCs aus: UDP {Port} nicht verfügbar: {Message}",
+                "Coordination with other PCs off: UDP {Port} not available: {Message}"), PeerCodec.Port, ex.Message);
             _udp?.Dispose();
             _udp = null;
             return;
         }
-        log.LogInformation("Abstimmung mit anderen PCs: UDP {Port}", PeerCodec.Port);
+        log.LogInformation(Tr.Admin("Abstimmung mit anderen PCs: UDP {Port}", "Coordination with other PCs: UDP {Port}"), PeerCodec.Port);
 
         while (!ct.IsCancellationRequested)
         {
@@ -60,7 +63,8 @@ internal sealed class PeerLink(byte[] key, TimeProvider time, ILogger log) : IDi
             }
             catch (SocketException ex)
             {
-                log.LogWarning("Abstimmung mit anderen PCs: Empfang gestört: {Message}", ex.Message);
+                log.LogWarning(Tr.Admin("Abstimmung mit anderen PCs: Empfang gestört: {Message}", "Coordination with other PCs: receiving disturbed: {Message}"),
+                    ex.Message);
                 await Task.Delay(TimeSpan.FromSeconds(1), time, ct).ConfigureAwait(false);
                 continue;
             }
@@ -103,7 +107,8 @@ internal sealed class PeerLink(byte[] key, TimeProvider time, ILogger log) : IDi
                     {
                         if (ex is not SocketException)
                             return;
-                        log.LogWarning("Abstimmung mit anderen PCs: an {Target} nicht gesendet: {Message}", target, ex.Message);
+                        log.LogWarning(Tr.Admin("Abstimmung mit anderen PCs: an {Target} nicht gesendet: {Message}",
+                            "Coordination with other PCs: not sent to {Target}: {Message}"), target, ex.Message);
                     }
                 }
             }
@@ -144,10 +149,12 @@ internal sealed class PeerLink(byte[] key, TimeProvider time, ILogger log) : IDi
             return;
         _lastRejectLog = now;
         if (result == PeerDecodeResult.Stale)
-            log.LogWarning("Abstimmung mit anderen PCs: Meldung von {From} verworfen, Uhrzeit weicht mehr als {Seconds} s ab",
+            log.LogWarning(Tr.Admin("Abstimmung mit anderen PCs: Meldung von {From} verworfen, Uhrzeit weicht mehr als {Seconds} s ab",
+                    "Coordination with other PCs: message from {From} discarded, clock differs by more than {Seconds} s"),
                 from, PeerCodec.MaxClockSkew.TotalSeconds);
         else
-            log.LogWarning("Abstimmung mit anderen PCs: ungültige Meldung von {From} verworfen (anderer Access-Token?)", from);
+            log.LogWarning(Tr.Admin("Abstimmung mit anderen PCs: ungültige Meldung von {From} verworfen (anderer Access-Token?)",
+                "Coordination with other PCs: invalid message from {From} discarded (different Access token?)"), from);
     }
 
     public void Dispose()

@@ -4,6 +4,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading.Channels;
 using SIEntryDesk.Core.Ipc;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Service;
 
@@ -49,7 +50,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
     {
         if (client.Send(message) || client.Closed)
             return;
-        log.LogWarning("App {User} liest nicht mehr, Verbindung wird getrennt", client.User);
+        log.LogWarning(Tr.Admin("App {User} liest nicht mehr, Verbindung wird getrennt", "App {User} no longer reads, disconnecting"), client.User);
         client.Dispose();
     }
 
@@ -68,9 +69,10 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 if (firstInstance)
-                    log.LogError("Pipe-Name {Name} ist bereits belegt, möglicherweise von einem fremden Prozess", IpcProtocol.PipeName);
+                    log.LogError(Tr.Admin("Pipe-Name {Name} ist bereits belegt, möglicherweise von einem fremden Prozess",
+                        "Pipe name {Name} is already taken, possibly by a foreign process"), IpcProtocol.PipeName);
                 else
-                    log.LogWarning("Keine freie Pipe-Instanz: {Message}", ex.Message);
+                    log.LogWarning(Tr.Admin("Keine freie Pipe-Instanz: {Message}", "No free pipe instance: {Message}"), ex.Message);
                 await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
                 continue;
             }
@@ -86,7 +88,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             }
             catch (IOException ex)
             {
-                log.LogWarning("Verbindungsaufbau der App fehlgeschlagen: {Message}", ex.Message);
+                log.LogWarning(Tr.Admin("Verbindungsaufbau der App fehlgeschlagen: {Message}", "Connection of the app failed: {Message}"), ex.Message);
                 await pipe.DisposeAsync().ConfigureAwait(false);
                 continue;
             }
@@ -99,7 +101,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
 
     private async Task ServeAsync(ClientConnection client, CancellationToken ct)
     {
-        log.LogInformation("App verbunden: {User}", client.User);
+        log.LogInformation(Tr.Admin("App verbunden: {User}", "App connected: {User}"), client.User);
         try
         {
             foreach (var message in state.Snapshot())
@@ -124,7 +126,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
             _clients.TryRemove(client.Id, out _);
             client.Dispose();
             ClientDisconnected?.Invoke(client.Id);
-            log.LogInformation("App getrennt: {User}", client.User);
+            log.LogInformation(Tr.Admin("App getrennt: {User}", "App disconnected: {User}"), client.User);
         }
     }
 
@@ -136,7 +138,7 @@ internal sealed class PipeServer(ServiceState state, ILogger<PipeServer> log) : 
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            return "unbekannt";
+            return Tr.Admin("unbekannt", "unknown");
         }
     }
 

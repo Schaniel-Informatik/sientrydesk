@@ -6,6 +6,7 @@ using SIEntryDesk.Core;
 using SIEntryDesk.Core.Calls;
 using SIEntryDesk.Core.Ipc;
 using Forms = System.Windows.Forms;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -48,7 +49,7 @@ internal sealed class TrayIcon : IDisposable
     private bool _blinkOn;
     private readonly TrayActions _actions;
 
-    private TrayState _state = new(TrayColor.Grey, "Verbinde …", false);
+    private TrayState _state = new(TrayColor.Grey, TrayStatus.Connecting, false);
     private string? _serviceVersion;
     private bool _doorsEnabled;
     private IReadOnlyList<DoorEntry> _doors = [];
@@ -206,12 +207,13 @@ internal sealed class TrayIcon : IDisposable
         {
             var version = _serviceVersion is null || _serviceVersion == AppVersion
                 ? $"SI EntryDesk {AppVersion}"
-                : $"SI EntryDesk {AppVersion} (Dienst {_serviceVersion})";
+                : Tr.User($"SI EntryDesk {AppVersion} (Dienst {_serviceVersion})", $"SI EntryDesk {AppVersion} (service {_serviceVersion})",
+                    $"SI EntryDesk {AppVersion} (usługa {_serviceVersion})");
             menu.Items.Add(new Forms.ToolStripMenuItem(version) { Enabled = false });
         }
         menu.Items.Add(new Forms.ToolStripMenuItem(_state.Text) { Enabled = false });
         if (_pending is not null)
-            menu.Items.Add(new Forms.ToolStripMenuItem($"Jetzt anzeigen: {_pending.Replace("&", "&&", StringComparison.Ordinal)}", null,
+            menu.Items.Add(new Forms.ToolStripMenuItem(MenuText(Tr.User($"Jetzt anzeigen: {_pending}", $"Show now: {_pending}", $"Pokaż teraz: {_pending}")), null,
                 (_, _) => _actions.ShowPendingNow()) { Font = new Font(menu.Font, FontStyle.Bold) });
 
         if (full)
@@ -222,14 +224,19 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add(new Forms.ToolStripSeparator());
         if (_pausedUntil is { } until && until > DateTimeOffset.Now)
         {
-            menu.Items.Add(new Forms.ToolStripMenuItem($"Pausiert bis {until.ToLocalTime():HH:mm}") { Enabled = false });
-            menu.Items.Add("Klingel fortsetzen", null, (_, _) => _actions.Resume());
+            menu.Items.Add(new Forms.ToolStripMenuItem(Tr.User($"Pausiert bis {until.ToLocalTime():HH:mm}", $"Paused until {until.ToLocalTime():HH:mm}",
+                $"Wstrzymano do {until.ToLocalTime():HH:mm}")) { Enabled = false });
+            menu.Items.Add(Tr.User("Klingel fortsetzen", "Resume doorbell", "Wznów dzwonek"), null, (_, _) => _actions.Resume());
         }
         else
         {
-            var pause = new Forms.ToolStripMenuItem("Klingel pausieren");
+            var pause = new Forms.ToolStripMenuItem(Tr.User("Klingel pausieren", "Pause doorbell", "Wstrzymaj dzwonek"));
             foreach (var choice in PauseChoices)
-                pause.DropDownItems.Add($"{choice.TotalMinutes:0} Minuten", null, (_, _) => _actions.Pause(choice));
+            {
+                var minutes = (long)choice.TotalMinutes;
+                pause.DropDownItems.Add(Tr.User($"{minutes} Minuten", $"{minutes} minutes",
+                    $"{minutes} {Tr.PlPlural(minutes, "minuta", "minuty", "minut")}"), null, (_, _) => _actions.Pause(choice));
+            }
             menu.Items.Add(pause);
         }
         if (_missed is not null)
@@ -238,12 +245,15 @@ internal sealed class TrayIcon : IDisposable
         if (!full)
         {
             // For everyone who does not know the right click: opens the same menu.
-            menu.Items.Add("Einstellungen …", null, (_, _) =>
+            menu.Items.Add(Tr.User("Einstellungen …", "Settings …", "Ustawienia …"), null, (_, _) =>
                 System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(ShowFullMenu));
             return;
         }
         menu.Items.Add(new Forms.ToolStripSeparator());
-        var autoSound = new Forms.ToolStripMenuItem(_ringDoors.Count > 1 ? "Ton der Türen automatisch einschalten" : "Ton der Tür automatisch einschalten") { Checked = _autoSound, CheckOnClick = true };
+        var autoSoundText = _ringDoors.Count > 1
+            ? Tr.User("Ton der Türen automatisch einschalten", "Switch on door sound automatically", "Automatycznie włączaj dźwięk z drzwi")
+            : Tr.User("Ton der Tür automatisch einschalten", "Switch on door sound automatically", "Automatycznie włączaj dźwięk z drzwi");
+        var autoSound = new Forms.ToolStripMenuItem(autoSoundText) { Checked = _autoSound, CheckOnClick = true };
         autoSound.CheckedChanged += (_, _) =>
         {
             _autoSound = autoSound.Checked;
@@ -252,10 +262,11 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add(autoSound);
         if (_talkEnabled)
             menu.Items.Add(ListenMenu());
-        menu.Items.Add("Testklingeln (nur dieser PC)", null, (_, _) => _actions.TestRing());
-        menu.Items.Add("Prüfen …", null, (_, _) => _actions.Check());
+        menu.Items.Add(Tr.User("Testklingeln (nur dieser PC)", "Test ring (this PC only)", "Dzwonek testowy (tylko ten komputer)"), null,
+            (_, _) => _actions.TestRing());
+        menu.Items.Add(Tr.User("Prüfen …", "Check …", "Sprawdź …"), null, (_, _) => _actions.Check());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Beenden", null, (_, _) => _actions.Exit());
+        menu.Items.Add(Tr.User("Beenden", "Exit", "Zakończ"), null, (_, _) => _actions.Exit());
     }
 
     /// <summary>Left click: doors for the live view without ringing, with their ring setting as in the right click
@@ -264,7 +275,8 @@ internal sealed class TrayIcon : IDisposable
     {
         menu.Items.Add(new Forms.ToolStripSeparator());
         if (_doors.Count == 0)
-            menu.Items.Add(new Forms.ToolStripMenuItem("Livebild: erscheint nach dem ersten Klingeln") { Enabled = false });
+            menu.Items.Add(new Forms.ToolStripMenuItem(Tr.User("Livebild: erscheint nach dem ersten Klingeln", "Live view: appears after the first ring",
+                "Podgląd na żywo: pojawi się po pierwszym dzwonku")) { Enabled = false });
         foreach (var door in _doors)
         {
             var doorId = door.DoorId;
@@ -279,7 +291,8 @@ internal sealed class TrayIcon : IDisposable
     {
         menu.Items.Add(new Forms.ToolStripSeparator());
         if (_ringDoors.Count == 0)
-            menu.Items.Add(new Forms.ToolStripMenuItem("Türen erscheinen nach dem ersten Klingeln") { Enabled = false });
+            menu.Items.Add(new Forms.ToolStripMenuItem(Tr.User("Türen erscheinen nach dem ersten Klingeln", "Doors appear after the first ring",
+                "Drzwi pojawią się po pierwszym dzwonku")) { Enabled = false });
         foreach (var door in _ringDoors)
         {
             var item = new Forms.ToolStripMenuItem(MenuText($"{door.Name}: {RingSettings.Label(door.Mode)}"));
@@ -297,7 +310,8 @@ internal sealed class TrayIcon : IDisposable
     /// (muted).</summary>
     private Forms.ToolStripMenuItem ListenMenu()
     {
-        var item = new Forms.ToolStripMenuItem($"Sprechen mit: {TalkAudio.Current(_listenMode)}");
+        var current = TalkAudio.Current(_listenMode);
+        var item = new Forms.ToolStripMenuItem(Tr.User($"Sprechen mit: {current}", $"Talk with: {current}", $"Rozmowa przez: {current}"));
         foreach (var mode in Enum.GetValues<ListenMode>())
         {
             var choice = mode;

@@ -68,7 +68,7 @@ public sealed class IpcReader(Stream stream)
             }
 
             if (_end - _start >= IpcProtocol.MaxMessageBytes)
-                throw new InvalidDataException("IPC-Nachricht zu lang");
+                throw new InvalidDataException("IPC message too long");
             if (_start > 0)
             {
                 Buffer.BlockCopy(_buffer, _start, _buffer, 0, _end - _start);

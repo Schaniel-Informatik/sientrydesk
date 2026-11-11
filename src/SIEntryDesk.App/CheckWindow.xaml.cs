@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using SIEntryDesk.Core.Diagnostics;
 using SIEntryDesk.Core.Ipc;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -35,6 +36,15 @@ public partial class CheckWindow : Window
     public CheckWindow()
     {
         InitializeComponent();
+        Title = Tr.Admin("SI EntryDesk – Prüfung", "SI EntryDesk – Check");
+        Heading.Text = Tr.Admin("Prüfung", "Check");
+        Intro.Text = Tr.Admin("Prüft diesen PC und die Verbindung zur Anlage mit den hier gespeicherten Zugängen. Das Ergebnis enthält " +
+                              "keine Geheimnisse und kann für die Fehlersuche weitergegeben werden.",
+            "Checks this PC and the connection to the installation with the credentials stored here. The result contains no " +
+            "secrets and can be passed on for troubleshooting.");
+        RunButton.Content = Tr.Admin("Erneut prüfen", "Check again");
+        CopyButton.Content = CopyText;
+        CloseButton.Content = Tr.Admin("Schliessen", "Close");
         _elapsed.Tick += (_, _) => Render();
         Loaded += async (_, _) => await RunAsync();
     }
@@ -54,18 +64,22 @@ public partial class CheckWindow : Window
     {
         var header = $"SI EntryDesk {TrayIcon.AppVersion}, {Environment.MachineName}, {Environment.UserName}";
         Clipboard.SetText(CheckReport.ToText(Items, header, _at));
-        CopyButton.Content = "Kopiert";
+        CopyButton.Content = Tr.Admin("Kopiert", "Copied");
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    private static string CopyText => Tr.Admin("Ergebnis kopieren", "Copy result");
+
+    private static string ServiceConnection => Tr.Admin("Verbindung zum Dienst", "Connection to the service");
 
     /// <summary>PC and installation at the same time, each item appears as soon as it is done.</summary>
     private async Task RunAsync()
     {
         RunButton.IsEnabled = false;
         CopyButton.IsEnabled = false;
-        CopyButton.Content = "Ergebnis kopieren";
-        Summary.Text = "Prüft …";
+        CopyButton.Content = CopyText;
+        Summary.Text = Tr.Admin("Prüft …", "Checking …");
         Summary.Foreground = InfoBrush;
         _local.Clear();
         _service.Clear();
@@ -88,9 +102,9 @@ public partial class CheckWindow : Window
 
         (Summary.Text, Summary.Foreground) = CheckReport.Overall(Items) switch
         {
-            CheckLevel.Fail => ("Es gibt Fehler, siehe rote Punkte", FailBrush),
-            CheckLevel.Warn => ("Funktioniert, mit Hinweisen", WarnBrush),
-            _ => ("Alles in Ordnung", OkBrush),
+            CheckLevel.Fail => (Tr.Admin("Es gibt Fehler, siehe rote Punkte", "There are errors, see red items"), FailBrush),
+            CheckLevel.Warn => (Tr.Admin("Funktioniert, mit Hinweisen", "Works, with notes"), WarnBrush),
+            _ => (Tr.Admin("Alles in Ordnung", "All fine"), OkBrush),
         };
         RunButton.IsEnabled = true;
         CopyButton.IsEnabled = true;
@@ -118,10 +132,11 @@ public partial class CheckWindow : Window
         try
         {
             var status = await connected.Task.WaitAsync(ConnectTimeout, cts.Token);
-            _service.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Ok, "steht"));
+            _service.Add(LocalChecks.Item(ServiceConnection, CheckLevel.Ok, Tr.Admin("steht", "established")));
             _service.Add(status.ServiceVersion == TrayIcon.AppVersion
                 ? LocalChecks.Item("Version", CheckLevel.Ok, TrayIcon.AppVersion)
-                : LocalChecks.Item("Version", CheckLevel.Warn, $"App {TrayIcon.AppVersion}, Dienst {status.ServiceVersion}. Neu installieren"));
+                : LocalChecks.Item("Version", CheckLevel.Warn, Tr.Admin($"App {TrayIcon.AppVersion}, Dienst {status.ServiceVersion}. Neu installieren",
+                    $"app {TrayIcon.AppVersion}, service {status.ServiceVersion}. Reinstall")));
             Render();
 
             if (!await client.SendAsync(new CheckRequest()))
@@ -131,8 +146,9 @@ public partial class CheckWindow : Window
         }
         catch (TimeoutException)
         {
-            _service.Add(LocalChecks.Item("Verbindung zum Dienst", CheckLevel.Fail,
-                connected.Task.IsCompleted ? "Dienst antwortet nicht auf die Prüfung" : "keine Verbindung, der Dienst läuft nicht oder blockiert"));
+            _service.Add(LocalChecks.Item(ServiceConnection, CheckLevel.Fail, connected.Task.IsCompleted
+                ? Tr.Admin("Dienst antwortet nicht auf die Prüfung", "service does not answer the check")
+                : Tr.Admin("keine Verbindung, der Dienst läuft nicht oder blockiert", "no connection, the service is not running or blocked")));
         }
         catch (OperationCanceledException)
         {
@@ -149,7 +165,8 @@ public partial class CheckWindow : Window
         if (_servicePending)
             Results.Children.Add(new TextBlock
             {
-                Text = $"{CheckReport.Installation}: wird geprüft … {_clock.Elapsed.TotalSeconds:0} s",
+                Text = Tr.Admin($"{CheckReport.AreaName(CheckReport.Installation)}: wird geprüft … {_clock.Elapsed.TotalSeconds:0} s",
+                    $"{CheckReport.AreaName(CheckReport.Installation)}: checking … {_clock.Elapsed.TotalSeconds:0} s"),
                 Foreground = InfoBrush,
                 Margin = new Thickness(0, 12, 0, 0),
             });
@@ -160,7 +177,7 @@ public partial class CheckWindow : Window
         Results.Children.Clear();
         foreach (var group in items.GroupBy(i => i.Area))
         {
-            Results.Children.Add(new TextBlock { Text = group.Key, FontSize = 17, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
+            Results.Children.Add(new TextBlock { Text = CheckReport.AreaName(group.Key), FontSize = 17, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 4) });
             foreach (var item in group)
             {
                 var line = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 3) };

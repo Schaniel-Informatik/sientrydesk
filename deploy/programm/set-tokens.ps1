@@ -1,13 +1,13 @@
 ﻿#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Setzt oder erneuert die Tokens von SI EntryDesk, ohne die Software neu zu installieren.
+    Sets or renews the tokens of SI EntryDesk without reinstalling the software.
 
 .DESCRIPTION
-    Fragt die zwei Werte verdeckt ab und speichert sie mit DPAPI (Maschinenschlüssel) in
-    %ProgramData%\SIEntryDesk\secrets.dat. Danach startet der Dienst neu.
-    - Access-Token: Gerät = Anzeigen, Standorte = Bearbeiten, alles andere Keinen
-    - Protect-API-Schlüssel für das Livebild (leer = kein Livebild)
+    Asks for the two values without echo and stores them with DPAPI (machine key) in
+    %ProgramData%\SIEntryDesk\secrets.dat. Then the service restarts.
+    - Access token: Device = View, Location = Edit, everything else None
+    - Protect API key for the live view (empty = no live view)
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File "C:\Program Files\SIEntryDesk\set-tokens.ps1"
@@ -18,7 +18,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-if (-not (Test-Path $ServiceExe)) { throw "SI EntryDesk ist nicht installiert ($ServiceExe fehlt)." }
+if (-not (Test-Path $ServiceExe)) { throw "SI EntryDesk is not installed ($ServiceExe is missing)." }
 
 function Read-Secret([string] $Prompt) {
     $secure = Read-Host -AsSecureString $Prompt
@@ -27,17 +27,17 @@ function Read-Secret([string] $Prompt) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
 
-$access = Read-Secret 'Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten)'
-if (-not $access) { throw 'Ohne Access-Token geht es nicht.' }
-$protect = Read-Secret 'Protect-API-Schlüssel für das Livebild, leer = kein Livebild'
+$access = Read-Secret 'Access token (Device = View, Location = Edit)'
+if (-not $access) { throw 'Nothing works without an Access token.' }
+$protect = Read-Secret 'Protect API key for the live view, empty = no live view'
 # Line 2 stays empty (formerly a separate token for unlocking).
 "$access`n`n$protect" | & $ServiceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
 Remove-Variable access, protect
-if ($code -ne 0) { throw "Tokens konnten nicht gespeichert werden (Code $code)" }
-Write-Host '    Tokens gespeichert.'
+if ($code -ne 0) { throw "Tokens could not be stored (code $code)" }
+Write-Host '    Tokens stored.'
 
 if (-not $NoRestart -and (Get-Service SIEntryDesk -ErrorAction SilentlyContinue)) {
     Restart-Service SIEntryDesk
-    Write-Host "    Dienst neu gestartet: $((Get-Service SIEntryDesk).Status)"
+    Write-Host "    Service restarted: $((Get-Service SIEntryDesk).Status)"
 }

@@ -1,4 +1,5 @@
-# Paket der Zugänge (deploy/tokens): eigene Version, unabhängig vom Programm, weil es sich selten ändert und ein
-# verteiltes Paket zu neuen Programmversionen passt. Ändert sich deploy/tokens, bricht publish.sh ab und nennt den
-# neuen Hash: dann Version erhöhen und eine Zeile "<Version> <Hash>" anfügen. Die letzte Zeile gilt.
+# Credentials package (deploy/tokens): its own version, independent of the program, because it rarely changes and a
+# distributed package fits newer program versions. If deploy/tokens changes, publish.sh stops and names the new hash:
+# then raise the version and append a line "<version> <hash>". The last line applies.
 1.0 d7c6aa327eeec3b7e2ba85ce2024a0ac9df1d380f430d8a9b5da170b2d9f875b
+1.1 8f55676144a7e76d7a86eef4c440aa364673d683d8988485037081b8a579f2db

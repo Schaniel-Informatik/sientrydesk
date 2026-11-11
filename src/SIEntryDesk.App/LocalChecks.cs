@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using NAudio.CoreAudioApi;
 using SIEntryDesk.Core.Diagnostics;
 using SIEntryDesk.Core.Peers;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -15,7 +16,7 @@ internal static class LocalChecks
     public static IReadOnlyList<Func<CheckItem>> All { get; } = [ServiceState, Autostart, TrayApp, PeerFirewall, SoundOutput, Microphone, TalkSound];
 
     /// <summary>Name of the rule from install.ps1 that lets the other PCs' messages in.</summary>
-    private const string PeerFirewallRule = "SI EntryDesk: Abstimmung zwischen PCs";
+    private const string PeerFirewallRule = "SI EntryDesk: coordination between PCs";
 
     public static CheckItem Item(string name, CheckLevel level, string detail) => new(CheckReport.ThisPc, name, level, detail);
 
@@ -26,26 +27,33 @@ internal static class LocalChecks
             // Directly by name instead of listing all services (review 2026-10-23).
             using var service = new ServiceController("SIEntryDesk");
             return service.Status == ServiceControllerStatus.Running
-                ? Item("Dienst", CheckLevel.Ok, "läuft")
-                : Item("Dienst", CheckLevel.Fail, $"{German(service.Status)}. Als Administrator: Start-Service SIEntryDesk, Protokoll unter C:\\ProgramData\\SIEntryDesk\\logs");
+                ? Item(ServiceName, CheckLevel.Ok, Tr.Admin("läuft", "running"))
+                : Item(ServiceName, CheckLevel.Fail, Tr.Admin(
+                    $"{Text(service.Status)}. Als Administrator: Start-Service SIEntryDesk, Protokoll unter C:\\ProgramData\\SIEntryDesk\\logs",
+                    $"{Text(service.Status)}. As administrator: Start-Service SIEntryDesk, log under C:\\ProgramData\\SIEntryDesk\\logs"));
         }
         catch (InvalidOperationException ex) when (ex.InnerException is System.ComponentModel.Win32Exception { NativeErrorCode: 1060 })
         {
             // ERROR_SERVICE_DOES_NOT_EXIST
-            return Item("Dienst", CheckLevel.Fail, "nicht installiert. install.ps1 ausführen bzw. Intune-App zuweisen");
+            return Item(ServiceName, CheckLevel.Fail, Tr.Admin("nicht installiert. install.ps1 ausführen bzw. Intune-App zuweisen",
+                "not installed. Run install.ps1 or assign the Intune app"));
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            return Item("Dienst", CheckLevel.Warn, "Zustand nicht lesbar");
+            return Item(ServiceName, CheckLevel.Warn, Tr.Admin("Zustand nicht lesbar", "state not readable"));
         }
     }
 
-    private static string German(ServiceControllerStatus status) => status switch
+    private static string ServiceName => Tr.Admin("Dienst", "Service");
+
+    private static string NotReadable => Tr.Admin("nicht lesbar", "not readable");
+
+    private static string Text(ServiceControllerStatus status) => status switch
     {
-        ServiceControllerStatus.Stopped => "gestoppt",
-        ServiceControllerStatus.StartPending => "startet gerade",
-        ServiceControllerStatus.StopPending => "wird gerade gestoppt",
-        ServiceControllerStatus.Paused => "angehalten",
+        ServiceControllerStatus.Stopped => Tr.Admin("gestoppt", "stopped"),
+        ServiceControllerStatus.StartPending => Tr.Admin("startet gerade", "starting"),
+        ServiceControllerStatus.StopPending => Tr.Admin("wird gerade gestoppt", "stopping"),
+        ServiceControllerStatus.Paused => Tr.Admin("angehalten", "paused"),
         _ => status.ToString(),
     };
 
@@ -53,8 +61,9 @@ internal static class LocalChecks
     {
         using var run = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
         return run?.GetValue("SIEntryDesk") is string
-            ? Item("Autostart", CheckLevel.Ok, "App startet bei jeder Anmeldung")
-            : Item("Autostart", CheckLevel.Warn, "nicht eingetragen, die App startet nicht von selbst. install.ps1 erneut ausführen");
+            ? Item("Autostart", CheckLevel.Ok, Tr.Admin("App startet bei jeder Anmeldung", "app starts at every sign-in"))
+            : Item("Autostart", CheckLevel.Warn, Tr.Admin("nicht eingetragen, die App startet nicht von selbst. install.ps1 erneut ausführen",
+                "not registered, the app does not start by itself. Run install.ps1 again"));
     }
 
     /// <summary>True if the check comes from the menu of the running tray app (not SIEntryDesk.exe --check).</summary>
@@ -62,21 +71,24 @@ internal static class LocalChecks
 
     private static CheckItem TrayApp()
     {
+        var running = Tr.Admin("läuft in dieser Sitzung", "running in this session");
         if (InTrayApp)
-            return Item("App", CheckLevel.Ok, "läuft in dieser Sitzung");
+            return Item("App", CheckLevel.Ok, running);
         var session = Process.GetCurrentProcess().SessionId;
-        var running = Process.GetProcessesByName("SIEntryDesk")
+        var found = Process.GetProcessesByName("SIEntryDesk")
             .Any(p => p.Id != Environment.ProcessId && p.SessionId == session);
-        return running
-            ? Item("App", CheckLevel.Ok, "läuft in dieser Sitzung")
-            : Item("App", CheckLevel.Fail, "läuft nicht, dieser Benutzer bekommt kein Klingeln. Über das Startmenü starten");
+        return found
+            ? Item("App", CheckLevel.Ok, running)
+            : Item("App", CheckLevel.Fail, Tr.Admin("läuft nicht, dieser Benutzer bekommt kein Klingeln. Über das Startmenü starten",
+                "not running, this user gets no ringing. Start it from the Start menu"));
     }
 
     /// <summary>Without the rule the window does not show who already talks at another PC. Everything else works,
     /// therefore at most orange. Whether the service receives, it checks itself.</summary>
     private static CheckItem PeerFirewall()
     {
-        const string name = "Abstimmung mit anderen PCs";
+        var name = Tr.Admin("Abstimmung mit anderen PCs", "Coordination with other PCs");
+        var unreadable = Tr.Admin("Firewall nicht lesbar", "firewall not readable");
         try
         {
             var start = new ProcessStartInfo("netsh.exe")
@@ -88,21 +100,21 @@ internal static class LocalChecks
             };
             using var netsh = Process.Start(start);
             if (netsh is null)
-                return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+                return Item(name, CheckLevel.Info, unreadable);
             _ = netsh.StandardOutput.ReadToEndAsync();
             if (!netsh.WaitForExit(5000))
             {
                 netsh.Kill();
-                return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+                return Item(name, CheckLevel.Info, unreadable);
             }
             // netsh: 0 = rule found, 1 = no rule with this name.
             return netsh.ExitCode == 0
-                ? Item(name, CheckLevel.Ok, $"UDP {PeerCodec.Port}, Firewall offen")
-                : Item(name, CheckLevel.Warn, "Firewall-Regel fehlt. install.ps1 erneut ausführen");
+                ? Item(name, CheckLevel.Ok, Tr.Admin($"UDP {PeerCodec.Port}, Firewall offen", $"UDP {PeerCodec.Port}, firewall open"))
+                : Item(name, CheckLevel.Warn, Tr.Admin("Firewall-Regel fehlt. install.ps1 erneut ausführen", "firewall rule missing. Run install.ps1 again"));
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
-            return Item(name, CheckLevel.Info, "Firewall nicht lesbar");
+            return Item(name, CheckLevel.Info, unreadable);
         }
     }
 
@@ -112,18 +124,23 @@ internal static class LocalChecks
         {
             using var devices = new MMDeviceEnumerator();
             return devices.TryGetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia, out var device)
-                ? Item("Tonausgabe", CheckLevel.Ok, device.FriendlyName)
-                : Item("Tonausgabe", CheckLevel.Fail, "kein Lautsprecher oder Kopfhörer, der Klingelton ist nicht hörbar");
+                ? Item(SoundOutputName, CheckLevel.Ok, device.FriendlyName)
+                : Item(SoundOutputName, CheckLevel.Fail, Tr.Admin("kein Lautsprecher oder Kopfhörer, der Klingelton ist nicht hörbar",
+                    "no speakers or headphones, the ringtone is not audible"));
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            return Item("Tonausgabe", CheckLevel.Warn, "nicht lesbar");
+            return Item(SoundOutputName, CheckLevel.Warn, NotReadable);
         }
     }
 
     /// <summary>Headset or speakers, whether the door audio stays audible while talking. Information only.</summary>
     private static CheckItem TalkSound() =>
-        Item("Sprechen mit", CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
+        Item(Tr.Admin("Sprechen mit", "Talk with"), CheckLevel.Info, TalkAudio.Resolve(TalkAudio.LoadMode()).Description);
+
+    private static string SoundOutputName => Tr.Admin("Tonausgabe", "Sound output");
+
+    private static string MicrophoneName => Tr.Admin("Mikrofon", "Microphone");
 
     /// <summary>Opens the microphone briefly, as when talking. Only needed for talkback, therefore at most
     /// orange.</summary>
@@ -134,16 +151,16 @@ internal static class LocalChecks
         {
             using var devices = new MMDeviceEnumerator();
             if (!devices.TryGetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications, out var device))
-                return Item("Mikrofon", CheckLevel.Warn, "keines gefunden, Gegensprechen nicht möglich");
+                return Item(MicrophoneName, CheckLevel.Warn, Tr.Admin("keines gefunden, Gegensprechen nicht möglich", "none found, talkback not possible"));
             name = device.FriendlyName;
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            return Item("Mikrofon", CheckLevel.Warn, "nicht lesbar");
+            return Item(MicrophoneName, CheckLevel.Warn, NotReadable);
         }
         using var sender = TalkSender.Open(_ => { }, out var problem);
         return sender is null
-            ? Item("Mikrofon", CheckLevel.Warn, problem)
-            : Item("Mikrofon", CheckLevel.Ok, $"{name}, Zugriff erlaubt");
+            ? Item(MicrophoneName, CheckLevel.Warn, problem)
+            : Item(MicrophoneName, CheckLevel.Ok, Tr.Admin($"{name}, Zugriff erlaubt", $"{name}, access allowed"));
     }
 }

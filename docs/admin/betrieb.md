@@ -2,6 +2,8 @@
 
 Für Admins: Bedienung (auch als Grundlage für die Einführung bei den Benutzern), Testen, jährliche Erneuerung der
 Zugänge, Störungen. Installation in [installation.md](installation.md), Verteilung in [intune.md](intune.md).
+English version: [en/operation.md](en/operation.md). Die Texte für die Benutzer gibt es auf Deutsch, Englisch und
+Polnisch ([Sprache](installation.md#sprache)), hier stehen die deutschen.
 
 ## Bedienung
 Klingel-Symbol unten rechts, eventuell unter dem Pfeil ^ in der Taskleiste.
@@ -34,7 +36,8 @@ dieser Zeit noch öffnen.
 losreden, nichts geht verloren, bis die Verbindung zur Tür steht. Nach dem Loslassen nimmt das Mikrofon noch 0,3 s
 auf, damit das letzte Wort nicht abgeschnitten wird. Der Ton der Tür kommt etwa 1 s verzögert. **Mit Headset** bleibt
 der Ton der Tür beim Sprechen an und läuft ins Headset (Kommunikationsgerät von Windows, wie bei Teams), man hört den
-Besucher also auch, wenn beide gleichzeitig reden. Der Klingelton bleibt auf dem Standardgerät. **Mit Lautsprechern**
+Besucher also auch, wenn beide gleichzeitig reden. Der Klingelton bleibt auf dem Standardgerät. Mit Headset hört man die
+eigene Stimme etwa 1 s verzögert aus der Tür zurück (Echo über Lautsprecher und Mikrofon der Türstation). **Mit Lautsprechern**
 ist der Ton der Tür stumm, solange das Mikrofon aufnimmt, sonst hörte der Besucher sich selbst als Echo. Was er in
 dieser Zeit sagt, ist am PC nicht zu hören, also nach dem Loslassen kurz warten. Ob ein Headset erkannt wird, steht im
 Menü (Rechtsklick) bei „Sprechen mit: Headset (erkannt)“ bzw. „Lautsprecher (erkannt)“ und in „Prüfen …“. Manche
@@ -81,8 +84,10 @@ Von Hand:
 ## Störungen
 **Zuerst prüfen:** Rechtsklick auf das Symbol → „Prüfen …“ oder `SIEntryDesk.exe --check`. Das Fenster zeigt je
 Voraussetzung grün, orange oder rot, mit einem Satz, was zu tun ist: Dienst, Autostart, App, Abstimmung mit anderen
-PCs (Firewall-Regel für UDP 47801), Tonausgabe, Mikrofon, Sprechen mit (Headset oder Lautsprecher),
+PCs (Firewall-Regel „SI EntryDesk: coordination between PCs“ für UDP 47801), Tonausgabe, Mikrofon, Sprechen mit
+(Headset oder Lautsprecher),
 Verbindung zum Dienst und Version auf dem PC; Konfiguration (mit Datum der sientrydesk.json, mit der der Dienst läuft),
+Sprache,
 Zugänge, Access und Protect (erreichbar, Zertifikat, Token und Rechte, Schlüssel), Klingel-Ereignisse, Stream pro Tür,
 Gegensprechen und Ablaufdaten für die Anlage. Der Dienst liest die sientrydesk.json nur beim Start. Ist sie seither
 geändert worden, wird die Zeile orange: Dienst oder PC neu starten. Ist die Konsole nicht erreichbar, steht nach

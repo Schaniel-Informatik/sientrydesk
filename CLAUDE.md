@@ -46,9 +46,13 @@ Auf dem Handy funktioniert es gut, am PC nicht.
   ausführen und testen kann man sie aber nur unter Windows. **Marcel testet auf Windows 11.**
 - Vor jedem Einrichtungsschritt prüfen, ob das Werkzeug mit nicht-interaktiver Bash funktioniert.
 - **Sprache:** Kommentare in Code, Skripten und Projektdateien auf Englisch (Entscheid 2026-10-27, Repository ist
-  öffentlich). Oberfläche, Protokoll, Admin-Doku (`docs/admin`), Hilfe der Admin-Skripte (`.SYNOPSIS`) und
-  `docs/entwicklung` bleiben Deutsch. `deploy/tokens` (Kommentare und Name der `.intunewin`) erst bei der nächsten
-  echten Änderung umstellen, sonst braucht es nur dafür ein neues Paket der Zugänge in Intune.
+  öffentlich). `docs/entwicklung` bleibt Deutsch. Ab 0.10.0 (Entscheid 2026-11-11) gibt es die Oberfläche für
+  Benutzer auf Deutsch, Englisch und Polnisch (`Language` in der sientrydesk.json), Prüfen, Protokoll und
+  Einrichtungsassistent auf Deutsch oder Englisch, Meldungen und Hilfe der Skripte nur auf Englisch, Admin-Doku in
+  `docs/admin` (Deutsch) und `docs/admin/en` (Englisch). Jeder Text der Programme steht als `Tr.User(de, en, pl)`
+  oder `Tr.Admin(de, en)` direkt an seiner Stelle, nur mit String-Literalen. `python3 tools/texts.py <datei>.xlsx`
+  zieht alle Texte für das Gegenlesen in eine Tabelle, `publish.sh` prüft mit `--check`, dass jeder lesbar ist.
+  Neue Texte immer in allen Sprachen, Polnisch mit `Tr.PlPlural` bei Zahlen.
 - Was Admins für Einrichtung und Betrieb wissen müssen, gehört in `docs/admin/` (`installation.md`, `intune.md`,
   `betrieb.md`), nicht nur in den Chat. Der Build legt diese Dateien als `Doku\` ins Paket.
 - Ablage: `deploy/` nur ausgelieferte Dateien (`programm/`, `tokens/`), keine Anleitungen.

@@ -46,7 +46,8 @@ public enum LinkHealth
 
 /// <summary>Service → app: connection state. Problem explains Unreachable/Error, Warning concerns minor issues such as
 /// the live view or keys about to expire. TalkEnabled: talkback is set up on this PC (from 0.8.0, for the "Sprechen
-/// mit" setting in the menu).</summary>
+/// mit" setting in the menu). Language: of the installation, "de", "en" or "pl" (from 0.10.0). All texts of the service
+/// are already in this language.</summary>
 public sealed record StatusMessage(
     bool AccessConnected,
     string Problem,
@@ -54,7 +55,8 @@ public sealed record StatusMessage(
     LinkHealth Health = LinkHealth.Starting,
     string Warning = "",
     string ExpiryNotice = "",
-    bool TalkEnabled = false) : IpcMessage;
+    bool TalkEnabled = false,
+    string Language = "de") : IpcMessage;
 
 /// <summary>Service → app: the doorbell rings. VideoAvailable: the app can request a live view. TalkAvailable: talkback
 /// is set up on this PC and the door has a known camera. DoorId: for the per-door ring setting, empty with a service

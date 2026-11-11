@@ -1,6 +1,6 @@
 # Installation
 
-Für Admins. Es gibt zwei Wege: **von Hand** auf einzelnen PCs (diese Anleitung) oder **per Intune** an eine
+Für Admins. English version: [en/installation.md](en/installation.md). Es gibt zwei Wege: **von Hand** auf einzelnen PCs (diese Anleitung) oder **per Intune** an eine
 Gerätegruppe ([intune.md](intune.md)). Beide brauchen dieselben Voraussetzungen, dieselben Zugänge und dieselbe
 `sientrydesk.json`. Bedienung, Erneuerung und Störungen stehen in [betrieb.md](betrieb.md).
 
@@ -37,6 +37,20 @@ der Anlage, nicht hierher.
   selbst nicht angezeigt. Der Installer erlaubt den Port in der Windows-Firewall nur aus dem lokalen Subnetz und nur
   für den Dienst. Die Meldungen sind mit einem Schlüssel signiert, der aus dem Access-Token abgeleitet ist. Alle PCs
   brauchen deshalb dasselbe Access-Token (wie mit dem Paket der Zugänge üblich).
+
+## Sprache
+Ab 0.10.0 legt `Language` in der sientrydesk.json die Sprache fest, Standard ist Deutsch:
+
+| Teil | Sprache |
+|---|---|
+| Benutzer: Tray-Menü, Klingelfenster, Meldungen | `de` Deutsch, `en` Englisch, `pl` Polnisch |
+| Admin: Fenster „Prüfen“, Protokoll des Dienstes | Deutsch bei `de`, sonst Englisch |
+| Einrichtungsassistent, `--help` | Sprache von Windows auf diesem PC: Deutsch, sonst Englisch |
+| Skripte (`install.ps1`, `set-tokens.ps1`, Paket der Zugänge) | Englisch |
+| Admin-Doku | `Doku\` Deutsch, `Doku\en\` Englisch |
+
+Die App kann die sientrydesk.json nicht lesen. Sie erfährt die Sprache vom Dienst und merkt sie sich pro Benutzer.
+Bis zur ersten Verbindung nach der Installation gilt die Sprache von Windows.
 
 ## Wer öffnen darf: der PC, nicht die Person
 **Die Personen, Rollen und Türberechtigungen aus UniFi Access gelten für SI EntryDesk nicht.** Die offizielle Access
@@ -95,7 +109,7 @@ Der Build liefert zwei ZIP-Dateien:
 | Datei | Inhalt | Wofür |
 |---|---|---|
 | `SIEntryDesk-<Version>-win-x64.zip` | `App\`, `Service\`, `install.ps1`, `uninstall.ps1`, `set-tokens.ps1`, `prepare-intune.ps1`, `sientrydesk.example.json`, `Doku\` | Installation von Hand und Intune-App „SI EntryDesk“ |
-| `SIEntryDesk-Tokens-<Version>.zip` | `set-tokens-intune.ps1`, `prepare-intune.ps1`, `prepare-intune.cmd`, `tokens.example.txt` | nur für die Intune-App „SI EntryDesk Zugänge“, eigene Version, ändert sich selten |
+| `SIEntryDesk-Tokens-<Version>.zip` | `set-tokens-intune.ps1`, `prepare-intune.ps1`, `prepare-intune.cmd`, `tokens.example.txt` | nur für die Intune-App mit den Zugängen („SI EntryDesk Tokens“, früher „SI EntryDesk Zugänge“), eigene Version, ändert sich selten |
 
 Für die Installation von Hand braucht es nur das Programmpaket.
 
@@ -105,11 +119,11 @@ Einstellung am PC.
 
 ## Schritt 1: sientrydesk.json erstellen
 **Die Datei muss vor der Installation fertig sein.** `install.ps1` fragt keine Einstellungen ab und bricht ohne sie
-mit „Konfiguration nicht gefunden“ ab. Sie enthält keine Geheimnisse und gilt für alle PCs einer Anlage.
+mit „Configuration not found“ ab. Sie enthält keine Geheimnisse und gilt für alle PCs einer Anlage.
 
 ### Mit dem Einrichtungsassistenten
 Der einfachste Weg. Auf einem Windows-PC im Firmennetz oder über VPN, direkt aus dem entpackten Paket, ohne
-Installation:
+Installation. Er erscheint in der Sprache von Windows (Deutsch, sonst Englisch):
 ```powershell
 .\App\SIEntryDesk.exe --setup
 ```
@@ -122,7 +136,8 @@ Er prüft Schritt für Schritt:
 4. Türen und Kameras: Er schlägt die Zuordnung über die Namen vor und zeigt, ob der RTSPS-Stream vorhanden ist. Auf
    Bestätigung legt er ihn an. „Livebild testen“ zeigt das Bild über denselben geprüften Weg wie die App.
 5. Einstellungen: Livebild ohne Klingeln, Dauer, Ablaufdaten.
-6. Er speichert die sientrydesk.json.
+6. Sprache der Benutzer: Deutsch, English oder Polski.
+7. Er speichert die sientrydesk.json.
 
 Tokens verwendet der Assistent nur zum Prüfen, er speichert sie nicht.
 
@@ -140,6 +155,7 @@ Aus der Vorlage `sientrydesk.example.json` im Paket. Kommentare nur auf eigenen 
 
 | Feld | Bedeutung |
 |---|---|
+| `Language` | Sprache der Benutzer: `de` (Standard), `en` oder `pl`, siehe [Sprache](#sprache) |
 | `Host` | Name oder IP der Konsole |
 | `AccessPin`, `ProtectPin` | SHA-256-Fingerabdrücke der Zertifikate auf Port 12445 und 443. Anzeigen mit `.\Service\SIEntryDesk.Service.exe show-pins <Host>`, **nur im Firmennetz oder über VPN** |
 | `StreamPin` | nur nötig, wenn Port 7441 ein anderes Zertifikat hat als 443 |
@@ -165,16 +181,17 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -SetTokens
 2. den Protect-Schlüssel, leer = kein Livebild
 
 Das Skript richtet ein:
-1. prüft die `sientrydesk.json` (gültiges JSON, `Host` und `AccessPin` vorhanden)
+1. prüft die `sientrydesk.json` (gültiges JSON, `Host` und `AccessPin` vorhanden, `Language` bekannt)
 2. beendet laufende Instanzen von Dienst und App
 3. kopiert Programm und Admin-Skripte nach `C:\Program Files\SIEntryDesk`
 4. richtet den Dienst unter dem eigenen Konto `NT SERVICE\SIEntryDesk` ein, mit Neustart bei Absturz
 5. legt `C:\ProgramData\SIEntryDesk` an, lesbar nur für SYSTEM, Administratoren und den Dienst
 6. übernimmt die `sientrydesk.json` dorthin
 7. speichert die Zugänge (mit `-SetTokens`) oder lässt vorhandene stehen
-8. trägt den Autostart für alle Benutzer ein, sperrt eingehende Verbindungen der App in der Firewall, erlaubt dem
-   Dienst UDP 47801 aus dem lokalen Subnetz (Regel „SI EntryDesk: Abstimmung zwischen PCs“), legt den Eintrag im
-   Startmenü an und startet Dienst und App
+8. trägt den Autostart für alle Benutzer ein, sperrt eingehende Verbindungen der App in der Firewall (Regel
+   „SI EntryDesk: no inbound access“), erlaubt dem Dienst UDP 47801 aus dem lokalen Subnetz (Regel „SI EntryDesk:
+   coordination between PCs“), legt den Eintrag im Startmenü an und startet Dienst und App. Die Regeln heissen ab
+   0.10.0 englisch, die deutschen Namen früherer Versionen räumt das Skript weg
 
 | Fall | Befehl |
 |---|---|

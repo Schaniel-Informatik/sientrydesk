@@ -1,6 +1,7 @@
 # Verteilung mit Intune
 
-Voraussetzungen, Zugänge und `sientrydesk.json` wie in [installation.md](installation.md). Bedienung und Störungen in
+English version: [en/intune.md](en/intune.md). Voraussetzungen, Zugänge und `sientrydesk.json` wie in
+[installation.md](installation.md). Bedienung und Störungen in
 [betrieb.md](betrieb.md).
 
 Zwei Win32-Apps an dieselbe **Gerätegruppe** (nicht Benutzer), damit die Zugänge nur auf den vorgesehenen Geräten
@@ -9,12 +10,13 @@ liegen und die App für jeden Benutzer dieser Geräte startet:
 | Intune-App | Aus der Datei | Dazu kommt | Wird erneuert |
 |---|---|---|---|
 | **SI EntryDesk** | `SIEntryDesk-<Version>-win-x64.zip` | `sientrydesk.json` der Anlage | bei jedem Software-Update |
-| **SI EntryDesk Zugänge** | `SIEntryDesk-Tokens-<Version>.zip` (eigene Version, z. B. 1.0) | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
+| **SI EntryDesk Tokens** (früher „SI EntryDesk Zugänge“) | `SIEntryDesk-Tokens-<Version>.zip` (eigene Version, z. B. 1.1) | `tokens.txt` mit den Zugängen | jährlich mit den Zugängen |
 
 Zwei ZIP-Dateien, zwei Ordner, je ein Vorbereitungsskript (`prepare-intune.ps1`). Das Paket der Zugänge hat eine eigene Version
 und ändert sich selten. Ein verteiltes Paket der Zugänge passt auch zu neuen Programmversionen, es wird nur bei der
 jährlichen Erneuerung neu erstellt oder wenn die Release-Notes es verlangen. So stehen die Zugänge nie im
-Programmpaket, und ein Software-Update berührt sie nicht.
+Programmpaket, und ein Software-Update berührt sie nicht. Die Skripte geben ab 0.10.0 (Programm) bzw. 1.1 (Zugänge)
+englische Meldungen aus, die Einstellungen für Intune zeigen sie mit den englischen Begriffen von Intune.
 
 ## Vorbereitung
 - **Microsoft Win32 Content Prep Tool** (`IntuneWinAppUtil.exe`) auf dem Windows-PC, auf dem die Pakete entstehen,
@@ -65,8 +67,9 @@ der Befehl bleibt deshalb einfach `powershell.exe …`.
    ```
 3. Im selben Ordner **Doppelklick auf `prepare-intune.cmd`** und die Kennung der Zugänge (Jahr-Monat) bestätigen.
    Es prüft `tokens.txt` (Fehler mit Zeilennummer, nie mit Inhalt), erstellt neben dem Ordner
-   `Intune-SIEntryDesk-Zugaenge-2026-09` mit der `.intunewin`, **löscht `tokens.txt`** und zeigt die Einstellungen.
-4. In Intune als Win32-App hinzufügen, Name z. B. „SI EntryDesk Zugänge 2026-09“:
+   `Intune-SIEntryDesk-Tokens-2026-09` mit `SIEntryDesk-Tokens-2026-09.intunewin` (bis Version 1.0:
+   `…-Zugaenge-…`), **löscht `tokens.txt`** und zeigt die Einstellungen.
+4. In Intune als Win32-App hinzufügen, Name z. B. „SI EntryDesk Tokens 2026-09“:
 
 | Einstellung | Wert |
 |---|---|
@@ -83,10 +86,10 @@ Installation im Zwischenspeicher der Intune-Erweiterung. Wer in Intune Apps verw
 ein eigenes Paket austauschen, aber nicht auslesen. Die Kennung (`2026-09`) ist kein Geheimnis.
 
 ## Software-Update
-**Wichtig: keine neue Programm-App mit Ablösung anlegen.** Die App „SI EntryDesk Zugänge“ hängt über die feste ID an
+**Wichtig: keine neue Programm-App mit Ablösung anlegen.** Die App mit den Zugängen hängt über die feste ID an
 genau einer Programm-App. Wird diese von einer neuen App abgelöst, installiert Intune die Zugänge nicht mehr:
 „App cannot be installed due to a supersedence relationship conflict“ (0x87D300DB), der PC bleibt ohne Zugänge rot.
-Ist es doch passiert: in der Zugänge-App die Abhängigkeit auf die neue Programm-App umhängen, auf betroffenen Geräten
+Ist es doch passiert: in der App mit den Zugängen die Abhängigkeit auf die neue Programm-App umhängen, auf betroffenen Geräten
 die 24-Stunden-Sperre zurücksetzen (siehe unten) und die alten Programm-Apps löschen.
 
 Neues `SIEntryDesk-<Version>-win-x64.zip` entpacken, `sientrydesk.json` dazulegen, `prepare-intune.ps1` ausführen.
@@ -104,8 +107,9 @@ Problem. Ein Testgerät sofort aktualisieren: Sperre zurücksetzen wie unter
 
 ## Zugänge jährlich erneuern
 1. Neue Zugänge anlegen ([Rechte wie bei der Installation](installation.md#zugänge-anlegen)). Aus dem aktuellen `SIEntryDesk-Tokens-<Version>.zip` wie oben ein
-   neues Paket mit `prepare-intune.ps1 -Label 2027-09` erstellen, App „SI EntryDesk Zugänge 2027-09“.
-2. In Intune als neue App anlegen, die „SI EntryDesk Zugänge 2026-09“ per **Ablösung** ersetzt, *ohne* Deinstallation.
+   neues Paket mit `prepare-intune.ps1 -Label 2027-09` erstellen, App „SI EntryDesk Tokens 2027-09“.
+2. In Intune als neue App anlegen, die die bisherige App mit den Zugängen (z. B. „SI EntryDesk Zugänge 2026-09“) per
+   **Ablösung** ersetzt, *ohne* Deinstallation.
 3. Die neuen Ablaufdaten in der `sientrydesk.json` nachführen und mit der App SI EntryDesk verteilen, siehe
    Software-Update.
 4. Wenn alle Geräte die neue Kennung melden: die alten Zugänge in UniFi löschen.
@@ -133,7 +137,7 @@ Auf einem Testgerät lässt sich der lokale Zustand zurücksetzen, die App wird 
 stehen in Intune in der Adresse der App (`…/appId/<App-ID>`), PowerShell als Administrator:
 ```powershell
 & {
-    $appIds = '<App-ID SI EntryDesk>', '<App-ID SI EntryDesk Zugänge>'
+    $appIds = '<App-ID SI EntryDesk>', '<App-ID der App mit den Zugängen>'
     $root = 'HKLM:\SOFTWARE\Microsoft\IntuneManagementExtension\Win32Apps'
     foreach ($scope in Get-ChildItem $root -ErrorAction SilentlyContinue) {
         foreach ($appId in $appIds) {

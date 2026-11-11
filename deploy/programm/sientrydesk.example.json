@@ -1,27 +1,30 @@
-// SI EntryDesk: Anlagen-Konfiguration. Als sientrydesk.json neben install.ps1 legen.
-// Keine Geheimnisse: Tokens und Schlüssel kommen über set-tokens.ps1 bzw. install.ps1 -SetTokens.
-// Kommentare nur auf eigenen Zeilen.
+// SI EntryDesk: installation configuration. Put it as sientrydesk.json next to install.ps1.
+// No secrets: tokens and keys come via set-tokens.ps1 or install.ps1 -SetTokens.
+// Comments only on lines of their own.
 {
-  // Adresse der UniFi-Konsole (Name oder IP)
+  // Language for the users: "de", "en" or "pl". Check and log: German for "de", otherwise English.
+  "Language": "de",
+
+  // Address of the UniFi console (name or IP)
   "Host": "unifi.example.local",
 
-  // Zertifikats-Fingerabdrücke, anzeigen mit: SIEntryDesk.Service.exe show-pins <Host>
+  // Certificate fingerprints, show them with: SIEntryDesk.Service.exe show-pins <host>
   "AccessPin": "00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF",
   "ProtectPin": "00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF",
 
-  // Türen, die angezeigt werden (Tür-ID oder Name aus Access). Leer = alle.
+  // Doors that are shown (door ID or name from Access). Empty = all.
   "Doors": [],
 
-  // Tür-ID (Access) → Kamera-ID der Türstation (Protect). Ohne Eintrag lernt der Dienst es beim ersten Klingeln.
+  // Door ID (Access) → camera ID of the door station (Protect). Without an entry the service learns it at the first ring.
   "DoorCameras": {
     "00000000-0000-4000-8000-000000000001": "000000000000000000000001"
   },
 
-  // Livebild ohne Klingeln im Tray-Menü und wie lange es offen bleibt (15–600 s)
+  // Live view without ringing in the tray menu and how long it stays open (15–600 s)
   "LiveView": true,
   "LiveViewSeconds": 60,
 
-  // Ablaufdaten der Schlüssel. Ab 14 Tagen vorher: Symbol orange und einmal pro Tag eine Meldung
+  // Expiry dates of the keys. From 14 days before: icon orange and a notice once a day
   "TokenExpires": "2027-09-30",
   "ProtectKeyExpires": "2027-09-30"
 }

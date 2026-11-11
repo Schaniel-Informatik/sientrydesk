@@ -2,6 +2,7 @@ using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Security;
 
@@ -25,10 +26,12 @@ public sealed class CertificatePin
             if (char.IsAsciiHexDigit(c))
                 hex.Append(c);
             else if (c is not (':' or ' ' or '-'))
-                throw new FormatException("Der Fingerprint darf nur Hex-Zeichen und Trennzeichen enthalten.");
+                throw new FormatException(Tr.Admin("Der Fingerprint darf nur Hex-Zeichen und Trennzeichen enthalten.",
+                    "The fingerprint may only contain hex characters and separators."));
         }
         if (hex.Length != 64)
-            throw new FormatException("Kein SHA-256-Fingerprint, erwartet werden 64 Hex-Zeichen.");
+            throw new FormatException(Tr.Admin("Kein SHA-256-Fingerprint, erwartet werden 64 Hex-Zeichen.",
+                "Not a SHA-256 fingerprint, 64 hex characters are expected."));
         return new CertificatePin(Convert.FromHexString(hex.ToString()));
     }
 

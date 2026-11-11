@@ -2,7 +2,7 @@
 # Builds the packages for Windows (x64) on the Mac: tests, then service and app as self-contained .exe.
 # Two separate packages, so that credentials never end up in the program package:
 #   SIEntryDesk-<Version>-win-x64.zip   program and install scripts (Intune app "SI EntryDesk")
-#   SIEntryDesk-Tokens-<Version>.zip    script and template for the credentials (Intune app "SI EntryDesk Zugänge"),
+#   SIEntryDesk-Tokens-<Version>.zip    script and template for the credentials (Intune app "SI EntryDesk Tokens"),
 #                                       own version from build/tokens-version.txt
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -24,14 +24,17 @@ tokensOut="artifacts/$tokens"
 rm -rf "$out" "artifacts/$name.zip" "$tokensOut" "artifacts/$tokens.zip"
 
 dotnet test tests/SIEntryDesk.Core.Tests --nologo -v quiet
+# Every text must be readable for the proofreading table (tools/texts.py), otherwise it would be missing there.
+python3 tools/texts.py --check
 
 common=(-c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:DebugType=none --nologo -v quiet)
 dotnet publish src/SIEntryDesk.Service "${common[@]}" -o "$out/Service"
 dotnet publish src/SIEntryDesk.App "${common[@]}" -o "$out/App"
-# deploy/ contains only shipped files, the admin guides come from docs/admin into Doku/.
+# deploy/ contains only shipped files, the admin guides come from docs/admin into Doku/ (German) and Doku/en/.
 cp deploy/programm/* "$out/"
-mkdir -p "$out/Doku" "$tokensOut"
+mkdir -p "$out/Doku/en" "$tokensOut"
 cp docs/admin/*.md THIRD-PARTY-NOTICES.md "$out/Doku/"
+cp docs/admin/en/*.md "$out/Doku/en/"
 cp deploy/tokens/* "$tokensOut/"
 
 # Safeguard: the ZIP files are the same for all installations and are public. The sientrydesk.json of an

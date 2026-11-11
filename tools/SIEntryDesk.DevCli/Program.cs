@@ -70,7 +70,7 @@ void Report(IEnumerable<CallChange> changes)
         var text = change switch
         {
             CallStarted s => $">>> KLINGELN  {s.Call.DoorName}  Ruf={s.Call.CallId}  Öffnen erlaubt={s.Call.UnlockAllowed}  Kamera={s.Call.CameraId}",
-            CallEnded e => $"<<< ENDE      {e.Call.DoorName}  Ruf={e.Call.CallId}  {CallEndReasons.ToGerman(e.Reason)}",
+            CallEnded e => $"<<< ENDE      {e.Call.DoorName}  Ruf={e.Call.CallId}  {CallEndReasons.Text(e.Reason)}",
             CallDoorOpened o => $"*** GEÖFFNET  {o.Call.DoorName}  Ruf={o.Call.CallId}  von={o.OpenedBy ?? "?"}",
             _ => change.ToString(),
         };

@@ -26,7 +26,7 @@ internal static class SecretStore
         {
             var secrets = JsonSerializer.Deserialize<Secrets>(plain);
             if (secrets is null || string.IsNullOrWhiteSpace(secrets.AccessToken))
-                throw new InvalidDataException("secrets.dat enthält keinen Access-Token");
+                throw new InvalidDataException("secrets.dat contains no Access token");
             return secrets with { ProtectKey = string.IsNullOrWhiteSpace(secrets.ProtectKey) ? null : secrets.ProtectKey };
         }
         finally

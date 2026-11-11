@@ -1,6 +1,7 @@
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Security;
 
@@ -28,7 +29,7 @@ public static class CertificateProbe
             },
         }, cts.Token).ConfigureAwait(false);
         return presented is null
-            ? throw new InvalidOperationException("Kein Zertifikat erhalten")
+            ? throw new InvalidOperationException(Tr.Admin("Kein Zertifikat erhalten", "No certificate received"))
             : CertificatePin.FingerprintOf(presented);
     }
 }

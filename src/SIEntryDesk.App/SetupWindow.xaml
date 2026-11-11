@@ -1,7 +1,7 @@
 <Window x:Class="SIEntryDesk.App.SetupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SI EntryDesk – Einrichtung"
+        Title="SI EntryDesk"
         Width="900" Height="920" MinWidth="760" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" FontSize="14">
@@ -29,59 +29,54 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="28,12,28,28">
-            <TextBlock Text="Einrichtung" FontSize="26" FontWeight="SemiBold" />
-            <TextBlock Style="{StaticResource Hint}"
-                       Text="Prüft die Voraussetzungen bei UniFi und erstellt die sientrydesk.json für diese Anlage, oder prüft eine bestehende. Tokens werden nur zum Prüfen verwendet und nicht gespeichert. Nur im Firmennetz oder über VPN ausführen." />
+            <!-- Texts are set in the code (ApplyTexts), in the language of Windows: German or English. -->
+            <TextBlock x:Name="Heading" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock x:Name="Intro" Style="{StaticResource Hint}" />
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                <Button Content="Installierte Konfiguration laden" Margin="0" Click="OnLoadInstalled" />
-                <Button Content="Andere sientrydesk.json öffnen …" Click="OnOpenConfig" />
+                <Button x:Name="LoadInstalledButton" Margin="0" Click="OnLoadInstalled" />
+                <Button x:Name="OpenConfigButton" Click="OnOpenConfig" />
             </StackPanel>
             <TextBlock x:Name="LoadResult" Style="{StaticResource Result}" />
 
-            <TextBlock Style="{StaticResource Heading}" Text="1. Konsole" />
-            <TextBlock Style="{StaticResource Hint}" Text="Name oder IP der UniFi-Konsole, auf der Access und Protect laufen." />
+            <TextBlock x:Name="HostHeading" Style="{StaticResource Heading}" />
+            <TextBlock x:Name="HostHint" Style="{StaticResource Hint}" />
             <DockPanel>
-                <Button x:Name="HostCheck" DockPanel.Dock="Right" Content="Prüfen" Click="OnCheckHost" />
+                <Button x:Name="HostCheck" DockPanel.Dock="Right" Click="OnCheckHost" />
                 <TextBox x:Name="HostBox" />
             </DockPanel>
             <TextBlock x:Name="HostResult" Style="{StaticResource Result}" />
             <CheckBox x:Name="PinsConfirmed" Margin="0,10,0,0" IsEnabled="False" Checked="OnPinsConfirmed" Unchecked="OnPinsConfirmed">
-                <TextBlock TextWrapping="Wrap"
-                           Text="Diese Verbindung geht sicher zur richtigen Konsole (Firmennetz oder VPN). Die Fingerabdrücke als Pins übernehmen." />
+                <TextBlock x:Name="PinsConfirmedText" TextWrapping="Wrap" />
             </CheckBox>
 
-            <TextBlock Style="{StaticResource Heading}" Text="2. Access-Token" />
-            <TextBlock Style="{StaticResource Hint}"
-                       Text="Access → Einstellungen → Allgemein → API Token. Benötigt: Gerät = Anzeigen, Standorte = Bearbeiten, alles andere Keinen. Geprüft wird rein lesend, das Recht zum Öffnen an einer Tür, die es nicht gibt." />
+            <TextBlock x:Name="AccessHeading" Style="{StaticResource Heading}" />
+            <TextBlock x:Name="AccessHint" Style="{StaticResource Hint}" />
             <DockPanel>
-                <Button x:Name="AccessCheck" DockPanel.Dock="Right" Content="Prüfen" IsEnabled="False" Click="OnCheckAccess" />
+                <Button x:Name="AccessCheck" DockPanel.Dock="Right" IsEnabled="False" Click="OnCheckAccess" />
                 <PasswordBox x:Name="AccessTokenBox" />
             </DockPanel>
             <TextBlock x:Name="AccessResult" Style="{StaticResource Result}" />
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                <TextBlock Text="Gültig bis (wie in Access beim Anlegen angezeigt):" VerticalAlignment="Center" Width="360" />
+                <TextBlock x:Name="TokenExpiresLabel" VerticalAlignment="Center" Width="360" TextWrapping="Wrap" />
                 <DatePicker x:Name="TokenExpiresPicker" Width="160" />
             </StackPanel>
 
-            <TextBlock Style="{StaticResource Heading}" Text="3. Protect-Schlüssel (für das Livebild)" />
-            <TextBlock Style="{StaticResource Hint}"
-                       Text="UniFi OS → Einstellungen → Control Plane → Integrations. Der Schlüssel hat die Protect-Rechte des Kontos, unter dem er angelegt wurde." />
+            <TextBlock x:Name="ProtectHeading" Style="{StaticResource Heading}" />
+            <TextBlock x:Name="ProtectHint" Style="{StaticResource Hint}" />
             <DockPanel>
-                <Button x:Name="ProtectCheck" DockPanel.Dock="Right" Content="Prüfen" IsEnabled="False" Click="OnCheckProtect" />
+                <Button x:Name="ProtectCheck" DockPanel.Dock="Right" IsEnabled="False" Click="OnCheckProtect" />
                 <PasswordBox x:Name="ProtectKeyBox" />
             </DockPanel>
             <TextBlock x:Name="ProtectResult" Style="{StaticResource Result}" />
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                <TextBlock Text="Gültig bis (wie in UniFi OS beim Anlegen angezeigt):" VerticalAlignment="Center" Width="360" />
+                <TextBlock x:Name="ProtectKeyExpiresLabel" VerticalAlignment="Center" Width="360" TextWrapping="Wrap" />
                 <DatePicker x:Name="ProtectKeyExpiresPicker" Width="160" />
             </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
-                       Text="Das Ablaufdatum geben die Schnittstellen nicht preis, es steht nur in der UniFi-Oberfläche. Ab 14 Tagen vor dem früheren der beiden Daten wird das Symbol orange, und jede App meldet einmal pro Tag, bis wann erneuert werden muss." />
+            <TextBlock x:Name="ExpiryHint" Style="{StaticResource Hint}" Margin="0,6,0,0" />
 
-            <TextBlock Style="{StaticResource Heading}" Text="4. Türen und Kameras" />
-            <TextBlock Style="{StaticResource Hint}"
-                       Text="Zu jeder Tür die Kamera ihrer Türstation. Der Vorschlag kommt aus den Namen. Angehakte Türen erscheinen auf den PCs, alle angehakt = alle Türen." />
-            <TextBlock x:Name="DoorsPlaceholder" Foreground="#888888" Text="Erscheint nach der Prüfung von Access-Token und Protect-Schlüssel." />
+            <TextBlock x:Name="DoorsHeading" Style="{StaticResource Heading}" />
+            <TextBlock x:Name="DoorsHint" Style="{StaticResource Hint}" />
+            <TextBlock x:Name="DoorsPlaceholder" Foreground="#888888" />
             <Grid x:Name="DoorGrid" Margin="0,4,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -93,26 +88,31 @@
                 </Grid.ColumnDefinitions>
             </Grid>
             <TextBlock x:Name="DoorsResult" Style="{StaticResource Result}" />
-            <TextBlock x:Name="StreamHint" Style="{StaticResource Hint}" Margin="0,8,0,0" Visibility="Collapsed"
-                       Text="Ohne Stream kein Livebild. Anlegen mit „Stream anlegen“ oder in Protect bei der Kamera unter Einstellungen → Erweitert → RTSP, Qualität „Mittel“. Die Stream-Adresse wirkt wie ein Zugangsschlüssel, nicht weitergeben." />
+            <TextBlock x:Name="StreamHint" Style="{StaticResource Hint}" Margin="0,8,0,0" Visibility="Collapsed" />
 
-            <TextBlock Style="{StaticResource Heading}" Text="5. Livebild ohne Klingeln" />
+            <TextBlock x:Name="LiveViewHeading" Style="{StaticResource Heading}" />
             <CheckBox x:Name="LiveViewBox" IsChecked="True">
-                <TextBlock TextWrapping="Wrap"
-                           Text="Benutzer dürfen das Livebild jederzeit öffnen, auch wenn niemand klingelt (Linksklick auf das Klingel-Symbol, dann die Tür). Jeder Abruf wird mit Benutzer protokolliert." />
+                <TextBlock x:Name="LiveViewText" TextWrapping="Wrap" />
             </CheckBox>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                <TextBlock Text="Das Livebild schliesst sich nach (15–600 Sekunden):" VerticalAlignment="Center" Width="360" />
+                <TextBlock x:Name="LiveViewSecondsLabel" VerticalAlignment="Center" Width="360" TextWrapping="Wrap" />
                 <TextBox x:Name="LiveViewSecondsBox" Text="60" Width="70" />
             </StackPanel>
 
-            <TextBlock Style="{StaticResource Heading}" Text="6. Speichern" />
+            <TextBlock x:Name="LanguageHeading" Style="{StaticResource Heading}" />
+            <TextBlock x:Name="LanguageHint" Style="{StaticResource Hint}" />
             <StackPanel Orientation="Horizontal">
-                <Button x:Name="SaveButton" Content="sientrydesk.json speichern …" Margin="0" IsEnabled="False" Click="OnSave" />
+                <RadioButton x:Name="LanguageDe" Content="Deutsch" GroupName="Language" IsChecked="True" Margin="0,0,24,0" />
+                <RadioButton x:Name="LanguageEn" Content="English" GroupName="Language" Margin="0,0,24,0" />
+                <RadioButton x:Name="LanguagePl" Content="Polski" GroupName="Language" />
+            </StackPanel>
+
+            <TextBlock x:Name="SaveHeading" Style="{StaticResource Heading}" />
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="SaveButton" Margin="0" IsEnabled="False" Click="OnSave" />
             </StackPanel>
             <TextBlock x:Name="SaveResult" Style="{StaticResource Result}" />
-            <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
-                       Text="Danach: sientrydesk.json neben install.ps1 legen. Von Hand installieren mit install.ps1 -SetTokens. Per Intune das Programmpaket mit der sientrydesk.json und die Zugänge als eigenes Paket (SIEntryDesk-Tokens), siehe Doku\installation.md und Doku\intune.md im Paket." />
+            <TextBlock x:Name="SaveHint" Style="{StaticResource Hint}" Margin="0,10,0,0" />
         </StackPanel>
     </ScrollViewer>
 </Window>

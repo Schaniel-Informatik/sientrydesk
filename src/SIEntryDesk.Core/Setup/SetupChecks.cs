@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using SIEntryDesk.Core.Access;
 using SIEntryDesk.Core.Protect;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Setup;
 
@@ -54,8 +55,8 @@ public sealed record ConfigFinding(FindingLevel Level, string Text);
 /// cref="ProtectApiClient.CreateStreamAsync"/>.</summary>
 public static class SetupChecks
 {
-    public static readonly (string Name, int Port)[] Ports =
-        [("Access-API", AccessApiClient.Port), ("UniFi OS / Protect", 443), ("Videostream", 7441)];
+    public static (string Name, int Port)[] Ports =>
+        [("Access-API", AccessApiClient.Port), ("UniFi OS / Protect", 443), (Tr.Admin("Videostream", "Video stream"), 7441)];
 
     public static async Task<IReadOnlyList<PortCheck>> CheckPortsAsync(string host, CancellationToken ct)
     {
@@ -70,21 +71,22 @@ public static class SetupChecks
                                            or AuthenticationException or InvalidOperationException)
             {
                 return new PortCheck(p.Name, p.Port, false, null,
-                    ex is OperationCanceledException ? "keine Antwort" : UntrustedText.Clean(ex.Message, 100));
+                    ex is OperationCanceledException ? Tr.Admin("keine Antwort", "no answer") : UntrustedText.Clean(ex.Message, 100));
             }
         });
         return await Task.WhenAll(checks).ConfigureAwait(false);
     }
 
     /// <summary>Permissions an operational token should not have, each with a purely reading call.</summary>
-    private static readonly (string Name, HttpMethod Method, string Path)[] ExcessProbes =
+    /// <summary>Names as in the token dialog of Access.</summary>
+    private static (string Name, HttpMethod Method, string Path)[] ExcessProbes =>
     [
-        ("Benutzer und Gruppe", HttpMethod.Get, "/api/v1/developer/users?page_num=1&page_size=1"),
-        ("Besucher", HttpMethod.Get, "/api/v1/developer/visitors?page_num=1&page_size=1"),
-        ("Zugriffsrichtlinie", HttpMethod.Get, "/api/v1/developer/access_policies"),
-        ("Anmeldeinformationen", HttpMethod.Get, "/api/v1/developer/credentials/nfc_cards/tokens?page_num=1&page_size=1"),
+        (Tr.Admin("Benutzer und Gruppe", "User and group"), HttpMethod.Get, "/api/v1/developer/users?page_num=1&page_size=1"),
+        (Tr.Admin("Besucher", "Visitor"), HttpMethod.Get, "/api/v1/developer/visitors?page_num=1&page_size=1"),
+        (Tr.Admin("Zugriffsrichtlinie", "Access policy"), HttpMethod.Get, "/api/v1/developer/access_policies"),
+        (Tr.Admin("Anmeldeinformationen", "Credentials"), HttpMethod.Get, "/api/v1/developer/credentials/nfc_cards/tokens?page_num=1&page_size=1"),
         ("Webhooks", HttpMethod.Get, "/api/v1/developer/webhooks/endpoints"),
-        ("Systemprotokoll", HttpMethod.Post, "/api/v1/developer/system/logs?page_num=1&page_size=1"),
+        (Tr.Admin("Systemprotokoll", "System log"), HttpMethod.Post, "/api/v1/developer/system/logs?page_num=1&page_size=1"),
     ];
 
     private const string NonexistentDoor = "00000000-0000-4000-8000-000000000000";
@@ -143,7 +145,7 @@ public static class SetupChecks
     {
         var words = name.ToLowerInvariant()
             .Split([' ', '-', '_', '.', '/'], StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w is not ("hub" or "tür" or "tuer" or "door" or "uah" or "g6" or "entry" or "pro"));
+            .Where(w => w is not ("hub" or "tür" or "tuer" or "door" or "drzwi" or "uah" or "g6" or "entry" or "pro"));
         var sb = new StringBuilder();
         foreach (var c in string.Concat(words))
         {
@@ -166,7 +168,7 @@ public static class SetupChecks
     public static EntryDeskOptions ParseConfigJson(string json)
     {
         var options = JsonSerializer.Deserialize<EntryDeskOptions>(json, ConfigReadOptions)
-                      ?? throw new JsonException("Die Datei enthält keine Konfiguration.");
+                      ?? throw new JsonException(Tr.Admin("Die Datei enthält keine Konfiguration.", "The file contains no configuration."));
         options.Host ??= string.Empty;
         options.AccessPin ??= string.Empty;
         options.ProtectPin ??= string.Empty;
@@ -174,6 +176,7 @@ public static class SetupChecks
         options.Doors ??= [];
         options.DoorCameras ??= new(StringComparer.Ordinal);
         options.StreamQualities ??= ["low", "medium", "high"];
+        options.Language ??= "de";
         return options;
     }
 
@@ -223,15 +226,18 @@ public static class SetupChecks
     {
         var findings = new List<ConfigFinding>();
         foreach (var entry in options.Doors.Where(e => !doors.Any(d => Names(e, d))))
-            findings.Add(new(FindingLevel.Warn, $"Doors nennt „{entry.Trim()}“, diese Tür gibt es in Access nicht."));
+            findings.Add(new(FindingLevel.Warn, Tr.Admin($"Doors nennt „{entry.Trim()}“, diese Tür gibt es in Access nicht.",
+                $"Doors names \"{entry.Trim()}\", this door does not exist in Access.")));
 
         foreach (var (doorId, cameraId) in options.DoorCameras)
         {
             var door = doors.FirstOrDefault(d => d.Id == doorId);
             if (door is null)
-                findings.Add(new(FindingLevel.Warn, $"DoorCameras nennt eine Tür, die es in Access nicht gibt ({doorId})."));
+                findings.Add(new(FindingLevel.Warn, Tr.Admin($"DoorCameras nennt eine Tür, die es in Access nicht gibt ({doorId}).",
+                    $"DoorCameras names a door that does not exist in Access ({doorId}).")));
             else if (cameras is not null && !cameras.ContainsKey(cameraId))
-                findings.Add(new(FindingLevel.Fail, $"{door.Name}: Die Kamera aus der Konfiguration gibt es in Protect nicht, kein Livebild."));
+                findings.Add(new(FindingLevel.Fail, Tr.Admin($"{door.Name}: Die Kamera aus der Konfiguration gibt es in Protect nicht, kein Livebild.",
+                    $"{door.Name}: the camera from the configuration does not exist in Protect, no live view.")));
         }
 
         if (cameras is not null)
@@ -239,15 +245,20 @@ public static class SetupChecks
             var suggestions = SuggestDoorCameras(doors, cameras);
             foreach (var door in doors.Where(d => options.AcceptsDoor(d.Id, d.Name) && !options.DoorCameras.ContainsKey(d.Id)))
             {
-                var hint = suggestions.TryGetValue(door.Id, out var camera) ? $" Vorschlag: {cameras[camera]}." : string.Empty;
-                findings.Add(new(FindingLevel.Warn, $"{door.Name}: keine Kamera zugeordnet, Livebild ohne Klingeln erst nach dem ersten Klingeln.{hint}"));
+                var hint = suggestions.TryGetValue(door.Id, out var camera)
+                    ? Tr.Admin($" Vorschlag: {cameras[camera]}.", $" Suggestion: {cameras[camera]}.")
+                    : string.Empty;
+                findings.Add(new(FindingLevel.Warn, Tr.Admin(
+                    $"{door.Name}: keine Kamera zugeordnet, Livebild ohne Klingeln erst nach dem ersten Klingeln.{hint}",
+                    $"{door.Name}: no camera assigned, live view without ringing only after the first ring.{hint}")));
             }
         }
 
         if (findings.Count == 0)
             findings.Add(new(FindingLevel.Ok, cameras is null
-                ? "Türen wie in der Konfiguration. Die Kameras folgen mit der Prüfung des Protect-Schlüssels."
-                : "Türen und Kameras wie in der Konfiguration."));
+                ? Tr.Admin("Türen wie in der Konfiguration. Die Kameras folgen mit der Prüfung des Protect-Schlüssels.",
+                    "Doors as in the configuration. The cameras follow with the check of the Protect key.")
+                : Tr.Admin("Türen und Kameras wie in der Konfiguration.", "Doors and cameras as in the configuration.")));
         return findings;
 
         static bool Names(string entry, AccessDoor door) =>
@@ -261,6 +272,7 @@ public static class SetupChecks
     {
         var config = new Dictionary<string, object?>
         {
+            ["Language"] = Tr.Code(options.UiLanguage),
             ["Host"] = options.Host.Trim(),
             ["AccessPin"] = options.AccessPin,
             ["ProtectPin"] = options.ProtectPin,
@@ -281,8 +293,11 @@ public static class SetupChecks
             WriteIndented = true,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         });
-        return $"// SI EntryDesk: Anlagen-Konfiguration, erstellt mit dem Einrichtungsassistenten am {created:dd.MM.yyyy HH:mm}.\n" +
-               "// Keine Geheimnisse. Zugänge von Hand mit install.ps1 -SetTokens, per Intune mit dem Paket SI EntryDesk Zugänge.\n" +
-               json + "\n";
+        var header = Tr.Admin(
+            $"// SI EntryDesk: Anlagen-Konfiguration, erstellt mit dem Einrichtungsassistenten am {Tr.AdminDate(created)} {created:HH:mm}.\n" +
+            "// Keine Geheimnisse. Zugänge von Hand mit install.ps1 -SetTokens, per Intune mit dem Paket der Zugänge (SIEntryDesk-Tokens).\n",
+            $"// SI EntryDesk: installation configuration, created with the setup wizard on {Tr.AdminDate(created)} {created:HH:mm}.\n" +
+            "// No secrets. Credentials by hand with install.ps1 -SetTokens, via Intune with the credentials package (SIEntryDesk-Tokens).\n");
+        return header + json + "\n";
     }
 }

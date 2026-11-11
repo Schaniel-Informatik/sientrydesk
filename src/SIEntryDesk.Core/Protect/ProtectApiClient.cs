@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using SIEntryDesk.Core.Security;
 using SIEntryDesk.Core.Talk;
 using SIEntryDesk.Core.Video;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Protect;
 
@@ -38,7 +39,7 @@ public sealed partial class ProtectApiClient : IDisposable
     public async Task<IReadOnlyDictionary<string, StreamSource>> GetStreamsAsync(string cameraId, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(cameraId))
-            throw new ArgumentException("Ungültige Kamera-ID.", nameof(cameraId));
+            throw new ArgumentException("Invalid camera ID.", nameof(cameraId));
         using var response = await _http.GetAsync($"{BasePath}/cameras/{cameraId}/rtsps-stream", ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(
@@ -77,7 +78,7 @@ public sealed partial class ProtectApiClient : IDisposable
     public async Task<IReadOnlyDictionary<string, StreamSource>> CreateStreamAsync(string cameraId, string quality, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(cameraId) || quality is not ("low" or "medium" or "high"))
-            throw new ArgumentException("Ungültige Kamera oder Qualität.");
+            throw new ArgumentException("Invalid camera or quality.");
         using var response = await _http.PostAsJsonAsync($"{BasePath}/cameras/{cameraId}/rtsps-stream",
             new Dictionary<string, string[]> { ["qualities"] = [quality] }, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -92,7 +93,7 @@ public sealed partial class ProtectApiClient : IDisposable
     public async Task<TalkbackTarget?> CreateTalkbackSessionAsync(string cameraId, Action<string> problem, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(cameraId))
-            throw new ArgumentException("Ungültige Kamera-ID.", nameof(cameraId));
+            throw new ArgumentException("Invalid camera ID.", nameof(cameraId));
         using var response = await _http.PostAsync($"{BasePath}/cameras/{cameraId}/talkback-session", null, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         using var doc = await JsonDocument.ParseAsync(
@@ -100,7 +101,7 @@ public sealed partial class ProtectApiClient : IDisposable
         var root = doc.RootElement;
         if (root.ValueKind != JsonValueKind.Object)
         {
-            problem("Antwort von Protect ist kein Objekt");
+            problem(Tr.Admin("Antwort von Protect ist kein Objekt", "Answer from Protect is not an object"));
             return null;
         }
         var target = TalkbackTarget.TryCreate(

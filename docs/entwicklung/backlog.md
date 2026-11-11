@@ -25,6 +25,30 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
+## 0.10.0 (umgesetzt 11.11., noch nicht gebaut)
+- **Sprachen** (Anfrage eines Interessenten mit polnischen Benutzern, entschieden 11.11.): `Language` in der
+  sientrydesk.json (`de` Standard, `en`, `pl`). Benutzer: Tray-Menü, Klingelfenster, Meldungen in der gewählten
+  Sprache. Admin: Prüfen, Protokoll Deutsch bei `de`, sonst Englisch; Einrichtungsassistent und `--help` nach der
+  Sprache von Windows. Skripte (Programm und Zugänge) nur noch Englisch (Variante A), Admin-Doku zusätzlich englisch in
+  `docs/admin/en` bzw. `Doku\en\`.
+- Umsetzung: `Tr.User(de, en, pl)` / `Tr.Admin(de, en)` direkt an jeder Stelle statt Ressourcendateien, Polnisch mit
+  drei Mehrzahlformen (`Tr.PlPlural`). Der Dienst meldet die Sprache im Status, die App merkt sie sich pro Benutzer
+  (HKCU), bis zur ersten Verbindung gilt die Sprache von Windows. Bereiche der Prüfung als Kennungen (`pc`,
+  `installation`) statt deutscher Texte. Ausnahmen und interne Meldungen auf Englisch.
+- Einrichtungsassistent: neuer Abschnitt „6. Sprache der Benutzer“ (Deutsch / English / Polski), „Speichern“ wird 7.
+  `install.ps1` und `prepare-intune.ps1` lehnen eine unbekannte Sprache ab, der Dienst nimmt dann Deutsch und meldet
+  es in Prüfen und Protokoll.
+- Firewall-Regeln heissen englisch („SI EntryDesk: no inbound access“, „SI EntryDesk: coordination between PCs“),
+  `install.ps1` und `uninstall.ps1` räumen die deutschen Namen weg.
+- Paket der Zugänge 1.1: Skripte und Vorlage englisch, `.intunewin` heisst `SIEntryDesk-Tokens-<Kennung>`. In Intune
+  nichts neu hochladen, die bestehende App mit den Zugängen funktioniert weiter; 1.1 erst bei der nächsten Erneuerung.
+- `tools/texts.py`: alle Texte als Excel-Tabelle zum Gegenlesen (Blatt Benutzer de/en/pl, Blatt Admin de/en),
+  `publish.sh` prüft mit `--check`. **Offen:** Polnisch von einer Person mit Polnisch als Muttersprache gegenlesen und
+  auf einem Test-PC mit `"Language": "pl"` durchklicken (Testklingeln, Menü, Klingelfenster mit Livebild, Pause);
+  Englisch und die englischen Begriffe der Access-Rechte („Device“, „Location“) prüft Marcel. Korrekturen → 0.10.1.
+- **Marcel testet auf Deutsch**, ob alles gleich ist wie mit 0.9.1 (Menü, Klingelfenster, Prüfen, Einrichtungsassistent
+  mit neuem Abschnitt 6), und kurz eine Installation mit `"Language": "en"`.
+
 ## 0.9.1 (04.11. gebaut und über Intune verteilt)
 - **Rückmeldung 05.11.:** Die Anwender sind sehr zufrieden, „eine grosse Verbesserung in der Anwendung“.
 - **Update scheiterte auf einigen PCs** (0.9.0 über Intune, `0x80070001`): `install.ps1` beendete die App mit

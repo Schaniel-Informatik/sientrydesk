@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using NAudio.CoreAudioApi;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -56,17 +57,27 @@ internal static class TalkAudio
     /// "Lautsprecher".</summary>
     public static string Current(ListenMode mode) => mode switch
     {
-        ListenMode.Headset => "Headset",
-        ListenMode.Speaker => "Lautsprecher",
-        _ => HeadsetDetected() ? "Headset (erkannt)" : "Lautsprecher (erkannt)",
+        ListenMode.Headset => Headset,
+        ListenMode.Speaker => Speakers,
+        _ => HeadsetDetected()
+            ? Tr.User("Headset (erkannt)", "Headset (detected)", "Zestaw słuchawkowy (wykryto)")
+            : Tr.User("Lautsprecher (erkannt)", "Speakers (detected)", "Głośniki (wykryto)"),
     };
+
+    private static string Headset => Tr.User("Headset", "Headset", "Zestaw słuchawkowy");
+
+    private static string Speakers => Tr.User("Lautsprecher", "Speakers", "Głośniki");
 
     /// <summary>For the choices in the menu: choice and its effect.</summary>
     public static string Choice(ListenMode mode) => mode switch
     {
-        ListenMode.Headset => "Headset – Tür beim Sprechen hören",
-        ListenMode.Speaker => "Lautsprecher – Tür beim Sprechen stumm",
-        _ => $"automatisch erkennen (jetzt: {(HeadsetDetected() ? "Headset" : "Lautsprecher")})",
+        ListenMode.Headset => Tr.User("Headset – Tür beim Sprechen hören", "Headset – hear the door while talking",
+            "Zestaw słuchawkowy – słychać drzwi podczas mówienia"),
+        ListenMode.Speaker => Tr.User("Lautsprecher – Tür beim Sprechen stumm", "Speakers – door muted while talking",
+            "Głośniki – drzwi wyciszone podczas mówienia"),
+        _ => Tr.User($"automatisch erkennen (jetzt: {(HeadsetDetected() ? Headset : Speakers)})",
+            $"detect automatically (now: {(HeadsetDetected() ? Headset : Speakers)})",
+            $"wykryj automatycznie (teraz: {(HeadsetDetected() ? Headset : Speakers)})"),
     };
 
     /// <summary>Is the communications output device a headset or headphones?</summary>
@@ -75,13 +86,18 @@ internal static class TalkAudio
     public static TalkAudioPlan Resolve(ListenMode mode)
     {
         var output = CommunicationsOutput();
-        var name = output?.Name ?? "kein Ausgabegerät für Kommunikation";
+        // For the check, therefore in the admin language.
+        var name = output?.Name ?? Tr.Admin("kein Ausgabegerät für Kommunikation", "no output device for communication");
         return mode switch
         {
-            ListenMode.Speaker => new(false, null, "Lautsprecher (eingestellt) – Tür beim Sprechen stumm"),
-            ListenMode.Headset => new(true, output?.Id, $"Headset (eingestellt, {name}) – Tür beim Sprechen hörbar"),
-            _ when output is { InEar: true } => new(true, output.Id, $"Headset (erkannt, {name}) – Tür beim Sprechen hörbar"),
-            _ => new(false, null, $"Lautsprecher (erkannt, {name}) – Tür beim Sprechen stumm"),
+            ListenMode.Speaker => new(false, null, Tr.Admin("Lautsprecher (eingestellt) – Tür beim Sprechen stumm",
+                "speakers (set) – door muted while talking")),
+            ListenMode.Headset => new(true, output?.Id, Tr.Admin($"Headset (eingestellt, {name}) – Tür beim Sprechen hörbar",
+                $"headset (set, {name}) – door audible while talking")),
+            _ when output is { InEar: true } => new(true, output.Id, Tr.Admin($"Headset (erkannt, {name}) – Tür beim Sprechen hörbar",
+                $"headset (detected, {name}) – door audible while talking")),
+            _ => new(false, null, Tr.Admin($"Lautsprecher (erkannt, {name}) – Tür beim Sprechen stumm",
+                $"speakers (detected, {name}) – door muted while talking")),
         };
     }
 

@@ -65,7 +65,7 @@ internal sealed class RtspReader(Stream stream)
         while ((headEnd = IndexOfHeadEnd()) < 0)
         {
             if (_end - _start >= MaxHeadBytes)
-                throw new InvalidDataException("RTSP-Kopf zu lang");
+                throw new InvalidDataException("RTSP header too long");
             if (!await FillAsync(ct).ConfigureAwait(false))
                 return null;
         }
@@ -77,7 +77,7 @@ internal sealed class RtspReader(Stream stream)
         var bodyLength = 0;
         if (lengthHeader is not null &&
             (!int.TryParse(lengthHeader, NumberStyles.None, CultureInfo.InvariantCulture, out bodyLength) || bodyLength > MaxBodyBytes))
-            throw new InvalidDataException("Ungültige Content-Length");
+            throw new InvalidDataException("Invalid Content-Length");
         if (!await EnsureAsync(bodyLength, ct).ConfigureAwait(false))
             return null;
         return message with { Body = Take(bodyLength) };
@@ -115,7 +115,7 @@ internal sealed class RtspReader(Stream stream)
             _start = 0;
         }
         if (_end == _buffer.Length)
-            throw new InvalidDataException("RTSP-Puffer voll");
+            throw new InvalidDataException("RTSP buffer full");
         var read = await stream.ReadAsync(_buffer.AsMemory(_end), ct).ConfigureAwait(false);
         if (read == 0)
             return false;

@@ -4,7 +4,9 @@
 > when someone rings, a window with ringtone, live video, talkback and a large "Open" button pops up on selected PCs.
 > The other PCs show who is already talking, and the window closes everywhere once someone answers on the mobile app.
 > It uses only the official UniFi Access Developer API and UniFi Protect Integration API. Not affiliated with
-> Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry and G6 Entry door stations and UA Hub Door. Documentation is in German. MIT licensed, provided "as is".
+> Ubiquiti; UniFi is a trademark of Ubiquiti Inc. Tested with G6 Pro Entry and G6 Entry door stations and UA Hub Door.
+> User interface in German, English or Polish; admin guides in German and English ([docs/admin/en](docs/admin/en)),
+> design notes in German. MIT licensed, provided "as is".
 > Note: UniFi Access user permissions do not apply, the official API only offers site-wide tokens, so access control
 > is the choice of PCs it runs on (see SECURITY.md).
 > Releases are currently not code-signed, so Windows SmartScreen may warn; distribution via Intune is unaffected.
@@ -26,7 +28,7 @@ Unabhängiger Code-Review durch bee it im Oktober 2026 (Version 0.6.1), Gesamtur
 sind in 0.9.0 behoben.
 
 ## Wo was steht
-**Für Admins** (`docs/admin/`, kommt auch als `Doku\` ins Paket):
+**Für Admins** (`docs/admin/`, kommt auch als `Doku\` ins Paket; englisch in `docs/admin/en/` bzw. `Doku\en\`):
 
 | Datei | Inhalt |
 |---|---|

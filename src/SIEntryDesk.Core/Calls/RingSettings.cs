@@ -1,3 +1,5 @@
+using SIEntryDesk.Core.Texts;
+
 namespace SIEntryDesk.Core.Calls;
 
 /// <summary>How this user lets a door ring (setting per door in the app).</summary>
@@ -22,9 +24,9 @@ public static class RingSettings
 
     public static string Label(RingMode mode) => mode switch
     {
-        RingMode.Delayed => $"nach {Delay.TotalSeconds:0} s",
-        RingMode.Off => "aus",
-        _ => "sofort",
+        RingMode.Delayed => Tr.User($"nach {Delay.TotalSeconds:0} s", $"after {Delay.TotalSeconds:0} s", $"po {Delay.TotalSeconds:0} s"),
+        RingMode.Off => Tr.User("aus", "off", "wył."),
+        _ => Tr.User("sofort", "immediately", "od razu"),
     };
 
     /// <summary>Stored value → setting. Anything unknown counts as "immediately", so that a door never goes silent

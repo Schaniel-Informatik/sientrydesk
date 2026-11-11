@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Talk;
 
@@ -17,24 +18,25 @@ public sealed record TalkbackTarget(IPAddress Address, int Port, int SamplingRat
     {
         if (!string.Equals(codec, "opus", StringComparison.OrdinalIgnoreCase))
         {
-            problem = $"Türstation verlangt {UntrustedText.Clean(codec, 20)}, unterstützt ist nur Opus";
+            problem = Tr.Admin($"Türstation verlangt {UntrustedText.Clean(codec, 20)}, unterstützt ist nur Opus",
+                $"Door station requires {UntrustedText.Clean(codec, 20)}, only Opus is supported");
             return null;
         }
         if (samplingRate is not (8000 or 12000 or 16000 or 24000 or 48000))
         {
-            problem = $"Abtastrate {samplingRate} passt nicht zu Opus";
+            problem = Tr.Admin($"Abtastrate {samplingRate} passt nicht zu Opus", $"Sampling rate {samplingRate} does not fit Opus");
             return null;
         }
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != "rtp" ||
             uri.Port is < 1 or > 65535 || uri.AbsolutePath is not ("" or "/") || uri.Query.Length > 0 ||
             !IPAddress.TryParse(uri.Host.Trim('[', ']'), out var address))
         {
-            problem = "Ziel ist keine Adresse der Form rtp://IP:Port";
+            problem = Tr.Admin("Ziel ist keine Adresse der Form rtp://IP:Port", "Target is not an address of the form rtp://IP:Port");
             return null;
         }
         if (!IsLocal(address))
         {
-            problem = "Ziel liegt nicht im lokalen Netz";
+            problem = Tr.Admin("Ziel liegt nicht im lokalen Netz", "Target is not in the local network");
             return null;
         }
         problem = string.Empty;

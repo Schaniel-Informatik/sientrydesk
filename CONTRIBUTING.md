@@ -29,11 +29,15 @@ Against a real console (VPN or local network), credentials only from environment
 - `src/SIEntryDesk.App`: tray app (WPF), never sees credentials
 - `deploy/`: files shipped in the packages; `docs/admin`: admin guides; `docs/entwicklung`: design notes (German)
 
-Code comments are in English. The user interface, log messages and the admin and design docs are in German.
+Code comments are in English, the design notes in `docs/entwicklung` in German. The user interface exists in German,
+English and Polish, check window, log and setup wizard in German and English, script messages in English, admin guides
+in `docs/admin` (German) and `docs/admin/en` (English). Every text of the programs is written where it is used, as
+`Tr.User(de, en, pl)` or `Tr.Admin(de, en)` with string literals only. `python3 tools/texts.py texts.xlsx` collects
+them into a table for proofreading.
 
 ## Ideas where help is welcome
 - Testing with other door stations (e.g. G4 Doorbell, G6 Entry variants) and other UniFi versions
-- English user interface (the app is German today)
+- Proofreading of the English and Polish texts, further languages
 - Microphone selection in the app
 - Reports from deployments with Intune or other tools
 

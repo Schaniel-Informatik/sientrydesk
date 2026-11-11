@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 using SIEntryDesk.Core.Calls;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.App;
 
@@ -58,40 +59,51 @@ public partial class RingWindow : Window
         DateTimeOffset? until = null)
     {
         InitializeComponent();
+        Headline.Text = Tr.User("Es klingelt", "Doorbell ringing", "Ktoś dzwoni");
+        VideoText.Text = Tr.User("Kein Livebild", "No live view", "Brak podglądu na żywo");
+        SoundButton.Content = SoundOn;
+        OpenButton.Content = Tr.User("Öffnen", "Open", "Otwórz");
+        HideButton.Content = Tr.User("Ausblenden", "Hide", "Ukryj");
+        ShowTalkButtonIdle();
         CallId = callId;
         Mode = mode;
         _unlockAllowed = unlockAllowed && mode == WindowMode.Ring;
         _closeTimer.Tick += (_, _) => Close();
 
-        DoorText.Text = string.IsNullOrWhiteSpace(doorName) ? "Tür" : doorName;
+        DoorText.Text = string.IsNullOrWhiteSpace(doorName) ? Tr.User("Tür", "Door", "Drzwi") : doorName;
         Title = $"SI EntryDesk – {DoorText.Text}";
         OpenButton.IsEnabled = _unlockAllowed;
         switch (mode)
         {
             case WindowMode.Test:
-                TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss} · Testklingeln";
-                SetStatus("Test: nur auf diesem PC, Öffnen nicht möglich", Neutral);
-                VideoText.Text = "Beim Testklingeln kein Livebild";
+                TimeText.Text = Tr.User($"{startedAt.ToLocalTime():HH:mm:ss} · Testklingeln", $"{startedAt.ToLocalTime():HH:mm:ss} · test ring",
+                    $"{startedAt.ToLocalTime():HH:mm:ss} · dzwonek testowy");
+                SetStatus(Tr.User("Test: nur auf diesem PC, Öffnen nicht möglich", "Test: this PC only, opening not possible",
+                    "Test: tylko ten komputer, otwarcie niemożliwe"), Neutral);
+                VideoText.Text = Tr.User("Beim Testklingeln kein Livebild", "No live view for a test ring", "Brak podglądu przy dzwonku testowym");
                 CloseAfter(MaxLifetime);
                 break;
             case WindowMode.LiveView:
                 IsRinging = false;
                 ShowActivated = true;
-                Headline.Text = "Livebild";
+                Headline.Text = LiveView;
                 Headline.Foreground = Neutral;
-                TimeText.Text = $"Ohne Klingeln · schliesst sich um {(until ?? startedAt).ToLocalTime():HH:mm:ss}";
-                Title = $"SI EntryDesk – Livebild {DoorText.Text}";
+                var closes = (until ?? startedAt).ToLocalTime();
+                TimeText.Text = Tr.User($"Ohne Klingeln · schliesst sich um {closes:HH:mm:ss}", $"Without ringing · closes at {closes:HH:mm:ss}",
+                    $"Bez dzwonka · zamknie się o {closes:HH:mm:ss}");
+                Title = $"SI EntryDesk – {LiveView} {DoorText.Text}";
                 OpenButton.Visibility = Visibility.Collapsed;
                 System.Windows.Controls.Grid.SetColumn(HideButton, 0);
                 System.Windows.Controls.Grid.SetColumnSpan(HideButton, 3);
-                HideButton.Content = "Schliessen";
+                HideButton.Content = Tr.User("Schliessen", "Close", "Zamknij");
                 var remaining = (until ?? startedAt) - DateTimeOffset.Now;
                 CloseAfter(remaining > TimeSpan.Zero ? remaining : TimeSpan.FromSeconds(1));
                 break;
             default:
                 TimeText.Text = $"{startedAt.ToLocalTime():HH:mm:ss}";
                 if (!unlockAllowed)
-                    SetStatus("Access erlaubt hier kein Öffnen", Neutral);
+                    SetStatus(Tr.User("Access erlaubt hier kein Öffnen", "Access does not allow opening here",
+                        "Access nie pozwala tutaj otworzyć"), Neutral);
                 CloseAfter(MaxLifetime);
                 break;
         }
@@ -143,10 +155,12 @@ public partial class RingWindow : Window
         StopRinging();
         _muted = false;
         if (SoundButton.IsEnabled)
-            SoundButton.Content = "Ton aus";
+            SoundButton.Content = SoundOff;
         if (_player is not null)
             _player.Mute = PlayerMuted;
-        TalkButton.Content = _listenWhileTalking ? "Sie sprechen – Tür bleibt hörbar" : "Sie sprechen – loslassen zum Hören";
+        TalkButton.Content = _listenWhileTalking
+            ? Tr.User("Sie sprechen – Tür bleibt hörbar", "You are talking – door stays audible", "Mówisz – drzwi pozostają słyszalne")
+            : Tr.User("Sie sprechen – loslassen zum Hören", "You are talking – release to listen", "Mówisz – puść, aby słuchać");
         TalkButton.Background = TalkActive;
     }
 
@@ -163,7 +177,7 @@ public partial class RingWindow : Window
 
     private void ShowTalkButtonIdle()
     {
-        TalkButton.Content = "Sprechen – gedrückt halten";
+        TalkButton.Content = Tr.User("Sprechen – gedrückt halten", "Talk – press and hold", "Mów – naciśnij i przytrzymaj");
         TalkButton.Background = TalkIdle;
     }
 
@@ -191,12 +205,15 @@ public partial class RingWindow : Window
             ReleaseTalk();
             TalkButton.IsEnabled = false;
         }
-        Headline.Text = "Ruf beendet";
+        Headline.Text = CallEndReasons.CallOver;
         Headline.Foreground = Neutral;
         // After unlocking via the API, Access reports the end as "visitor cancelled" (108). The unlock takes precedence
         // in the display.
         if (!_opened)
-            SetStatus(_reopenable ? $"{CallEndReasons.ToGerman(reason)}, Öffnen noch kurz möglich" : CallEndReasons.ToGerman(reason),
+            SetStatus(_reopenable
+                    ? Tr.User($"{CallEndReasons.Text(reason)}, Öffnen noch kurz möglich", $"{CallEndReasons.Text(reason)}, opening still possible briefly",
+                        $"{CallEndReasons.Text(reason)}, otwarcie jeszcze przez chwilę możliwe")
+                    : CallEndReasons.Text(reason),
                 reason == CallEndReason.Opened ? Good : Neutral);
         CloseAfter(LingerAfterEnd);
     }
@@ -208,7 +225,7 @@ public partial class RingWindow : Window
         if (Mode != WindowMode.Ring)
             return;
         StopRinging();
-        AnsweredText.Text = $"● {user} spricht (PC {pc})";
+        AnsweredText.Text = Tr.User($"● {user} spricht (PC {pc})", $"● {user} is talking (PC {pc})", $"● {user} rozmawia (komputer {pc})");
         AnsweredText.Visibility = Visibility.Visible;
     }
 
@@ -218,7 +235,9 @@ public partial class RingWindow : Window
         _reopenable = false;
         StopRinging();
         OpenButton.IsEnabled = false;
-        SetStatus(string.IsNullOrWhiteSpace(openedBy) ? "Tür geöffnet" : $"Tür geöffnet von {openedBy}", Good);
+        SetStatus(string.IsNullOrWhiteSpace(openedBy)
+            ? CallEndReasons.DoorOpened
+            : Tr.User($"Tür geöffnet von {openedBy}", $"Door opened by {openedBy}", $"Drzwi otworzył(a): {openedBy}"), Good);
         CloseAfter(LingerAfterEnd);
     }
 
@@ -262,21 +281,21 @@ public partial class RingWindow : Window
                 _player.SetOutputDevice(_outputDevice);
             // While talking with speakers, the door audio stays muted, otherwise there is an echo.
             _player.Mute = PlayerMuted;
-            VideoText.Text = "Livebild";
+            VideoText.Text = LiveView;
             SoundButton.IsEnabled = true;
-            SoundButton.Content = _muted ? "Ton an" : "Ton aus";
+            SoundButton.Content = _muted ? SoundOn : SoundOff;
             if (!_muted)
                 StopRinging();
         });
-        _player.EncounteredError += (_, _) => Dispatcher.InvokeAsync(() => ShowVideoProblem("Livebild unterbrochen"));
+        _player.EncounteredError += (_, _) => Dispatcher.InvokeAsync(() => ShowVideoProblem(Tr.User("Livebild unterbrochen", "Live view interrupted", "Podgląd na żywo przerwany")));
         Video.MediaPlayer = _player;
-        VideoText.Text = "Livebild wird geladen …";
+        VideoText.Text = Tr.User("Livebild wird geladen …", "Loading live view …", "Ładowanie podglądu na żywo …");
         _player.Play();
     }
 
     public void ShowVideoProblem(string reason)
     {
-        VideoText.Text = $"Kein Livebild: {reason}";
+        VideoText.Text = Tr.User($"Kein Livebild: {reason}", $"No live view: {reason}", $"Brak podglądu na żywo: {reason}");
         SoundButton.IsEnabled = false;
     }
 
@@ -306,7 +325,7 @@ public partial class RingWindow : Window
             return;
         _muted = !_muted;
         _player.Mute = PlayerMuted;
-        SoundButton.Content = _muted ? "Ton an" : "Ton aus";
+        SoundButton.Content = _muted ? SoundOn : SoundOff;
         // Whoever wants to hear the door no longer needs the ringtone.
         if (!_muted)
             StopRinging();
@@ -316,7 +335,7 @@ public partial class RingWindow : Window
     {
         OpenButton.IsEnabled = false;
         _unlockPending = true;
-        SetStatus("Öffne …", Neutral);
+        SetStatus(Tr.User("Öffne …", "Opening …", "Otwieranie …"), Neutral);
         UnlockRequested?.Invoke();
     }
 
@@ -354,6 +373,12 @@ public partial class RingWindow : Window
         ShowTalkButtonIdle();
         TalkReleased?.Invoke();
     }
+
+    private static string LiveView => Tr.User("Livebild", "Live view", "Podgląd na żywo");
+
+    private static string SoundOn => Tr.User("Ton an", "Sound on", "Dźwięk wł.");
+
+    private static string SoundOff => Tr.User("Ton aus", "Sound off", "Dźwięk wył.");
 
     private void SetStatus(string text, Brush color)
     {

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using SIEntryDesk.Core.Security;
+using SIEntryDesk.Core.Texts;
 
 namespace SIEntryDesk.Core.Access;
 
@@ -42,7 +43,7 @@ public sealed class AccessApiClient : IDisposable
     public async Task<AccessResult> UnlockAsync(string doorId, string actorId, string actorName, CancellationToken ct)
     {
         if (!UntrustedText.IsSafeId(doorId))
-            throw new ArgumentException("Ungültige Tür-ID.", nameof(doorId));
+            throw new ArgumentException("Invalid door ID.", nameof(doorId));
         var body = new Dictionary<string, string> { ["actor_id"] = actorId, ["actor_name"] = actorName };
         using var response = await _http.PutAsJsonAsync($"/api/v1/developer/doors/{doorId}/unlock", body, ct)
             .ConfigureAwait(false);
@@ -101,7 +102,7 @@ public sealed class AccessApiClient : IDisposable
         }
         catch (JsonException)
         {
-            message = "Antwort nicht lesbar";
+            message = Tr.Admin("Antwort nicht lesbar", "Answer not readable");
         }
         return new AccessResult((int)response.StatusCode, code, message);
     }

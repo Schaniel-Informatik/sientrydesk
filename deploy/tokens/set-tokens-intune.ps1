@@ -1,31 +1,31 @@
 ﻿<#
 .SYNOPSIS
-    Intune: setzt die Zugänge von SI EntryDesk. Eigene Win32-App „SI EntryDesk Zugänge“, abhängig von „SI EntryDesk“.
+    Intune: sets the credentials of SI EntryDesk. Separate Win32 app "SI EntryDesk Tokens", depending on "SI EntryDesk".
 
 .DESCRIPTION
-    Liest tokens.txt aus demselben Ordner (UTF-8, Vorlage tokens.example.txt). Leere Zeilen und Zeilen mit # zählen
-    nicht, sonst gilt pro Zeile name=wert:
-      access=   Access-Token (Gerät = Anzeigen, Standorte = Bearbeiten), Pflicht
-      protect=  Protect-API-Schlüssel, leer oder weggelassen = kein Livebild
-    Speichert sie mit DPAPI über den Dienst, startet ihn neu und hinterlegt die Kennung unter
-    HKLM\SOFTWARE\SIEntryDesk\TokenLabel für die Erkennungsregel in Intune.
+    Reads tokens.txt from the same folder (UTF-8, template tokens.example.txt). Empty lines and lines with # do not
+    count, otherwise each line is name=value:
+      access=   Access token (Device = View, Location = Edit), required
+      protect=  Protect API key, empty or left out = no live view
+    Stores them with DPAPI via the service, restarts it and records the label under
+    HKLM\SOFTWARE\SIEntryDesk\TokenLabel for the detection rule in Intune.
 
-    tokens.txt nur für das Erstellen des Pakets anlegen und danach löschen. Intune speichert den Inhalt des Pakets
-    verschlüsselt, auf dem Gerät liegt er nur während der Installation im Zwischenspeicher der Intune-Erweiterung.
+    Create tokens.txt only for building the package and delete it afterwards. Intune stores the content of the package
+    encrypted, on the device it exists only during the installation in the cache of the Intune extension.
 
 .EXAMPLE
-    Installationsbefehl:   powershell.exe -ExecutionPolicy Bypass -NoProfile -File .\set-tokens-intune.ps1 -Label 2026-09
-    Deinstallationsbefehl: powershell.exe -ExecutionPolicy Bypass -NoProfile -File .\set-tokens-intune.ps1 -Remove
+    Install command:   powershell.exe -ExecutionPolicy Bypass -NoProfile -File .\set-tokens-intune.ps1 -Label 2026-09
+    Uninstall command: powershell.exe -ExecutionPolicy Bypass -NoProfile -File .\set-tokens-intune.ps1 -Remove
 #>
 param(
     [string] $Label,
     [switch] $Remove,
-    # Nur tokens.txt prüfen, nichts speichern (für prepare-intune.ps1).
+    # Only check tokens.txt, store nothing (for prepare-intune.ps1).
     [switch] $Check
 )
 
-# Intune startet Installationsbefehle als 32-Bit-Prozess. Die 32-Bit-PowerShell sieht C:\Program Files (x86) und
-# HKLM\SOFTWARE\WOW6432Node statt der richtigen Orte, deshalb hier in die 64-Bit-PowerShell wechseln.
+# Intune starts install commands as a 32-bit process. The 32-bit PowerShell sees C:\Program Files (x86) and
+# HKLM\SOFTWARE\WOW6432Node instead of the right locations, so switch to the 64-bit PowerShell here.
 if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess) {
     $arguments = @('-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', $PSCommandPath)
     foreach ($bound in $PSBoundParameters.GetEnumerator()) {
@@ -38,9 +38,9 @@ if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProces
 
 $ErrorActionPreference = 'Stop'
 
-# Fehlermeldungen nennen nur Zeilennummer und Namen, nie den Inhalt, damit kein Token im Intune-Protokoll landet.
+# Error messages name only line number and name, never the content, so that no token ends up in the Intune log.
 function Read-TokenFile([string] $Path) {
-    if (-not (Test-Path $Path)) { throw 'tokens.txt fehlt im Paket.' }
+    if (-not (Test-Path $Path)) { throw 'tokens.txt is missing in the package.' }
     $values = @{}
     $n = 0
     foreach ($raw in @(Get-Content -Encoding UTF8 $Path)) {
@@ -48,22 +48,22 @@ function Read-TokenFile([string] $Path) {
         $line = $raw.Trim()
         if (-not $line -or $line.StartsWith('#')) { continue }
         $eq = $line.IndexOf('=')
-        if ($eq -lt 1) { throw "tokens.txt, Zeile ${n}: erwartet name=wert, z. B. access=... (Vorlage tokens.example.txt)." }
+        if ($eq -lt 1) { throw "tokens.txt, line ${n}: expected name=value, e.g. access=... (template tokens.example.txt)." }
         $key = $line.Substring(0, $eq).Trim().ToLowerInvariant()
         $value = $line.Substring($eq + 1).Trim()
-        if ($key -eq 'unlock') { throw "tokens.txt, Zeile ${n}: unlock= wird nicht mehr unterstützt, ein Access-Token mit Gerät = Anzeigen und Standorte = Bearbeiten genügt." }
-        if (@('access', 'protect') -notcontains $key) { throw "tokens.txt, Zeile ${n}: unbekannter Name, erlaubt sind access und protect." }
-        if ($values.ContainsKey($key)) { throw "tokens.txt, Zeile ${n}: $key kommt doppelt vor." }
-        if ($value -match '[\s<>"'']') { throw "tokens.txt, Zeile ${n}: Wert von $key enthält Leerzeichen, Anführungszeichen oder <>. Nur den Wert selbst einsetzen." }
+        if ($key -eq 'unlock') { throw "tokens.txt, line ${n}: unlock= is no longer supported, one Access token with Device = View and Location = Edit is enough." }
+        if (@('access', 'protect') -notcontains $key) { throw "tokens.txt, line ${n}: unknown name, allowed are access and protect." }
+        if ($values.ContainsKey($key)) { throw "tokens.txt, line ${n}: $key appears twice." }
+        if ($value -match '[\s<>"'']') { throw "tokens.txt, line ${n}: value of $key contains spaces, quotes or <>. Insert only the value itself." }
         $values[$key] = $value
     }
-    if (-not $values['access']) { throw 'tokens.txt: access= fehlt oder ist leer.' }
+    if (-not $values['access']) { throw 'tokens.txt: access= is missing or empty.' }
     return $values
 }
 
 if ($Check) {
     $checked = Read-TokenFile (Join-Path $PSScriptRoot 'tokens.txt')
-    Write-Host "    tokens.txt in Ordnung: $(@($checked.Keys | Where-Object { $checked[$_] } | Sort-Object) -join ', ')"
+    Write-Host "    tokens.txt is fine: $(@($checked.Keys | Where-Object { $checked[$_] } | Sort-Object) -join ', ')"
     $checked.Clear()
     exit 0
 }
@@ -79,18 +79,18 @@ if ($Remove) {
     exit 0
 }
 
-if (-not $Label -or $Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Kennung fehlt oder ist ungültig, z. B. -Label 2026-09' }
-if (-not (Test-Path $serviceExe)) { throw 'SI EntryDesk ist nicht installiert (Abhängigkeit in Intune prüfen).' }
+if (-not $Label -or $Label -notmatch '^[A-Za-z0-9._-]{1,32}$') { throw 'Label missing or invalid, e.g. -Label 2026-09' }
+if (-not (Test-Path $serviceExe)) { throw 'SI EntryDesk is not installed (check the dependency in Intune).' }
 
 $tokens = Read-TokenFile (Join-Path $PSScriptRoot 'tokens.txt')
-# Zeile 2 bleibt leer (früher eigener Token zum Öffnen).
+# Line 2 stays empty (formerly a separate token for unlocking).
 "$($tokens['access'])`n`n$($tokens['protect'])" | & $serviceExe set-secrets | Out-Null
 $code = $LASTEXITCODE
 $tokens.Clear()
 Remove-Variable tokens
-if ($code -ne 0) { throw "Zugänge konnten nicht gespeichert werden (Code $code)" }
+if ($code -ne 0) { throw "Credentials could not be stored (code $code)" }
 
 New-Item -Force -Path $regPath | Out-Null
 Set-ItemProperty -Path $regPath -Name 'TokenLabel' -Value $Label
 if (Get-Service SIEntryDesk -ErrorAction SilentlyContinue) { Restart-Service SIEntryDesk }
-Write-Host "Zugänge gesetzt, Kennung $Label"
+Write-Host "Credentials set, label $Label"
