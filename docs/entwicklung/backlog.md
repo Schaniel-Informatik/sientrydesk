@@ -30,6 +30,16 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   „Location“), **Device**, Werte None / View / Edit. Auch die überzähligen Rechte in Prüfen heissen jetzt wie im Dialog:
   „People & Groups“, „Access Policy“, „System Log“.
 - Paket der Zugänge 1.2 (Text in `set-tokens-intune.ps1`). In Intune weiterhin nichts neu hochladen.
+- **Registrierung: Pakete löschen sich nicht mehr gegenseitig die Werte** (gefunden 12.11. beim Verteilen von 0.10.0
+  auf einer Test-VM). `install.ps1` und `set-tokens-intune.ps1` legten `HKLM\SOFTWARE\SIEntryDesk` mit
+  `New-Item -Force` an, das den bestehenden Schlüssel leer neu erstellt: Das Programm-Update löschte `TokenLabel`
+  (Erkennungsregel der Zugänge, Intune installiert sie bei der nächsten Neubewertung auf jedem aktualisierten PC
+  nochmals), die Zugänge löschten `Version` (nur Anzeige, die Erkennung des Programms prüft sie nicht). Jetzt: Schlüssel
+  nur anlegen, wenn er fehlt. `uninstall.ps1` löscht nur noch `Version`, `TokenLabel` nur ohne `-KeepData` (dann sind
+  auch die Zugänge weg), den Schlüssel nur, wenn er leer ist. `set-tokens-intune.ps1 -Remove` löschte schon nur
+  `TokenLabel`. Paket der Zugänge 1.3. Betroffene PCs: nichts tun, die App mit den Zugängen ist nach ihrer erneuten
+  Installation wieder erkannt; ab 0.10.1 passiert es nicht mehr. Das Paket der Zugänge 1.3 muss nicht in Intune, der
+  Fehler auf dieser Seite betrifft nur die Anzeige von `Version`.
 - Korrekturen aus dem Gegenlesen (Polnisch, Englisch) kommen noch dazu.
 
 ## 0.10.0 (gebaut und gepusht 12.11., Test offen, kein Tag)

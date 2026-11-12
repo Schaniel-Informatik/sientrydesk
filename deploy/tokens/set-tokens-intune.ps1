@@ -90,7 +90,8 @@ $tokens.Clear()
 Remove-Variable tokens
 if ($code -ne 0) { throw "Credentials could not be stored (code $code)" }
 
-New-Item -Force -Path $regPath | Out-Null
+# Create the key only if it is missing: New-Item -Force would recreate it empty and delete the Version of the program.
+if (-not (Test-Path $regPath)) { New-Item -Path $regPath | Out-Null }
 Set-ItemProperty -Path $regPath -Name 'TokenLabel' -Value $Label
 if (Get-Service SIEntryDesk -ErrorAction SilentlyContinue) { Restart-Service SIEntryDesk }
 Write-Host "Credentials set, label $Label"

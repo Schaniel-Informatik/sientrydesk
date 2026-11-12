@@ -120,6 +120,10 @@ as under [Retry a failed app immediately](#retry-a-failed-app-immediately), only
 - Installed version on the device: `(Get-Item 'C:\Program Files\SIEntryDesk\App\SIEntryDesk.exe').VersionInfo.FileVersion`.
 - On the device: `HKLM\SOFTWARE\SIEntryDesk` with `Version` and `TokenLabel`, icon green, log under
   `C:\ProgramData\SIEntryDesk\logs`.
+- `TokenLabel` missing although the credentials were installed: up to 0.10.0 the program update deleted `TokenLabel`
+  (and the credentials package up to 1.2 deleted `Version` the other way round). The credentials themselves stay, the
+  service stays connected. At the next re-evaluation Intune simply installs the app with the credentials again, after
+  that it is detected again. From 0.10.1 on the values of the other package are kept, nothing to do.
 - Installation via Intune: `C:\Windows\Temp\SIEntryDesk-install.log`. Intune itself:
   `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\AppWorkload.log`.
 - "Not detected after successful installation" (0x87D1041C): the script ran through, the detection does not match.

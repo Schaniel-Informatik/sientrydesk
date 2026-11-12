@@ -202,8 +202,11 @@ Start-Service $serviceName
 Start-Sleep -Seconds 3
 Write-Host "    Service: $((Get-Service $serviceName).Status)"
 $version = (Get-Item $appExe).VersionInfo.ProductVersion.Split('+')[0]
-New-Item -Force -Path 'HKLM:\SOFTWARE\SIEntryDesk' | Out-Null
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\SIEntryDesk' -Name 'Version' -Value $version
+# Create the key only if it is missing: New-Item -Force would recreate it empty and delete TokenLabel, the detection
+# value of the Intune app with the credentials (until 0.10.0).
+$regPath = 'HKLM:\SOFTWARE\SIEntryDesk'
+if (-not (Test-Path $regPath)) { New-Item -Path $regPath | Out-Null }
+Set-ItemProperty -Path $regPath -Name 'Version' -Value $version
 
 if (([Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
     # Intune installs as SYSTEM. The tray app was stopped above and must run again in the logged-on sessions,

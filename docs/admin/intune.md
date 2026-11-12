@@ -124,6 +124,10 @@ Problem. Ein Testgerät sofort aktualisieren: Sperre zurücksetzen wie unter
   `(Get-Item 'C:\Program Files\SIEntryDesk\App\SIEntryDesk.exe').VersionInfo.FileVersion`.
 - Auf dem Gerät: `HKLM\SOFTWARE\SIEntryDesk` mit `Version` und `TokenLabel`, Symbol grün, Protokoll unter
   `C:\ProgramData\SIEntryDesk\logs`.
+- Fehlt `TokenLabel`, obwohl die Zugänge installiert waren: Bis 0.10.0 hat das Update des Programms `TokenLabel`
+  gelöscht (und das Paket der Zugänge bis 1.2 umgekehrt `Version`). Die Zugänge selbst bleiben, der Dienst bleibt
+  verbunden. Intune installiert die App mit den Zugängen bei der nächsten Neubewertung einfach nochmals, danach ist sie
+  wieder erkannt. Ab 0.10.1 bleiben die Werte des anderen Pakets erhalten, es ist nichts zu tun.
 - Installation über Intune: `C:\Windows\Temp\SIEntryDesk-install.log`. Intune selbst:
   `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\AppWorkload.log`.
 - „Nach erfolgreicher Installation nicht erkannt“ (0x87D1041C): Das Skript lief durch, die Erkennung passt nicht.
