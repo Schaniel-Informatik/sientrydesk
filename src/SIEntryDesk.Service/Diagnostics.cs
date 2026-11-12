@@ -225,14 +225,14 @@ internal sealed class Diagnostics(
             if (!rights.Events && !rights.Doors && !rights.Unlock)
             {
                 items.Add(Item("Access-Token", CheckLevel.Fail, Tr.Admin("abgelehnt oder ohne Rechte. Neuen Token anlegen (Gerät = Anzeigen, Standorte = Bearbeiten)",
-                    "rejected or without permissions. Create a new token (Device = View, Location = Edit)")));
+                    "rejected or without permissions. Create a new token (Device = View, Locations = Edit)")));
                 return;
             }
             var missing = new[]
                 {
                     (rights.Events, Tr.Admin("Gerät = Anzeigen", "Device = View")),
-                    (rights.Doors, Tr.Admin("Standorte = Anzeigen", "Location = View")),
-                    (rights.Unlock, Tr.Admin("Standorte = Bearbeiten", "Location = Edit")),
+                    (rights.Doors, Tr.Admin("Standorte = Anzeigen", "Locations = View")),
+                    (rights.Unlock, Tr.Admin("Standorte = Bearbeiten", "Locations = Edit")),
                 }
                 .Where(r => !r.Item1).Select(r => r.Item2).ToList();
             items.Add(missing.Count == 0

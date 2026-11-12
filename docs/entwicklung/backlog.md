@@ -25,7 +25,14 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
   Version im Erkennungsskript passt. Nur Verteilskripte, keine neue Programmversion nötig.
 - **Offen, Test durch Marcel:** In einem Teams-Call geht der Call beim Klingeln sofort auf „Halten“. Die App nutzt dafür nichts Bewusstes (Klingelton und Ton der Tür über das Standardgerät, nur das Mikrofon über das Kommunikationsgerät). Eingrenzen: Testklingeln im Call (nur Fenster und Klingelton), dasselbe mit Lautsprechern statt Headset, dann echtes Klingeln (Livebild mit Ton der Tür); Headset-Modell notieren. Danach gezielt beheben. Keine Auswahl „Klingel oder Call“: Teams lässt sich über offizielle Wege nicht halten oder fortsetzen, und das Klingelfenster lässt die Wahl schon.
 
-## 0.10.0 (umgesetzt 11.11., noch nicht gebaut)
+## 0.10.1 (umgesetzt 12.11., noch nicht gebaut)
+- Englische Namen der Access-Rechte wie im Token-Dialog (Screenshot von Marcel 12.11.): **Locations** (nicht
+  „Location“), **Device**, Werte None / View / Edit. Auch die überzähligen Rechte in Prüfen heissen jetzt wie im Dialog:
+  „People & Groups“, „Access Policy“, „System Log“.
+- Paket der Zugänge 1.2 (Text in `set-tokens-intune.ps1`). In Intune weiterhin nichts neu hochladen.
+- Korrekturen aus dem Gegenlesen (Polnisch, Englisch) kommen noch dazu.
+
+## 0.10.0 (gebaut und gepusht 12.11., Test offen, kein Tag)
 - **Sprachen** (Anfrage eines Interessenten mit polnischen Benutzern, entschieden 11.11.): `Language` in der
   sientrydesk.json (`de` Standard, `en`, `pl`). Benutzer: Tray-Menü, Klingelfenster, Meldungen in der gewählten
   Sprache. Admin: Prüfen, Protokoll Deutsch bei `de`, sonst Englisch; Einrichtungsassistent und `--help` nach der
@@ -41,11 +48,12 @@ Klingelton, „Ton der Tür automatisch einschalten“ pro Benutzer, Konfigurati
 - Firewall-Regeln heissen englisch („SI EntryDesk: no inbound access“, „SI EntryDesk: coordination between PCs“),
   `install.ps1` und `uninstall.ps1` räumen die deutschen Namen weg.
 - Paket der Zugänge 1.1: Skripte und Vorlage englisch, `.intunewin` heisst `SIEntryDesk-Tokens-<Kennung>`. In Intune
-  nichts neu hochladen, die bestehende App mit den Zugängen funktioniert weiter; 1.1 erst bei der nächsten Erneuerung.
+  nichts neu hochladen, die bestehende App mit den Zugängen funktioniert weiter; das neue Paket erst bei der nächsten
+  Erneuerung.
 - `tools/texts.py`: alle Texte als Excel-Tabelle zum Gegenlesen (Blatt Benutzer de/en/pl, Blatt Admin de/en),
   `publish.sh` prüft mit `--check`. **Offen:** Polnisch von einer Person mit Polnisch als Muttersprache gegenlesen und
   auf einem Test-PC mit `"Language": "pl"` durchklicken (Testklingeln, Menü, Klingelfenster mit Livebild, Pause);
-  Englisch und die englischen Begriffe der Access-Rechte („Device“, „Location“) prüft Marcel. Korrekturen → 0.10.1.
+  Englisch prüft Marcel. Korrekturen → 0.10.1.
 - **Marcel testet auf Deutsch**, ob alles gleich ist wie mit 0.9.1 (Menü, Klingelfenster, Prüfen, Einrichtungsassistent
   mit neuem Abschnitt 6), und kurz eine Installation mit `"Language": "en"`.
 

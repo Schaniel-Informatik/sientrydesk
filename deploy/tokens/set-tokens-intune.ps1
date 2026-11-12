@@ -5,7 +5,7 @@
 .DESCRIPTION
     Reads tokens.txt from the same folder (UTF-8, template tokens.example.txt). Empty lines and lines with # do not
     count, otherwise each line is name=value:
-      access=   Access token (Device = View, Location = Edit), required
+      access=   Access token (Device = View, Locations = Edit), required
       protect=  Protect API key, empty or left out = no live view
     Stores them with DPAPI via the service, restarts it and records the label under
     HKLM\SOFTWARE\SIEntryDesk\TokenLabel for the detection rule in Intune.
@@ -51,7 +51,7 @@ function Read-TokenFile([string] $Path) {
         if ($eq -lt 1) { throw "tokens.txt, line ${n}: expected name=value, e.g. access=... (template tokens.example.txt)." }
         $key = $line.Substring(0, $eq).Trim().ToLowerInvariant()
         $value = $line.Substring($eq + 1).Trim()
-        if ($key -eq 'unlock') { throw "tokens.txt, line ${n}: unlock= is no longer supported, one Access token with Device = View and Location = Edit is enough." }
+        if ($key -eq 'unlock') { throw "tokens.txt, line ${n}: unlock= is no longer supported, one Access token with Device = View and Locations = Edit is enough." }
         if (@('access', 'protect') -notcontains $key) { throw "tokens.txt, line ${n}: unknown name, allowed are access and protect." }
         if ($values.ContainsKey($key)) { throw "tokens.txt, line ${n}: $key appears twice." }
         if ($value -match '[\s<>"'']') { throw "tokens.txt, line ${n}: value of $key contains spaces, quotes or <>. Insert only the value itself." }

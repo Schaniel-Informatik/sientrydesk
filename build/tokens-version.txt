@@ -3,3 +3,4 @@
 # then raise the version and append a line "<version> <hash>". The last line applies.
 1.0 d7c6aa327eeec3b7e2ba85ce2024a0ac9df1d380f430d8a9b5da170b2d9f875b
 1.1 8f55676144a7e76d7a86eef4c440aa364673d683d8988485037081b8a579f2db
+1.2 893d960bd7a05e3cbf5a7d9cc3688ac3a131b56ac892eecbf575a36d4f0fe1ad

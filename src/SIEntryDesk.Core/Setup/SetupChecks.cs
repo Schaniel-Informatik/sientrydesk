@@ -16,8 +16,8 @@ namespace SIEntryDesk.Core.Setup;
 public sealed record PortCheck(string Name, int Port, bool Reachable, string? Fingerprint, string? Problem);
 
 /// <summary>
-/// Result of the permission check of an Access token. Needed: view devices (events), view sites (door list), edit sites
-/// (unlock). Excess names permissions the token has but does not need.
+/// Result of the permission check of an Access token. Needed: Device = View (events), Locations = View (door list),
+/// Locations = Edit (unlock). Excess names permissions the token has but does not need.
 /// </summary>
 public sealed record AccessRights(bool Events, bool Doors, bool Unlock, IReadOnlyList<string> Excess)
 {
@@ -77,16 +77,18 @@ public static class SetupChecks
         return await Task.WhenAll(checks).ConfigureAwait(false);
     }
 
-    /// <summary>Permissions an operational token should not have, each with a purely reading call.</summary>
-    /// <summary>Names as in the token dialog of Access.</summary>
+    /// <summary>
+    /// Permissions an operational token should not have, each with a purely reading call. Names as in the token dialog
+    /// of Access.
+    /// </summary>
     private static (string Name, HttpMethod Method, string Path)[] ExcessProbes =>
     [
-        (Tr.Admin("Benutzer und Gruppe", "User and group"), HttpMethod.Get, "/api/v1/developer/users?page_num=1&page_size=1"),
+        (Tr.Admin("Benutzer und Gruppe", "People & Groups"), HttpMethod.Get, "/api/v1/developer/users?page_num=1&page_size=1"),
         (Tr.Admin("Besucher", "Visitor"), HttpMethod.Get, "/api/v1/developer/visitors?page_num=1&page_size=1"),
-        (Tr.Admin("Zugriffsrichtlinie", "Access policy"), HttpMethod.Get, "/api/v1/developer/access_policies"),
+        (Tr.Admin("Zugriffsrichtlinie", "Access Policy"), HttpMethod.Get, "/api/v1/developer/access_policies"),
         (Tr.Admin("Anmeldeinformationen", "Credentials"), HttpMethod.Get, "/api/v1/developer/credentials/nfc_cards/tokens?page_num=1&page_size=1"),
         ("Webhooks", HttpMethod.Get, "/api/v1/developer/webhooks/endpoints"),
-        (Tr.Admin("Systemprotokoll", "System log"), HttpMethod.Post, "/api/v1/developer/system/logs?page_num=1&page_size=1"),
+        (Tr.Admin("Systemprotokoll", "System Log"), HttpMethod.Post, "/api/v1/developer/system/logs?page_num=1&page_size=1"),
     ];
 
     private const string NonexistentDoor = "00000000-0000-4000-8000-000000000000";

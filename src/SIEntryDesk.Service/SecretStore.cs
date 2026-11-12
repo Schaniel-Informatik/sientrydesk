@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace SIEntryDesk.Service;
 
-/// <param name="AccessToken">Access token for events and unlocking (device = view, sites = edit).</param>
+/// <param name="AccessToken">Access token for events and unlocking (Device = View, Locations = Edit).</param>
 /// <param name="ProtectKey">Optional API key from UniFi OS → Integrations for the live view.</param>
 /// <remarks>A separate token only for unlocking was supported up to 0.5.2. Such a field in older secrets.dat is
 /// ignored, it added no security because both tokens are on the same PC.</remarks>

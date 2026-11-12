@@ -98,7 +98,7 @@ public partial class SetupWindow : Window
         AccessHint.Text = Tr.Admin(
             "Access → Einstellungen → Allgemein → API Token. Benötigt: Gerät = Anzeigen, Standorte = Bearbeiten, alles andere " +
             "Keinen. Geprüft wird rein lesend, das Recht zum Öffnen an einer Tür, die es nicht gibt.",
-            "Access → Settings → General → API Token. Needed: Device = View, Location = Edit, everything else None. The check " +
+            "Access → Settings → General → API Token. Needed: Device = View, Locations = Edit, everything else None. The check " +
             "only reads, the permission to open is checked on a door that does not exist.");
         AccessCheck.Content = check;
         TokenExpiresLabel.Text = Tr.Admin("Gültig bis (wie in Access beim Anlegen angezeigt):", "Valid until (as shown in Access when created):");
@@ -395,8 +395,8 @@ public partial class SetupWindow : Window
             var lines = new List<(Mark, string)>
             {
                 (_rights.Events ? Mark.Ok : Mark.Fail, Tr.Admin("Klingel-Ereignisse (Gerät = Anzeigen)", "Ring events (Device = View)")),
-                (_rights.Doors ? Mark.Ok : Mark.Fail, Tr.Admin("Türliste (Standorte = Anzeigen)", "Door list (Location = View)")),
-                (_rights.Unlock ? Mark.Ok : Mark.Fail, Tr.Admin("Öffnen (Standorte = Bearbeiten)", "Opening (Location = Edit)")),
+                (_rights.Doors ? Mark.Ok : Mark.Fail, Tr.Admin("Türliste (Standorte = Anzeigen)", "Door list (Locations = View)")),
+                (_rights.Unlock ? Mark.Ok : Mark.Fail, Tr.Admin("Öffnen (Standorte = Bearbeiten)", "Opening (Locations = Edit)")),
                 _rights.Excess.Count == 0
                     ? (Mark.Ok, Tr.Admin("Keine überflüssigen Rechte", "No unnecessary permissions"))
                     : (Mark.Warn, Tr.Admin($"Überflüssige Rechte: {string.Join(", ", _rights.Excess)}. Token löschen und neu anlegen, dort „Keinen“.",

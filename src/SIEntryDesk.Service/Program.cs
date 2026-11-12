@@ -65,7 +65,7 @@ if (args is ["set-secrets"])
             "Zeile 2 muss leer sein: Ein eigener Token zum Öffnen wird nicht mehr unterstützt. " +
             "Der Access-Token braucht Gerät = Anzeigen und Standorte = Bearbeiten.",
             "Line 2 must be empty: a separate token for opening is no longer supported. " +
-            "The Access token needs Device = View and Location = Edit."));
+            "The Access token needs Device = View and Locations = Edit."));
         return 2;
     }
     SecretStore.Save(new Secrets(accessToken, string.IsNullOrEmpty(protectKey) ? null : protectKey));

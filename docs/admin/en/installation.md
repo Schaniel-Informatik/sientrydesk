@@ -54,7 +54,7 @@ connection after the installation the language of Windows applies.
 ## Who may open: the PC, not the person
 **The people, roles and door permissions of UniFi Access do not apply to SI EntryDesk.** The official Access Developer
 API knows no sign-in of single users. It works with an API token, and that token applies to the whole installation:
-*Location = Edit* allows opening **every door**. This cannot be restricted.
+*Locations = Edit* allows opening **every door**. This cannot be restricted.
 
 This means:
 - **Everyone signed in at a PC with SI EntryDesk can open during a call**, whether or not they have permission for this
@@ -76,7 +76,7 @@ Once per installation, before the first installation.
 ### Create the credentials
 | # | Where | Name (suggestion) | Permissions | For |
 |---|---|---|---|---|
-| 1 | Access → Settings → General → **API Token** | `SIEntryDesk` | **Device = View**, **Location = Edit**, everything else **None** | Ring events and opening |
+| 1 | Access → Settings → General → **API Token** | `SIEntryDesk` | **Device = View**, **Locations = Edit**, everything else **None** | Ring events and opening |
 | 2 | UniFi OS → Settings → Control Plane → **Integrations** | `SIEntryDesk live view` | Permissions of the account it is created under | Live view and camera names |
 
 The names of the permissions follow the German interface ("Gerät", "Standorte"). In an English interface they may be
@@ -85,8 +85,8 @@ named slightly differently.
 - **One Access token for everything.** It receives the ring events and opens the door.
 - **Valid for 1 year.** The expiry date belongs into sientrydesk.json as `TokenExpires` and `ProtectKeyExpires`. From
   14 days before, the icon turns orange, and every app reports once a day by when to renew.
-- **The Access dialog suggests "Edit" for several areas.** Set everything except *Device* and *Location* to **None**.
-  *Location = Edit* allows opening **all doors**, keeping them open permanently and triggering lockdown or evacuation.
+- **The Access dialog suggests "Edit" for several areas.** Set everything except *Device* and *Locations* to **None**.
+  *Locations = Edit* allows opening **all doors**, keeping them open permanently and triggering lockdown or evacuation.
   Access does not allow restricting this.
 - **Protect key:** It has the Protect permissions of the account that creates it. Under an admin account it may do
   everything in Protect. Safer is a separate local user with a view-only role.

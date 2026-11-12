@@ -6,7 +6,7 @@
 .DESCRIPTION
     Asks for the two values without echo and stores them with DPAPI (machine key) in
     %ProgramData%\SIEntryDesk\secrets.dat. Then the service restarts.
-    - Access token: Device = View, Location = Edit, everything else None
+    - Access token: Device = View, Locations = Edit, everything else None
     - Protect API key for the live view (empty = no live view)
 
 .EXAMPLE
@@ -27,7 +27,7 @@ function Read-Secret([string] $Prompt) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
 
-$access = Read-Secret 'Access token (Device = View, Location = Edit)'
+$access = Read-Secret 'Access token (Device = View, Locations = Edit)'
 if (-not $access) { throw 'Nothing works without an Access token.' }
 $protect = Read-Secret 'Protect API key for the live view, empty = no live view'
 # Line 2 stays empty (formerly a separate token for unlocking).
